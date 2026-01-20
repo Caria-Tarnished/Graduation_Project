@@ -31,7 +31,12 @@
   - [ ] 运行 `label_events.py` 生成 labels（窗口 `1/3/5` 天，`neutral_band=±0.3%`）。
   - [ ] 基线：`train_baseline.py`（TF-IDF + 线性模型；时间切分避免泄露）。
 - 项目周边：
-  - [ ] 建立 GitHub 远程仓库并推送（本文件与 `.gitignore` 已生成）。
+  - [x] 建立 GitHub 远程仓库并推送（本文件与 `.gitignore` 已生成）。
+
+- M1 验收与分析：
+  - [ ] 小样本跑通链路（CSV→label→baseline），产出 baseline 报告与预测明细（reports/）。
+  - [ ] 统计标签分布，评估类不平衡并视情况调整 neutral_band/class_weight。
+  - [ ] 准备最小化 Streamlit UI 演示，加载 baseline 结果并提供示例查询。
 
 ## 4) 备忘 / 风险（Memos / Risks）
 
@@ -48,6 +53,9 @@
   - 实现 `scripts/label_events.py`（CSV/DB → labels，中文日期解析）。
   - 整理 `scripts/fetch_prices.py` 与 `scripts/fetch_news.py` 的 PEP8。
   - 增加本文件 `Project_Status.md` 与 `.gitignore`（初版）。
+  - 创建本地 Conda `.venv` 环境并安装依赖。
+  - 完成并规范化 `scripts/train_baseline.py`（TF-IDF+LinearSVC，时间切分；支持 DB/CSV；生成报告与预测；flake8 通过）。
+  - `.gitignore` 新增 `.windsurf/` 与 `文字材料文档/`，并将后者从 Git 索引中移除。
 - 2025-11-15
   - 创建 `PLAN.md`（首版开发计划）。
 
