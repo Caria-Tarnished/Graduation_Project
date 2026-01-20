@@ -18,6 +18,7 @@ build/
 
 # Notebooks
 .ipynb_checkpoints/
+.windsurf/
 
 # Caches
 .cache/
@@ -78,3 +79,6 @@ temp/
 
 # Node (future UI dependencies)
 node_modules/
+
+# Local docs (Chinese)
+文字材料文档/
