@@ -1,0 +1,80 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packages / build
+*.egg-info/
+dist/
+build/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Caches
+.cache/
+*.cache
+
+# IDE / Editors
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/**
+!logs/.gitkeep
+*.log
+*.log.*
+
+# Data (keep directory, ignore contents)
+data/raw/**
+!data/raw/.gitkeep
+
+data/interim/**
+!data/interim/.gitkeep
+
+data/processed/**
+!data/processed/.gitkeep
+
+# Models (keep directory, ignore contents)
+models/bert/**
+!models/bert/.gitkeep
+
+models/rag/**
+!models/rag/.gitkeep
+
+# RAG stores / vector DB
+models/rag/chroma/**
+
+# Reports (keep directory, ignore contents)
+reports/**
+!reports/.gitkeep
+
+# Database files
+finance.db
+*.db
+
+# Environment / secrets
+.env
+*.key
+*.pem
+
+# Temp
+tmp/
+temp/
+*.tmp
+
+# Node (future UI dependencies)
+node_modules/

@@ -1,0 +1,17 @@
+python-dotenv
+PyYAML
+pandas
+numpy
+yfinance
+tushare
+SQLAlchemy
+requests
+beautifulsoup4
+PyMuPDF
+chromadb
+FlagEmbedding
+sentence-transformers
+scikit-learn
+plotly
+streamlit
+pydantic

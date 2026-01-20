@@ -1,0 +1,34 @@
+project:
+  name: Graduation_Project
+  timezone: Asia/Shanghai
+
+storage:
+  sqlite_path: finance.db
+  rag_store_path: models/rag/chroma
+
+universe:
+  start_date: "2024-01-01"
+  end_date: "2026-01-01"
+  a_index: ["000001.SH"]
+  hs300_components: ["300750.SZ", "600036.SH"]
+  gold: ["XAUUSD=X"]
+  us_equities: ["NVDA"]
+
+events:
+  windows_min: [30, 60, 120]
+  neutral_band: 0.003
+  windows_days: [1, 3, 5]
+
+providers:
+  prices:
+    a_share: tushare
+    us_and_commodities: yfinance
+  news:
+    sources: ["placeholder"]
+  llm:
+    provider: "tongyi"
+    model: ""
+    api_key_env: "LLM_API_KEY"
+  embeddings:
+    model_name: "BAAI/bge-m3"
+    device: "cpu"
