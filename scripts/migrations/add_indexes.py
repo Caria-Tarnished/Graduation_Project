@@ -33,20 +33,28 @@ def main() -> None:
     db = _db_path(cfg)
     _ensure_dir(db)
 
-    stmts = [
-        # labels 表常用的查询/过滤
-        'CREATE INDEX IF NOT EXISTS idx_labels_news_id ON labels(news_id);',
-        'CREATE INDEX IF NOT EXISTS idx_labels_ticker_window '
-        'ON labels(ticker, window_min);',
-        # news 表按时间查询
-        'CREATE INDEX IF NOT EXISTS idx_news_ts ON news(ts);',
-    ]
-
     try:
         conn = sqlite3.connect(db)
         cur = conn.cursor()
-        for s in stmts:
-            cur.execute(s)
+        # 仅在目标表存在时才创建索引，避免 "no such table" 错误
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+        existing = {r[0] for r in cur.fetchall()}
+
+        if 'labels' in existing:
+            cur.execute(
+                'CREATE INDEX IF NOT EXISTS idx_labels_news_id '
+                'ON labels(news_id);'
+            )
+            cur.execute(
+                'CREATE INDEX IF NOT EXISTS idx_labels_ticker_window '
+                'ON labels(ticker, window_min);'
+            )
+        if 'news' in existing:
+            cur.execute(
+                'CREATE INDEX IF NOT EXISTS idx_news_ts ON news(ts);'
+            )
         conn.commit()
     except Exception as e:
         print(f'[indexes] failed: {e}', file=sys.stderr)

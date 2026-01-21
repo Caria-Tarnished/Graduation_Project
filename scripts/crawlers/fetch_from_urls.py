@@ -15,11 +15,24 @@
 import argparse
 import os
 import time
-from typing import List, Optional
+from typing import Dict, List, Optional
+from urllib.parse import urlparse
+import urllib.robotparser as robotparser
 
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+
+
+# 统一的 UA，供抓取与 robots 校验共用
+DEFAULT_UA = (
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+    'AppleWebKit/537.36 (KHTML, like Gecko) '
+    'Chrome/122.0 Safari/537.36'
+)
+
+# robots.txt 解析缓存，按 netloc 复用
+_ROBOTS_CACHE: Dict[str, robotparser.RobotFileParser] = {}
 
 
 def _read_urls(path: str) -> List[str]:
@@ -32,11 +45,7 @@ def _read_urls(path: str) -> List[str]:
 def _fetch_html(url: str, timeout: int = 15) -> Optional[str]:
     # 简单的请求封装，设置 UA 与语言头；失败返回 None
     headers = {
-        'User-Agent': (
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) '
-            'Chrome/122.0 Safari/537.36'
-        ),
+        'User-Agent': DEFAULT_UA,
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
     }
     try:
@@ -105,6 +114,40 @@ def _extract_content(soup: BeautifulSoup) -> str:
     return '\n'.join([x for x in parts if x])
 
 
+def _get_robot_parser(
+    netloc: str,
+    scheme: str,
+    timeout: int,
+) -> robotparser.RobotFileParser:
+    rp = _ROBOTS_CACHE.get(netloc)
+    if rp is not None:
+        return rp
+    robots_url = f'{scheme}://{netloc}/robots.txt'
+    rp = robotparser.RobotFileParser()
+    try:
+        resp = requests.get(robots_url, timeout=timeout)
+        if resp.status_code == 200 and resp.text:
+            rp.parse(resp.text.splitlines())
+        else:
+            # 解析失败时视为未限制
+            rp.parse([])
+    except Exception:
+        rp.parse([])
+    _ROBOTS_CACHE[netloc] = rp
+    return rp
+
+
+def _robots_allowed(url: str, user_agent: str, timeout: int) -> bool:
+    p = urlparse(url)
+    if not p.netloc:
+        return True
+    rp = _get_robot_parser(p.netloc, p.scheme or 'https', timeout)
+    try:
+        return rp.can_fetch(user_agent, url)
+    except Exception:
+        return True
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument(
@@ -129,16 +172,31 @@ def main() -> None:
         help='请求间隔（秒）',
     )
     ap.add_argument(
+        '--no-robots',
+        action='store_true',
+        help='忽略 robots.txt（默认遵循）',
+    )
+    ap.add_argument(
         '--timeout',
         type=int,
         default=15,
         help='请求超时（秒）',
+    )
+    ap.add_argument(
+        '--robots-timeout',
+        type=int,
+        default=10,
+        help='robots.txt 请求超时（秒）',
     )
     args = ap.parse_args()
 
     urls = _read_urls(args.urls)
     rows = []
     for i, u in enumerate(urls, 1):
+        if not args.no_robots:
+            if not _robots_allowed(u, DEFAULT_UA, timeout=args.robots_timeout):
+                print('skip by robots:', u)
+                continue
         html = _fetch_html(u, timeout=args.timeout)
         if html is None:
             continue
