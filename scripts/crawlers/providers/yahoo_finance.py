@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Yahoo Finance ÁĞ±íÒ³½âÎö Provider¡£
-ÊäÈë£ºÁĞ±íÒ³ HTML£¨¿ÉÄÜÊÇÆ¬¶Î£©¡£
-Êä³ö£º×ÖµäÁĞ±í£¬Ã¿Ïî°üº¬ url/title/date_text£¨¿ÉÄÜÎªÏà¶ÔÊ±¼ä£©¡£
+Yahoo Finance åˆ—è¡¨é¡µè§£æ Providerã€‚
+è¾“å…¥ï¼šåˆ—è¡¨é¡µ HTMLï¼ˆå¯èƒ½æ˜¯ç‰‡æ®µï¼‰ã€‚
+è¾“å‡ºï¼šå­—å…¸åˆ—è¡¨ï¼Œæ¯é¡¹åŒ…å« url/title/date_textï¼ˆå¯èƒ½ä¸ºç›¸å¯¹æ—¶é—´ï¼‰ã€‚
 """
 from __future__ import annotations
 
@@ -11,23 +11,23 @@ from bs4 import BeautifulSoup
 
 
 def parse_listing(html: str) -> List[Dict[str, str]]:
-    """´Ó Yahoo Finance ÁĞ±íÒ³ HTML ÖĞÌáÈ¡ÎÄÕÂÁ´½ÓÓë±êÌâ¡£
-    - ¾¡Á¿Ñ¡Ôñ°üº¬ 'titles' ÀàÃûµÄ±êÌâÁ´½Ó£»ÕÒ²»µ½Ôò»ØÍËÈÎÒâº¬ href µÄ <a>¡£
-    - ÈÕÆÚÎÄ±¾´Ó '.publishing' ÈİÆ÷ÌáÈ¡£¬¿ÉÄÜÎªÏà¶ÔÊ±¼ä
-      £¨ÀıÈç 39\u5206\u949f\u524d£©¡£
+    """ä» Yahoo Finance åˆ—è¡¨é¡µ HTML ä¸­æå–æ–‡ç« é“¾æ¥ä¸æ ‡é¢˜ã€‚
+    - å°½é‡é€‰æ‹©åŒ…å« 'titles' ç±»åçš„æ ‡é¢˜é“¾æ¥ï¼›æ‰¾ä¸åˆ°åˆ™å›é€€ä»»æ„å« href çš„ <a>ã€‚
+    - æ—¥æœŸæ–‡æœ¬ä» '.publishing' å®¹å™¨æå–ï¼Œå¯èƒ½ä¸ºç›¸å¯¹æ—¶é—´
+      ï¼ˆä¾‹å¦‚ 39\u5206\u949f\u524dï¼‰ã€‚
     """
     soup = BeautifulSoup(html, 'html.parser')
     items: List[Dict[str, str]] = []
 
     for li in soup.select('li.stream-item.story-item'):
-        # ÓÅÏÈ±êÌâÁ´½Ó£¨°üº¬ class 'titles'£©
+        # ä¼˜å…ˆæ ‡é¢˜é“¾æ¥ï¼ˆåŒ…å« class 'titles'ï¼‰
         a = li.select_one('a.titles') or li.select_one('a[href]')
         if not a:
             continue
         href = a.get('href') or ''
         if not href:
             continue
-        # Yahoo ÁĞ±íÍ¨³£¸ø³ö¾ø¶ÔÁ´½Ó
+        # Yahoo åˆ—è¡¨é€šå¸¸ç»™å‡ºç»å¯¹é“¾æ¥
         title = a.get('title') or a.get_text(strip=True) or ''
         pub = li.select_one('div.publishing')
         date_text = pub.get_text(strip=True) if pub else ''
@@ -39,7 +39,7 @@ def parse_listing(html: str) -> List[Dict[str, str]]:
             }
         )
 
-    # È¥ÖØ£º°´ url È¥ÖØ£¬±£³ÖË³Ğò
+    # å»é‡ï¼šæŒ‰ url å»é‡ï¼Œä¿æŒé¡ºåº
     seen = set()
     uniq: List[Dict[str, str]] = []
     for r in items:

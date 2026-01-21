@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-¶«·½²Æ¸» ÁÐ±íÒ³½âÎö Provider¡£
-ÊäÈë£ºÁÐ±íÒ³ HTML£¨¿ÉÄÜÊÇÆ¬¶Î£©¡£
-Êä³ö£º×ÖµäÁÐ±í£¬Ã¿Ïî°üº¬ url/title/date_text£¨ÖÐÎÄÊ±¼ä¸ñÊ½£©¡£
+ä¸œæ–¹è´¢å¯Œ åˆ—è¡¨é¡µè§£æž Providerã€‚
+è¾“å…¥ï¼šåˆ—è¡¨é¡µ HTMLï¼ˆå¯èƒ½æ˜¯ç‰‡æ®µï¼‰ã€‚
+è¾“å‡ºï¼šå­—å…¸åˆ—è¡¨ï¼Œæ¯é¡¹åŒ…å« url/title/date_textï¼ˆä¸­æ–‡æ—¶é—´æ ¼å¼ï¼‰ã€‚
 """
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ from bs4 import BeautifulSoup
 
 
 def parse_listing(html: str) -> List[Dict[str, str]]:
-    """´Ó¶«·½²Æ¸»ÁÐ±íÒ³ HTML ÖÐÌáÈ¡ÎÄÕÂÁ´½ÓÓë±êÌâ¡£
-    - Ñ¡Ôñ id ÐÎÈç newsTr* µÄ <li>£¬ÔÚÆäÖÐ²éÕÒ <p class="title"> ÏÂµÄÁ´½Ó¡£
-    - ÈÕÆÚÎÄ±¾À´×Ô <p class="time">¡£
+    """ä»Žä¸œæ–¹è´¢å¯Œåˆ—è¡¨é¡µ HTML ä¸­æå–æ–‡ç« é“¾æŽ¥ä¸Žæ ‡é¢˜ã€‚
+    - é€‰æ‹© id å½¢å¦‚ newsTr* çš„ <li>ï¼Œåœ¨å…¶ä¸­æŸ¥æ‰¾ <p class="title"> ä¸‹çš„é“¾æŽ¥ã€‚
+    - æ—¥æœŸæ–‡æœ¬æ¥è‡ª <p class="time">ã€‚
     """
     soup = BeautifulSoup(html, 'html.parser')
     items: List[Dict[str, str]] = []
@@ -36,7 +36,7 @@ def parse_listing(html: str) -> List[Dict[str, str]]:
             }
         )
 
-    # È¥ÖØ£º°´ url È¥ÖØ£¬±£³ÖË³Ðò
+    # åŽ»é‡ï¼šæŒ‰ url åŽ»é‡ï¼Œä¿æŒé¡ºåº
     seen = set()
     uniq: List[Dict[str, str]] = []
     for r in items:

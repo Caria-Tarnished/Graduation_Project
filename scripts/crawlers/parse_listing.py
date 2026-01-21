@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-´ÓÁĞ±íÒ³ HTML ÌáÈ¡ÎÄÕÂ URL ÁĞ±íµÄÊµÓÃ½Å±¾¡£
+ä»åˆ—è¡¨é¡µ HTML æå–æ–‡ç«  URL åˆ—è¡¨çš„å®ç”¨è„šæœ¬ã€‚
 
-Ê¾Àı£¨ÍÆ¼öÒÔÄ£¿é·½Ê½ÔËĞĞ£¬È·±£°üÄÚÏà¶Ôµ¼Èë¿ÉÓÃ£©£º
-    # ´Ó html.txt£¨°üº¬ Yahoo Finance ÁĞ±íÆ¬¶Î£©ÌáÈ¡ URL µ½ urls.txt
+ç¤ºä¾‹ï¼ˆæ¨èä»¥æ¨¡å—æ–¹å¼è¿è¡Œï¼Œç¡®ä¿åŒ…å†…ç›¸å¯¹å¯¼å…¥å¯ç”¨ï¼‰ï¼š
+    # ä» html.txtï¼ˆåŒ…å« Yahoo Finance åˆ—è¡¨ç‰‡æ®µï¼‰æå– URL åˆ° urls.txt
     python -m scripts.crawlers.parse_listing \
         --provider yahoo \
         --in-file html.txt \
         --out-urls data/raw/urls.txt \
         --out-csv data/raw/listing_items.csv
 
-Ö§³Ö provider£º
-- yahoo: Yahoo Finance ÁĞ±íÒ³
-- eastmoney: ¶«·½²Æ¸»ÁĞ±íÒ³
+æ”¯æŒ providerï¼š
+- yahoo: Yahoo Finance åˆ—è¡¨é¡µ
+- eastmoney: ä¸œæ–¹è´¢å¯Œåˆ—è¡¨é¡µ
 """
 from __future__ import annotations
 
@@ -40,17 +40,17 @@ def main() -> None:
     ap.add_argument(
         '--in-file',
         required=True,
-        help='°üº¬ÁĞ±íÒ³ HTML µÄÎÄ¼şÂ·¾¶',
+        help='åŒ…å«åˆ—è¡¨é¡µ HTML çš„æ–‡ä»¶è·¯å¾„',
     )
     ap.add_argument(
         '--out-urls',
         required=True,
-        help='µ¼³öµÄ URL ÁĞ±íÂ·¾¶£¨txt£©',
+        help='å¯¼å‡ºçš„ URL åˆ—è¡¨è·¯å¾„ï¼ˆtxtï¼‰',
     )
     ap.add_argument(
         '--out-csv',
         default='',
-        help='¿ÉÑ¡£ºµ¼³ö´ø±êÌâ/Ê±¼äµÄ CSV',
+        help='å¯é€‰ï¼šå¯¼å‡ºå¸¦æ ‡é¢˜/æ—¶é—´çš„ CSV',
     )
     args = ap.parse_args()
 
@@ -60,15 +60,15 @@ def main() -> None:
     mod = PROVIDERS[args.provider]
     items: List[Dict[str, str]] = mod.parse_listing(html)
 
-    # Ğ´³ö URL ÁĞ±í
+    # å†™å‡º URL åˆ—è¡¨
     os.makedirs(os.path.dirname(args.out_urls) or '.', exist_ok=True)
     with open(args.out_urls, 'w', encoding='utf-8') as f:
         for r in items:
             f.write((r.get('url') or '').strip() + '\n')
 
-    # ¿ÉÑ¡Ğ´³ö CSV£¨°üº¬±êÌâÓëÔ­Ê¼ÈÕÆÚÎÄ±¾£©
+    # å¯é€‰å†™å‡º CSVï¼ˆåŒ…å«æ ‡é¢˜ä¸åŸå§‹æ—¥æœŸæ–‡æœ¬ï¼‰
     if args.out_csv:
-        import csv  # ÑÓ³Ùµ¼Èë
+        import csv  # å»¶è¿Ÿå¯¼å…¥
 
         os.makedirs(os.path.dirname(args.out_csv) or '.', exist_ok=True)
         with open(args.out_csv, 'w', encoding='utf-8', newline='') as f:
