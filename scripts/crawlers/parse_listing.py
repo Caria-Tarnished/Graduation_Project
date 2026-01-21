@@ -54,8 +54,26 @@ def main() -> None:
     )
     args = ap.parse_args()
 
-    with open(args.in_file, 'r', encoding='utf-8') as f:
-        html = f.read()
+    # 兼容本地 HTML 片段的多种编码（例如 ANSI/GBK/UTF-8-SIG）
+    # 读取为二进制后按常见编码尝试解码，最后回退为忽略错误的 UTF-8。
+    def _read_text_any(path: str) -> str:
+        with open(path, 'rb') as bf:
+            data = bf.read()
+        for enc in (
+            'utf-8',
+            'utf-8-sig',
+            'gbk',
+            'cp936',
+            'gb18030',
+            'latin-1',
+        ):
+            try:
+                return data.decode(enc)
+            except Exception:
+                pass
+        return data.decode('utf-8', errors='ignore')
+
+    html = _read_text_any(args.in_file)
 
     mod = PROVIDERS[args.provider]
     items: List[Dict[str, str]] = mod.parse_listing(html)
