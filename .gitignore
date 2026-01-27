@@ -83,3 +83,7 @@ node_modules/
 # Local docs (Chinese)
 文字材料文档/
 html.txt
+.pw_jin10
+debug/
+archive/
+参考代码和文档/
