@@ -1,6 +1,6 @@
 # Project Status
 
-更新时间：2026-01-27
+更新时间：2026-01-29
 负责人：Caria-Tarnished
 
 ---
@@ -22,17 +22,17 @@
 - 新闻导入：`scripts/fetch_news.py`（CSV 入库与去重）。
 - 代理标注（“日级窗”）：`scripts/label_events.py`（CSV 或 DB → labels）。
 - 代码风格：已进行首次 PEP8 整理（长行/空行）。
- - 金十爬虫（当前在用）与入库：
-   - `scripts/crawlers/jin10_dynamic.py`：仅保留 `calendar`（日历），直达日页面、倒序抓取、只看重要（客户端兜底）、请求拦截提速、会话复用、调试快照、SQLite 入库。
-   - `scripts/crawlers/jin10_flash_api.py`：快讯 API 模式（支持接口发现/过滤/CSV 流式/SQLite 入库）。
- - SQLite 存储：`scripts/crawlers/storage.py`（upsert、URL/内容哈希去重、索引）。
+- 金十爬虫（当前在用）与入库：
+  - `scripts/crawlers/jin10_dynamic.py`：日历模式已稳定可用，支持“只看重要”开关、DB 入库与 CSV 增量写入；接口与参考脚本保持一致（`--months/--start/--end/--output/--db/...`）。
+  - `scripts/crawlers/jin10_flash_api.py`：快讯 API 模式（支持接口发现/过滤/CSV 流式/SQLite 入库）。
+- SQLite 存储：`scripts/crawlers/storage.py`（upsert、URL/内容哈希去重、索引）。
 
 ## 3) 进行中 / 下一步（Next）
 
 - 金十（优先）：
-  - [ ] 使用 `jin10_flash_api.py`（API 模式，支持 `--db` 入库）作为快讯主抓取；未知接口时使用“接口发现”。
-  - [ ] 使用 `jin10_dynamic.py` 日历模式逐日抓取（直达 URL，支持“只看重要”），直接入库 `finance.db`。
-  - [ ] 如需更多来源，后续再引入（现阶段聚焦金十）。
+  - [X] 使用 `jin10_flash_api.py`（API 模式，支持 `--db` 入库）作为快讯主抓取；未知接口时使用“接口发现”。
+  - [X] 使用 `jin10_dynamic.py` 日历模式逐日抓取（直达 URL，支持“只看重要”），可直接入库 `finance.db` 并同步写 CSV（已完成初版联调）。
+  - [X] 如需更多来源，后续再引入（现阶段聚焦金十）。
 - 东方财富：
   - [ ] 暂缓（清理阶段不保留相关爬虫与脚本）。
 - Yahoo Finance：
@@ -40,8 +40,9 @@
 - 代理标注与基线：
   - [ ] 使用入库新闻运行 `scripts/label_events.py` 生成 labels（窗口 1/3/5 天、`neutral_band=±0.3%`）。
   - [ ] 训练 `train_baseline.py` 并产出报告与预测明细（reports/）。
- - 脚本整理：
-  - [ ] 非爬虫脚本（`scripts/fetch_news.py`、`scripts/fetch_prices.py`、`scripts/ingest_listing_csv.py`、`scripts/label_events.py`、`scripts/uplift_articles_to_news.py`）如近期不用，可归档至 `archive/unused_scripts_YYYYMMDD/`。
+- 脚本整理：
+
+- [X] 非爬虫脚本（`scripts/fetch_news.py`、`scripts/fetch_prices.py`、`scripts/ingest_listing_csv.py`、`scripts/label_events.py`、`scripts/uplift_articles_to_news.py`）如近期不用，可归档至 `archive/unused_scripts_YYYYMMDD/`。
 
 ## 4) 备忘 / 风险（Memos / Risks）
 
@@ -51,16 +52,24 @@
 - 速率与封禁：必要时添加随机延迟/代理池；尊重 robots.txt。
 - 时区与交易日：新闻对齐到下一开盘日，节假日需注意（可扩展交易日历）。
 - 数据质量：快讯页部分条目无明确时间戳，可用 `--allow-undated` 暂保留，事后人工补齐。
-
 - 后续任务（抓取与入库规范）：
-  - [ ] 日历爬虫效果验证：对照网页可见项与解析结果，抽样核对时间/标题；必要时补充选择器回退策略与星级识别鲁棒性。
+
+  - [X] 日历爬虫效果验证：对照网页可见项与解析结果，抽样核对时间/标题；必要时补充选择器回退策略与星级识别鲁棒性。
   - [ ] 入库结构核对：验证两条管线入库字段一致性（site/source/title/content/published_at/url/extra_json），统一 `extra_json` 键名（如 date_text/hot_levels 等）。
   - [ ] 规范化与多表对齐：如有必要，调整 `articles` 表或新增规范化表（如 indicators/events），明确主键（内容/URL 哈希）与外键（交易日/标的），保证“快讯/日历/行情”多表对齐逻辑。
   - [ ] 测试与样例：为日历解析与 API 解析准备最小样例（页面快照/接口 JSON 片段）和断言，确保升级后解析/入库不回退。
 
 ## 5) 变更记录（Changelog）
 
+- 2026-01-29
+
+  - 调整：`scripts/crawlers/jin10_dynamic.py` 与参考脚本对齐，采用统一 CLI：
+    - 新增参数：`--months/--start/--end/--output/--db/--source/--headed/--debug/--important-only/--user-data-dir/--recheck-important-every/--use-slider/--setup-seconds`。
+    - 支持边爬边入库（`Article`），并按参考列顺序增量写 CSV；长行（flake8 E501）分行处理。
+    - 保留请求拦截（禁 image/media/font）提速，确保“只看重要”开关与星级兜底过滤。
+  - 文档：更新本页“金十日历/数据（逐日回填）”使用指令为新 CLI。
 - 2026-01-27
+
   - 新增：`scripts/crawlers/jin10_flash_api.py`（快讯 API 爬虫，支持接口发现、筛选与 CSV 流式写入、SQLite 入库 `--db`）。
   - 增强：`scripts/crawlers/jin10_dynamic.py` 日历模式：
     - 直达 `https://rili.jin10.com/day/YYYY-MM-DD`，按日期倒序抓取；
@@ -84,8 +93,8 @@
     - `scripts/crawlers/fetch_from_urls.py`
   - 代码风格：补充 flake8 清理（E501 行宽、空白行 W293/E306）于 `jin10_dynamic.py` / `jin10_flash_api.py`，不改动业务逻辑。
   - Git：`.gitignore` 新增忽略 `archive/` 与 `参考代码和文档/`。
-
 - 2026-01-23
+
   - 新增：`scripts/crawlers/jin10_dynamic.py`（Playwright 动态抓取：快讯倒序回溯与日历模式；登录持久化、跨 frame、滚动/加载更多、调试快照、入库）。
   - 新增：`scripts/crawlers/ingest_listing_csv.py`（listing CSV 入库）。
   - 新增：`scripts/crawlers/providers/jin10_events.py`（金十重要事件列表）。
@@ -94,6 +103,7 @@
   - 增强：`scripts/crawlers/fetch_from_urls.py`（加入 SQLite 入库与去重）。
   - 修复：`scripts/crawlers/storage.py` 长行与稳健性（upsert/去重）。
 - 2026-01-20
+
   - 更新 `configs/config.yaml`：设置标的池与 `windows_days=[1,3,5]`。
   - 实现 `scripts/label_events.py`（CSV/DB → labels，中文日期解析）。
   - 整理 `scripts/fetch_prices.py` 与 `scripts/fetch_news.py` 的 PEP8。
@@ -102,6 +112,7 @@
   - 完成并规范化 `scripts/train_baseline.py`（TF-IDF+LinearSVC，时间切分；支持 DB/CSV；生成报告与预测；flake8 通过）。
   - `.gitignore` 新增 `.windsurf/` 与 `文字材料文档/`，并将后者从 Git 索引中移除。
 - 2025-11-15
+
   - 创建 `PLAN.md`（首版开发计划）。
 
 ## 6) 快速指引（Quick Start）
@@ -132,7 +143,7 @@
     --sleep 1.8 \
     --db finance.db \
     --source flash_api
-  
+
   # 接口发现（首次使用/未知接口时）：
   python -m scripts.crawlers.jin10_flash_api \
     --months 12 \
@@ -146,42 +157,32 @@
   ```
 - 金十日历/数据（逐日回填）
   ```powershell
+  # 最近 3 个月（仅 CSV）
   python -m scripts.crawlers.jin10_dynamic \
-    --start-date 2024-01-01 \
-    --end-date 2026-01-21 \
-    --out-csv data/raw/jin10_calendar_2024_2026.csv \
-    --db finance.db \
-    --source listing_data \
-    --delay 0.8 \
-    --debug-dir debug/j10_calendar
-  ```
-  - 日历（仅“只看重要”、倒序、无头示例）
-  ```powershell
-  # 单日验证（示例）
-  python -m scripts.crawlers.jin10_dynamic \
-    --start-date 2024-12-07 \
-    --end-date 2024-12-07 \
-    --db finance.db \
-    --source listing_data \
-    --delay 0.5 \
-    --user-data-dir .pw_jin10 \
-    --headless \
-    --setup-seconds 0 \
+    --months 3 \
+    --output data/raw/jin10_calendar_last3m.csv \
     --important-only \
-    --debug-dir debug/jin10_calendar
+    --user-data-dir .pw_jin10
 
-  # 区间验证（示例）
+  # 指定区间 + 入库（推荐）
   python -m scripts.crawlers.jin10_dynamic \
-    --start-date 2024-12-01 \
-    --end-date 2024-12-10 \
+    --start 2024-01-01 \
+    --end 2026-01-21 \
+    --output data/raw/jin10_calendar_2024_2026.csv \
     --db finance.db \
     --source listing_data \
-    --delay 0.5 \
-    --user-data-dir .pw_jin10 \
-    --headless \
-    --setup-seconds 0 \
     --important-only \
-    --debug-dir debug/jin10_calendar
+    --user-data-dir .pw_jin10
+
+  # 单日验证（start=end）
+  python -m scripts.crawlers.jin10_dynamic \
+    --start 2024-12-07 \
+    --end 2024-12-07 \
+    --output data/raw/jin10_calendar_20241207.csv \
+    --db finance.db \
+    --source listing_data \
+    --important-only \
+    --user-data-dir .pw_jin10
   ```
 - 从 CSV 入库新闻
   ```powershell

@@ -1,240 +1,115 @@
 # -*- coding: utf-8 -*-
 """
-使用 Playwright 抓取金十数据的动态页面：
-- 模式 flash：抓取首页快讯，支持按日期区间回溯。
-  通过反复点击/滚动“加载更多”，并基于每条快讯 id 中的数字推导时间。
-- 模式 calendar：预留（后续接入按日访问方式或接口）。
+金十数据 日历页 爬虫（Playwright）
 
-注意：
-- 需要先安装 Playwright 及浏览器内核：
-  pip install playwright
-  python -m playwright install chromium
-- 建议配合 --db finance.db 直接入库。
+思路：
+- 直接按日期访问 https://rili.jin10.com/day/YYYY-MM-DD 页面，避免复杂滑块交互不确定性。
+- 对于最近 N 个月的每一天，逐日抓取当日经济数据表格。
+- 解析字段：date(日期)、time(时间)、country(国家，尝试从国旗图片URL推断)、name(指标名)、star(重要性)、previous(前值)、consensus(预测值)、actual(公布值)。
+- 输出 CSV。
+
+使用：
+python jin10_calendar.py --months 3 --output calendar_last_3m.csv
+python jin10_calendar.py --start 2025-10-01 --end 2026-01-15 --output calendar_q4.csv
+
+首次运行需安装浏览器：
+python -m playwright install
 """
 from __future__ import annotations
-
 import argparse
-import datetime as dt
-import os
-import re
-import time
+from datetime import datetime, timedelta, date
 from typing import Any, Dict, List, Optional
 
-from playwright.sync_api import Page, Frame, ElementHandle, sync_playwright
+from playwright.sync_api import sync_playwright, Page
+import pandas as pd
+import csv
+from urllib.parse import urljoin
+import os
+import re
 
-# 可选写库（SQLite）
+# 统一导出编码
+CSV_ENCODING = "utf-8"
+
+# 可选写库（SQLite）：若 storage 不存在，则优雅降级为仅 CSV 输出
 try:
-    from .storage import Article, ensure_schema, get_conn, upsert_many
+    from .storage import Article, ensure_schema, get_conn, upsert_many  # type: ignore
 except Exception:  # noqa: BLE001
     Article = None  # type: ignore
     ensure_schema = None  # type: ignore
     get_conn = None  # type: ignore
     upsert_many = None  # type: ignore
 
+# 统一的浏览器 UA 字符串（避免在调用处出现超长行）
 DEFAULT_UA = (
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-    'AppleWebKit/537.36 (KHTML, like Gecko) '
-    'Chrome/122.0 Safari/537.36'
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/122.0.0.0 Safari/537.36"
 )
 
 
-def _frame_query_all(page: Page, selector: str) -> List[ElementHandle]:
-    """在所有 frame 中查询 selector，返回元素列表。
-    兼容站点将内容放在 iframe 的情况。
-    """
-    elements: List[ElementHandle] = []
-    frames: List[Frame] = [page.main_frame] + [f for f in page.frames]
-    for fr in frames:
-        try:
-            elements.extend(fr.query_selector_all(selector))
-        except Exception:
-            continue
-    return elements
-
-
-def _safe_get_attr(el: ElementHandle, name: str) -> str:
-    """安全读取元素属性，遇到刷新/销毁时返回空串以避免异常中断。"""
-    try:
-        return (el.get_attribute(name) or '').strip()
-    except Exception:
-        return ''
-
-
-def _digits_to_iso(ts_digits: str) -> Optional[str]:
-    """将快讯项 id 中的时间戳数字转换为 ISO 格式。
-    例如：flash20260121192731970800 → 取前 14 位 20260121192731
-    """
-    if len(ts_digits) < 14:
+def _text_or_none(s: str) -> Optional[str]:
+    s = (s or "").strip()
+    if not s or s == "--":
         return None
-    s = ts_digits[:14]
+    return s
+
+
+def _to_float_or_str(v: Optional[str]) -> Optional[str]:
+    """尝试解析数值，不做强制转换；若无法确定，返回原文本（保留百分号等单位）。"""
+    if v is None:
+        return None
+    return v.strip()
+
+
+def _parse_country_from_flag_src(src: str) -> Optional[str]:
+    """从国旗图片 URL 中尽力解析国家名（中文文件名例如 .../flag/美国.png/flags）。失败返回 None。"""
+    if not src:
+        return None
+    # 去掉查询参数
+    s = src.split("?")[0]
+    parts = s.split("/")
+    for p in reversed(parts):
+        if ".png" in p or ".jpg" in p:
+            name = p.split(".")[0]
+            return name or None
+    return None
+
+
+def _count_stars_in_row(row) -> Optional[int]:
     try:
-        dtm = dt.datetime.strptime(s, '%Y%m%d%H%M%S')
-        return dtm.strftime('%Y-%m-%d %H:%M:%S')
+        cols = row.locator("div.jin-table-column")
+        if cols.count() < 3:
+            return None
+        star_cell = cols.nth(2)
+        # 优先统计点亮的星（颜色为 var(--rise)）
+        lit = 0
+        try:
+            lit = star_cell.locator(".jin-star i[style*='var(--rise)']").count()
+        except Exception:
+            lit = 0
+        if lit and lit > 0:
+            return lit
+        # 兜底：仅当能检测到灰星时，才用总星减去灰星；否则不做武断推断
+        try:
+            total = star_cell.locator(".jin-star i").count()
+            gray = star_cell.locator(".jin-star i[style*='on-rise-light-lowest']").count()
+            if total and gray and gray > 0:
+                return max(0, total - gray)
+        except Exception:
+            pass
+        return None
     except Exception:
         return None
 
 
-def _parse_flash_items(page: Page) -> List[Dict[str, str]]:
-    """从当前页面 DOM 提取快讯项。
-    解析规则：
-    - id: flashYYYYMMDDhhmmss......，据此生成 published_at
-    - 文本：优先 right-common-title，再追加 flash-text；
-      若不存在，回退其它常见类名（更鲁棒）。
-    - url: 若能取到详情链接则用之；否则基于 id 构造 detail URL
-    """
-    items: List[Dict[str, str]] = []
-    # 更宽松的选择器：尝试多种容器匹配
-    boxes = _frame_query_all(
-        page,
-        '[id^="flash"], [data-id], .jin-flash-item-container, '
-        'li[class*="flash"], div[class*="flash"]',
-    )
-    for bx in boxes:
-        id_attr = (
-            _safe_get_attr(bx, 'id') + ' ' +
-            _safe_get_attr(bx, 'data-id') + ' ' +
-            _safe_get_attr(bx, 'data-news-id')
-        ).strip()
-        # 提取 14+ 位数字作为时间戳源（含毫秒则截取前 14 位）
-        m = re.search(r'(\d{14,})', id_attr)
-        ts = None
-        if m:
-            ts = _digits_to_iso(m.group(1))
-        # 进一步：部分节点可能有 data-time 或 datetime 属性
-        if not ts:
-            for attr in ('data-time', 'datetime', 'data-published'):
-                v = _safe_get_attr(bx, attr)
-                if re.fullmatch(r'\d{14,}', v):
-                    ts = _digits_to_iso(v)
-                    break
-        # 详情链接
-        a_detail = None
-        for sel in (
-            'a[href*="flash.jin10.com/detail"]',
-            'a[href*="/detail/"]',
-            'a[href^="/detail/"]',
-        ):
-            try:
-                a_detail = bx.query_selector(sel)
-                if a_detail:
-                    break
-            except Exception:
-                continue
-        try:
-            url = (a_detail.get_attribute('href') if a_detail else '') or ''
-        except Exception:
-            url = ''
-        if (not url) and m:
-            # 回退：基于 id 构造
-            url = f'https://flash.jin10.com/detail/{m.group(1)}'
-        # 标题与正文（多套选择器以兼容 DOM 差异）
-        title_el = None
-        for sel in (
-            '.right-common-title',
-            '.jin-flash-item-title',
-            '.flash-title',
-            'h3',
-        ):
-            try:
-                title_el = bx.query_selector(sel)
-                if title_el:
-                    break
-            except Exception:
-                continue
-        title = title_el.inner_text().strip() if title_el else ''
-        text_el = None
-        for sel in (
-            '.flash-text',
-            '.right-common-content',
-            '.right-content',
-            '.jin-flash-item-content',
-            'article',
-            'p',
-        ):
-            try:
-                text_el = bx.query_selector(sel)
-                if text_el:
-                    break
-            except Exception:
-                continue
-        text = text_el.inner_text().strip() if text_el else ''
-        content = text
-        if title and text and title not in text:
-            content = f'{title} | {text}'
-        items.append(
-            {
-                'url': url,
-                'title': title or (text[:40] if text else ''),
-                'date_text': '',  # 直接用 id 反推时间
-                'content_text': content,
-                'published_at': ts or '',
-            }
-        )
-    return items
-
-
-def _click_load_more(page: Page) -> bool:
-    """尝试点击“加载更多”按钮；如无则滚动以触发懒加载。
-    返回是否执行了有效的加载动作。
-    """
-    selectors = [
-        'text=点击加载',
-        'text=点击加载更多',
-        'text=加载更多',
-        'a:has-text("加载")',
-        'button:has-text("加载")',
-    ]
-    for sel in selectors:
-        # 在所有 frame 尝试点击
-        frames: List[Frame] = [page.main_frame] + [f for f in page.frames]
-        for fr in frames:
-            try:
-                el = fr.query_selector(sel)
-                if el:
-                    el.click(timeout=3000)
-                    page.wait_for_load_state('networkidle', timeout=10000)
-                    return True
-            except Exception:
-                continue
-    # 回退：滚动
+def _ensure_data_tab(page: Page, debug: bool = False) -> None:
+    """确保处于“经济数据”页签，否则切换到该页签。"""
     try:
-        # 多次滚动到底部以触发懒加载
-        page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
-        time.sleep(0.5)
-        page.mouse.wheel(0, 2000)
-        time.sleep(0.8)
-        return True
-    except Exception:
-        return False
-
-
-def _install_request_blocker(ctx) -> None:
-    try:
-        def _route_handler(route):
-            try:
-                r = route.request
-                rtype = (r.resource_type or '').lower()
-                if rtype in {'image', 'media', 'font', 'beacon', 'manifest'}:
-                    return route.abort()
-                return route.continue_()
-            except Exception:
-                try:
-                    return route.continue_()
-                except Exception:
-                    return route.abort()
-
-        ctx.route('**/*', _route_handler)
-    except Exception:
-        pass
-
-
-def _ensure_data_tab(page: Page) -> None:
-    try:
-        if page.locator(
-            'div.jin-table-body, .jin-list .jin-list-item'
-        ).count() > 0:
+        # 若数据表/列表已可见，视为在经济数据页签
+        if page.locator("div.jin-table-body, .jin-list .jin-list-item").count() > 0:
             return
-        tab = page.locator('text=经济数据').first
+        # 点击“经济数据”文字所在的页签
+        tab = page.locator("text=经济数据").first
         if tab and tab.count():
             tab.click()
             page.wait_for_timeout(300)
@@ -242,11 +117,14 @@ def _ensure_data_tab(page: Page) -> None:
         pass
 
 
-def _ensure_important_only(page: Page) -> None:
+def _ensure_important_only(page: Page, debug: bool = False) -> None:
+    """确保页面上的“只看重要”已开启。"""
     try:
         try:
-            sel_switch = "div.jin-switch:has-text('只看重要')"
-            page.wait_for_selector(sel_switch, timeout=1500)
+            page.wait_for_selector(
+                "div.jin-switch:has-text('只看重要')",
+                timeout=1200,
+            )
         except Exception:
             pass
         x_sel = (
@@ -265,28 +143,53 @@ def _ensure_important_only(page: Page) -> None:
             for i in range(cnt):
                 container = cand.nth(i)
                 try:
-                    cb = container.locator(
-                        "input.liquid-switch__input, input[type='checkbox']"
-                    ).first
+                    cb = container.locator("input.liquid-switch__input, input[type='checkbox']").first
                     if cb and cb.count():
                         try:
                             if cb.is_checked():
+                                if debug:
+                                    try:
+                                        print("[DEBUG] 已开启‘只看重要’开关")
+                                    except Exception:
+                                        pass
                                 return
                         except Exception:
                             pass
                         try:
-                            cb.check(force=True, timeout=1200)
-                            page.wait_for_timeout(150)
+                            cb.check(force=True, timeout=1500)
+                            page.wait_for_timeout(200)
                         except Exception:
                             try:
                                 cb.click()
-                                page.wait_for_timeout(150)
+                                page.wait_for_timeout(200)
                             except Exception:
                                 pass
                     if container.locator(
                         "input.liquid-switch__input:checked, "
                         "input[type='checkbox']:checked"
                     ).count() > 0:
+                        if debug:
+                            try:
+                                print("[DEBUG] 已开启‘只看重要’开关")
+                            except Exception:
+                                pass
+                        return
+                    lbl = container.locator("label.liquid-switch__label, label").first
+                    if lbl and lbl.count():
+                        try:
+                            lbl.click()
+                            page.wait_for_timeout(200)
+                        except Exception:
+                            pass
+                    if container.locator(
+                        "input.liquid-switch__input:checked, "
+                        "input[type='checkbox']:checked"
+                    ).count() > 0:
+                        if debug:
+                            try:
+                                print("[DEBUG] 已开启‘只看重要’开关")
+                            except Exception:
+                                pass
                         return
                 except Exception:
                     continue
@@ -294,970 +197,546 @@ def _ensure_important_only(page: Page) -> None:
         pass
 
 
-def _filter_by_date(
-    items: List[Dict[str, str]],
-    since: dt.date,
-    until: dt.date,
-    allow_undated: bool = False,
-) -> List[Dict[str, str]]:
-    kept: List[Dict[str, str]] = []
-    for r in items:
-        pub = (r.get('published_at') or '').strip()
-        if not pub:
-            if allow_undated:
-                kept.append(r)
-            continue
-        try:
-            d = dt.datetime.strptime(pub[:10], '%Y-%m-%d').date()
-        except Exception:
-            continue
-        if d < since or d > until:
-            continue
-        kept.append(r)
-    return kept
-
-
-def crawl_flash(
-    start_date: str,
-    end_date: str,
-    out_csv: str,
-    db_path: str,
-    source: str,
-    delay: float,
-    headless: bool = True,
-    max_loads: int = 300,
-    allow_undated: bool = False,
-    debug_dir: str = '',
-    storage: str = '',
-    user_data_dir: str = '',
-    login_wait: float = 0.0,
-    keep_open: bool = False,
-    verbose: bool = False,
-    drop_noise: bool = False,
-) -> None:
-    since = dt.datetime.strptime(start_date, '%Y-%m-%d').date()
-    until = dt.datetime.strptime(end_date, '%Y-%m-%d').date()
-
-    all_items: List[Dict[str, str]] = []
-    # 注：此模式当前不统计边爬边入库条数，移除未使用的占位变量避免 F841
-
-    with sync_playwright() as pw:
-        # 注：此模式未使用 storage_state，移除未使用的占位变量避免 F841
-        # 支持持久化上下文（用户数据目录）或基于 storage state 的无头登录
-        use_persist = bool(user_data_dir)
-        if use_persist:
-            ctx = pw.chromium.launch_persistent_context(
-                user_data_dir,
-                headless=headless,
-                user_agent=DEFAULT_UA,
-                locale='zh-CN',
-                extra_http_headers={'Accept-Language': 'zh-CN,zh;q=0.9'},
-            )
-            br = None
-        else:
-            br = pw.chromium.launch(headless=headless)
-            ctx = br.new_context(
-                user_agent=DEFAULT_UA,
-                locale='zh-CN',
-                extra_http_headers={'Accept-Language': 'zh-CN,zh;q=0.9'},
-                storage_state=(
-                    storage if (storage and os.path.exists(storage)) else None
-                ),
-            )
-        page = ctx.new_page()
-        # 直接打开快讯专页，更稳定
-        page.goto('https://flash.jin10.com/', timeout=60000)
-        page.wait_for_load_state(
-            'domcontentloaded', timeout=60000
-        )
-        page.wait_for_load_state('networkidle', timeout=60000)
-        # 等待任一快讯项出现（更稳健），最长 60s
-        try:
-            page.wait_for_selector(
-                '[id^="flash"], [data-id], .jin-flash-item-container',
-                timeout=60000,
-            )
-        except Exception:
-            pass
-        time.sleep(1.0)
-        # 调试：保存首屏截图与 HTML
-        if debug_dir:
-            os.makedirs(debug_dir, exist_ok=True)
-            try:
-                page.screenshot(path=os.path.join(debug_dir, 'init.png'))
-                with open(
-                    os.path.join(debug_dir, 'init.html'),
-                    'w', encoding='utf-8'
-                ) as f:
-                    f.write(page.content())
-            except Exception:
-                pass
-        if verbose and debug_dir:
-            try:
-                _dbg = os.path.abspath(debug_dir)
-                print(
-                    '[flash] init snapshot saved to',
-                    _dbg,
-                )
-            except Exception:
-                pass
-        # 首次运行可人工登录并保存状态
-        if login_wait and login_wait > 0:
-            try:
-                page.wait_for_timeout(int(login_wait * 1000))
-            except Exception:
-                pass
-            if storage and not use_persist:
-                try:
-                    ctx.storage_state(path=storage)
-                except Exception:
-                    pass
-
-        loads = 0
-        min_date: Optional[dt.date] = None
-        no_increase_rounds = 0
-        last_count = 0
-        if verbose:
-            print(
-                '[flash] start crawling',
-                since,
-                '→',
-                until,
-                'max_loads=',
-                max_loads,
-            )
-        while loads < max_loads:
-            # 先快速统计当前可见快讯节点数量，便于在解析前给出“心跳”反馈
-            if verbose and loads == 0:
-                try:
-                    approx = len(_frame_query_all(
-                        page,
-                        (
-                            '[id^="flash"], [data-id], '
-                            '.jin-flash-item-container, '
-                            'li[class*="flash"], '
-                            'div[class*="flash"]'
-                        ),
-                    ))
-                    print('[flash] approx dom items', approx)
-                except Exception:
-                    pass
-            try:
-                cur = _parse_flash_items(page)
-                if verbose:
-                    print('[flash] load', loads + 1, 'parsed', len(cur))
-            except Exception:
-                # 页面被关闭/刷新导致解析异常，终止循环以便输出已获取部分
-                break
-            if cur:
-                all_items.extend(cur)
-                # 更新最早日期（用于停止条件）
-                try:
-                    ds = [
-                        dt.datetime.strptime(
-                            i['published_at'][:10], '%Y-%m-%d'
-                        ).date()
-                        for i in cur
-                        if i.get('published_at')
-                    ]
-                    if ds:
-                        dmin = min(ds)
-                        if (min_date is None) or (dmin < min_date):
-                            min_date = dmin
-                except Exception:
-                    pass
-            # 若已经向前加载到比 since 更早，则停止
-            if min_date is not None and min_date < since:
-                break
-            # 判断元素数量是否增加，避免死循环（跨 frame 统计）
-            cur_count = len(_frame_query_all(
-                page,
-                (
-                    '[id^="flash"], [data-id], '
-                    '.jin-flash-item-container, '
-                    'li[class*="flash"], '
-                    'div[class*="flash"]'
-                ),
-            ))
-            if cur_count <= last_count:
-                no_increase_rounds += 1
-            else:
-                no_increase_rounds = 0
-            last_count = cur_count
-            if verbose:
-                print(
-                    '[flash] dom_count',
-                    cur_count,
-                    'no_increase',
-                    no_increase_rounds,
-                )
-
-            loads += 1
-            _clicked = _click_load_more(page)
-            if verbose:
-                print('[flash] click_load_more', bool(_clicked))
-            if not _clicked:
-                break
-            time.sleep(max(0.2, delay))
-            if no_increase_rounds >= 3:
-                break
-            if verbose and (loads % 20 == 0):
-                print('[flash] progress loads=', loads,
-                      'total_items=', len(all_items),
-                      'earliest=', min_date)
-            # 调试：保存增量页 HTML 片段
-            if debug_dir and (loads % 5 == 0):
-                try:
-                    with open(
-                        os.path.join(debug_dir, f'round_{loads}.html'),
-                        'w', encoding='utf-8'
-                    ) as f:
-                        f.write(page.content())
-                except Exception:
-                    pass
-
-        if keep_open and (not headless):
-            try:
-                input('按回车关闭浏览器...')
-            except Exception:
-                pass
-        if use_persist:
-            ctx.close()
-        else:
-            br.close()
-
-    # 去重（按 url 或 (title,content,published_at)）
-    seen = set()
-    uniq: List[Dict[str, str]] = []
-    for r in all_items:
-        u = (r.get('url') or '').strip()
-        if u:
-            if u in seen:
-                continue
-            seen.add(u)
-            uniq.append(r)
-        else:
-            k = (
-                (r.get('title') or '').strip(),
-                (r.get('content_text') or '').strip(),
-                (r.get('published_at') or '').strip(),
-            )
-            if k in seen:
-                continue
-            seen.add(k)
-            uniq.append(r)
-
-    # 过滤日期（可允许无时间项用于调试/人工补齐）
-    uniq = _filter_by_date(uniq, since, until, allow_undated=allow_undated)
-    # 排序：已标注时间的按时间降序，无时间的放在最后
-    dated = [r for r in uniq if (r.get('published_at') or '').strip()]
-    undated = [r for r in uniq if not (r.get('published_at') or '').strip()]
-    dated.sort(key=lambda r: (r.get('published_at') or ''), reverse=True)
-    uniq = dated + undated
-
-    # 可选：过滤噪声（如 VIP/扫码分享/直播等非资讯内容）
-    def _is_noise_item(r: Dict[str, str]) -> bool:
-        t = (r.get('title') or '').strip()
-        c = (r.get('content_text') or '').strip()
-        bad = ['VIP', '扫码分享', '直播', '重要事件', '金十期货']
-        if t in bad:
-            return True
-        if any(x in c for x in bad):
-            return True
-        return False
-
-    if drop_noise:
-        uniq = [r for r in uniq if not _is_noise_item(r)]
-
-    # 输出 CSV
-    if out_csv:
-        os.makedirs(os.path.dirname(out_csv) or '.', exist_ok=True)
-        import csv
-
-        with open(out_csv, 'w', encoding='utf-8', newline='') as f:
-            w = csv.writer(f)
-            w.writerow([
-                'url',
-                'title',
-                'date_text',
-                'content_text',
-                'published_at',
-            ])
-            for r in uniq:
-                w.writerow([
-                    (r.get('url') or '').strip(),
-                    (r.get('title') or '').strip(),
-                    (r.get('date_text') or '').strip(),
-                    (r.get('content_text') or '').strip(),
-                    (r.get('published_at') or '').strip(),
-                ])
-
-    # 入库
-    if db_path and Article is not None:
-        conn = get_conn(db_path)
-        ensure_schema(conn)
-        rows = []
-        for r in uniq:
-            rows.append(
-                Article(
-                    site='www.jin10.com',
-                    source=source or 'listing_flash',
-                    title=(r.get('title') or '').strip(),
-                    content=(r.get('content_text') or '').strip(),
-                    published_at=(
-                        (r.get('published_at') or '').strip() or None
-                    ),
-                    url=(r.get('url') or '').strip() or None,
-                    raw_html=None,
-                    extra_json={
-                        'date_text': (r.get('date_text') or '').strip()
-                    },
-                )
-            )
-        if rows:
-            upsert_many(conn, rows)
-        conn.close()
-
-    print('flash done: items=', len(uniq))
-
-
-def watch_flash(
-    db_path: str,
-    source: str,
-    delay: float,
-    headless: bool = True,
-    debug_dir: str = '',
-    storage: str = '',
-    user_data_dir: str = '',
-    login_wait: float = 0.0,
-    watch_interval: float = 30.0,
-) -> None:
-    """实时轮询快讯页，发现新快讯则入库（基于页面解析）。
-    - 启动时进行基线解析并建立内存去重集合（不立即入库）。
-    - 每次循环可选择刷新页面，随后解析并 upsert 新增项。
-    """
-    seen = set()
-
-    with sync_playwright() as pw:
-        use_persist = bool(user_data_dir)
-        if use_persist:
-            ctx = pw.chromium.launch_persistent_context(
-                user_data_dir,
-                headless=headless,
-                user_agent=DEFAULT_UA,
-                locale='zh-CN',
-                extra_http_headers={'Accept-Language': 'zh-CN,zh;q=0.9'},
-            )
-            br = None
-        else:
-            br = pw.chromium.launch(headless=headless)
-            ctx = br.new_context(
-                user_agent=DEFAULT_UA,
-                locale='zh-CN',
-                extra_http_headers={'Accept-Language': 'zh-CN,zh;q=0.9'},
-                storage_state=(
-                    storage if (storage and os.path.exists(storage)) else None
-                ),
-            )
-        page = ctx.new_page()
-        page.goto('https://flash.jin10.com/', timeout=60000)
-        page.wait_for_load_state('domcontentloaded', timeout=60000)
-        try:
-            page.wait_for_selector(
-                '[id^="flash"], [data-id], .jin-flash-item-container',
-                timeout=60000,
-            )
-        except Exception:
-            pass
-        time.sleep(1.0)
-
-        # 调试首屏
-        if debug_dir:
-            os.makedirs(debug_dir, exist_ok=True)
-            try:
-                page.screenshot(
-                    path=os.path.join(debug_dir, 'watch_init.png')
-                )
-                with open(
-                    os.path.join(debug_dir, 'watch_init.html'),
-                    'w', encoding='utf-8'
-                ) as f:
-                    f.write(page.content())
-            except Exception:
-                pass
-
-        # 基线解析，仅建立 seen
-        try:
-            base_items = _parse_flash_items(page)
-        except Exception:
-            base_items = []
-        for r in base_items:
-            u = (r.get('url') or '').strip()
-            if u:
-                seen.add(u)
-            else:
-                k = (
-                    (r.get('title') or '').strip(),
-                    (r.get('content_text') or '').strip(),
-                    (r.get('published_at') or '').strip(),
-                )
-                seen.add(k)
-        print('watch bootstrap items:', len(seen))
-
-        # DB 连接（可选）
-        conn = None
-        if db_path and Article is not None:
-            conn = get_conn(db_path)
-            ensure_schema(conn)
-
-        try:
-            rounds = 0
-            while True:
-                rounds += 1
-                try:
-                    # 简单刷新以促使新内容加载
-                    try:
-                        page.reload(timeout=60000)
-                        page.wait_for_load_state(
-                            'domcontentloaded', timeout=60000
-                        )
-                    except Exception:
-                        pass
-                    cur = _parse_flash_items(page)
-                except Exception:
-                    cur = []
-                new_items = []
-                for r in cur:
-                    u = (r.get('url') or '').strip()
-                    if u and (u not in seen):
-                        seen.add(u)
-                        new_items.append(r)
-                    elif not u:
-                        k = (
-                            (r.get('title') or '').strip(),
-                            (r.get('content_text') or '').strip(),
-                            (r.get('published_at') or '').strip(),
-                        )
-                        if k not in seen:
-                            seen.add(k)
-                            new_items.append(r)
-
-                if new_items:
-                    print('watch new items:', len(new_items))
-                    if conn is not None and Article is not None:
-                        rows = []
-                        for r in new_items:
-                            pub = (
-                                (r.get('published_at') or '').strip() or None
-                            )
-                            url_val = (
-                                (r.get('url') or '').strip() or None
-                            )
-                            date_txt = (r.get('date_text') or '').strip()
-                            rows.append(
-                                Article(
-                                    site='www.jin10.com',
-                                    source=source or 'listing_flash',
-                                    title=(r.get('title') or '').strip(),
-                                    content=(
-                                        (r.get('content_text') or '').strip()
-                                    ),
-                                    published_at=pub,
-                                    url=url_val,
-                                    raw_html=None,
-                                    extra_json={
-                                        'date_text': date_txt
-                                    },
-                                )
-                            )
-                        if rows:
-                            upsert_many(conn, rows)
-                else:
-                    print('watch no new items')
-
-                try:
-                    time.sleep(max(1.0, watch_interval))
-                except KeyboardInterrupt:
-                    break
-                except Exception:
-                    pass
-        finally:
-            if conn is not None:
-                conn.close()
-            if use_persist:
-                ctx.close()
-            else:
-                br.close()
-
-    print('watch stopped')
-
-
-def _parse_calendar_items(page: Page, assume_date: str) -> List[Dict[str, str]]:
-    """解析日历页当日的经济数据/事件列表。
-    由于站点结构频繁变动，采用多套选择器并做保守回退：
-    - 时间：'.time', 'time', 'td.time', 'span.time'
-    - 文本：'.data-name a', '.event-title', 'a', '.name', '.title'
-    - 容器：'li[data-id]', 'li', 'tr', 'div[class*="item"]'
-    返回 title/content_text/published_at（由 assume_date + 时间 构造）。
-    """
-    out: List[Dict[str, str]] = []
+def _install_request_blocker(context, debug: bool = False) -> None:
+    """在上下文层面拦截大资源类型以提速（保留脚本与XHR）。"""
     try:
-        table_rows = _frame_query_all(
-            page,
-            'div.jin-table-body div.jin-table-row',
-        )
-    except Exception:
-        table_rows = []
-    if table_rows:
-        for r in table_rows:
-            cols = []
+        def _handler(route):
             try:
-                cols = r.query_selector_all('div.jin-table-column')
+                rt = route.request.resource_type
+                # 允许 stylesheet 与 websocket 通过，避免影响DOM呈现与数据加载
+                if rt in ("image", "media", "font", "beacon", "manifest"):
+                    return route.abort()
             except Exception:
-                cols = []
-            if not cols or len(cols) < 2:
-                continue
+                pass
             try:
-                ttxt = (cols[0].inner_text() or '').strip()
+                route.continue_()
             except Exception:
-                ttxt = ''
-            m = re.search(r'(\d{1,2}:\d{2}(?::\d{2})?)', ttxt)
-            if not m:
-                continue
-            name_el = None
-            try:
-                name_el = (
-                    cols[1].query_selector('.data-name-text')
-                    or cols[1].query_selector('a')
-                    or cols[1]
-                )
-            except Exception:
-                name_el = None
-            try:
-                title = (
-                    (name_el.inner_text() or '').strip()
-                    if name_el else ''
-                )
-            except Exception:
-                title = ''
-            if not title:
-                continue
-            hhmmss = m.group(1)
-            if hhmmss.count(':') == 1:
-                hhmmss = hhmmss + ':00'
-            pub = f'{assume_date} {hhmmss}'
-            out.append(
-                {
-                    'url': '',
-                    'title': title,
-                    'date_text': ttxt,
-                    'content_text': title,
-                    'published_at': pub,
-                }
-            )
-        if out:
-            return out
-    try:
-        list_items = _frame_query_all(
-            page,
-            'div.jin-list .jin-list-item',
-        )
-    except Exception:
-        list_items = []
-    if list_items:
-        for it in list_items:
-            t_el = None
-            try:
-                t_el = it.query_selector(
-                    '.jin-list-item__header-left .time'
-                )
-            except Exception:
-                t_el = None
-            try:
-                ttxt = (t_el.inner_text() or '').strip() if t_el else ''
-            except Exception:
-                ttxt = ''
-            m = re.search(r'(\d{1,2}:\d{2}(?::\d{2})?)', ttxt)
-            if not m:
-                continue
-            name_el = None
-            for sel in (
-                '.data-name a',
-                '.data-name',
-                '.event-title',
-                'a',
-            ):
                 try:
-                    name_el = it.query_selector(sel)
-                    if name_el:
+                    route.abort()
+                except Exception:
+                    pass
+        context.route("**/*", _handler)
+        if debug:
+            try:
+                print("[DEBUG] 已启用请求拦截：image/media/font/beacon 将被跳过")
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def _extract_rows_from_page(page: Page, target_date: str) -> List[Dict[str, Any]]:
+    """解析当日表格数据，返回结构化列表。"""
+    rows: List[Dict[str, Any]] = []
+    seen_keys = set()
+
+    # 某些天数据较多，表格容器需要滚动以加载全部
+    try:
+        body_wrap = page.locator("div.jin-table-body__wrapper").first
+        if body_wrap and body_wrap.count():
+            prev_cnt = -1
+            stable = 0
+            for _ in range(8):
+                page.evaluate("el => el.scrollTop = el.scrollHeight", body_wrap)
+                page.wait_for_timeout(120)
+                cur_cnt = page.locator("div.jin-table-body div.jin-table-row").count()
+                if cur_cnt == prev_cnt:
+                    stable += 1
+                    if stable >= 2:
                         break
-                except Exception:
-                    continue
-            try:
-                title = (
-                    (name_el.inner_text() or '').strip()
-                    if name_el else ''
-                )
-            except Exception:
-                title = ''
-            if not title:
+                else:
+                    stable = 0
+                prev_cnt = cur_cnt
+    except Exception:
+        pass
+
+    # 数据行定位
+    row_locs = page.locator("div.jin-table-body div.jin-table-row")
+    count = row_locs.count()
+    if count > 0:
+        for i in range(count):
+            r = row_locs.nth(i)
+            cols = r.locator("div.jin-table-column")
+            n = cols.count()
+            if n < 6:
                 continue
-            hhmmss = m.group(1)
-            if hhmmss.count(':') == 1:
-                hhmmss = hhmmss + ':00'
-            pub = f'{assume_date} {hhmmss}'
-            out.append(
-                {
-                    'url': '',
-                    'title': title,
-                    'date_text': ttxt,
-                    'content_text': title,
-                    'published_at': pub,
-                }
+            time_text = _text_or_none(cols.nth(0).text_content())
+            name_cell = cols.nth(1)
+            name_text = _text_or_none(
+                name_cell.locator(".data-name-text").text_content()
+                if name_cell.locator(".data-name-text").count()
+                else name_cell.text_content()
             )
-        if out:
-            return out
-    boxes = _frame_query_all(
-        page,
-        'li[data-id], li, tr, div[class*="item"]',
-    )
-    for bx in boxes:
-        # 时间
-        t_el = None
-        for sel in ('.time', 'time', 'td.time', 'span.time', 'td'):
+            flag_src = ""
             try:
-                t_el = bx.query_selector(sel)
-                if t_el:
-                    break
+                flag_el = name_cell.locator("img.jin-flag").first
+                if flag_el.count():
+                    flag_src = flag_el.get_attribute("src") or ""
             except Exception:
-                continue
-        ttxt = t_el.inner_text().strip() if t_el else ''
-        # 要求包含明确的时间（避免侧边栏等噪声）
-        m = re.search(r'(\d{1,2}:\d{2}(?::\d{2})?)', ttxt)
-        if not m:
-            continue
-        # 标题/名称
-        a_el = None
-        for sel in (
-            '.data-name a', '.event-title', 'a', '.name', '.title', 'td a'
-        ):
+                flag_src = ""
+            country = _parse_country_from_flag_src(flag_src)
+            star = _count_stars_in_row(r)
+            previous = _text_or_none(cols.nth(3).text_content())
+            consensus = _text_or_none(cols.nth(4).text_content())
+            actual = _text_or_none(cols.nth(5).text_content())
+            detail_url = None
             try:
-                a_el = bx.query_selector(sel)
-                if a_el:
-                    break
+                a = name_cell.locator("a[href^='/detail/']").first
+                if a and a.count():
+                    href = a.get_attribute("href") or ""
+                    if href:
+                        detail_url = urljoin("https://rili.jin10.com/", href)
             except Exception:
-                continue
-        title = a_el.inner_text().strip() if a_el else ''
-        if not title:
-            # 回退：取整行文本
+                pass
+            affect = None
             try:
-                title = (bx.inner_text() or '').strip()
+                aff_el = r.locator(".data-affect").first
+                if aff_el and aff_el.count():
+                    affect = _text_or_none(aff_el.text_content())
             except Exception:
-                title = ''
-        if not title:
-            continue
-        # published_at：使用匹配到的 HH:MM(:SS)
-        hhmmss = m.group(1)
-        if hhmmss.count(':') == 1:
-            hhmmss = hhmmss + ':00'
-        pub = f'{assume_date} {hhmmss}'
-        out.append(
-            {
-                'url': '',
-                'title': title,
-                'date_text': ttxt,
-                'content_text': title,
-                'published_at': pub,
+                pass
+            row = {
+                "date": target_date,
+                "time": time_text,
+                "country": country,
+                "name": name_text,
+                "star": star,
+                "previous": _to_float_or_str(previous),
+                "consensus": _to_float_or_str(consensus),
+                "actual": _to_float_or_str(actual),
+                "affect": affect,
+                "detail_url": detail_url,
             }
-        )
-    return out
+            key = (row.get("time") or "", row.get("name") or "", row.get("previous") or "", row.get("actual") or "")
+            if key not in seen_keys:
+                seen_keys.add(key)
+                rows.append(row)
+        return rows
+
+    # 解析列表结构（jin-list）中的“数据”卡片
+    try:
+        li_items = page.locator("div.jin-list .jin-list-item")
+        m = li_items.count()
+        for i in range(m):
+            item = li_items.nth(i)
+            # 仅解析数据型（排除事件）
+            if item.locator(".jin-list-item__slot .data").count() <= 0:
+                continue
+            time_text = _text_or_none(
+                item.locator(".jin-list-item__header-left .time").text_content()
+                if item.locator(".jin-list-item__header-left .time").count()
+                else None
+            )
+            # 国家
+            c_src = ""
+            try:
+                fimg = item.locator(".jin-list-item__header-left img.jin-flag").first
+                if fimg and fimg.count():
+                    c_src = fimg.get_attribute("src") or ""
+            except Exception:
+                pass
+            country = _parse_country_from_flag_src(c_src)
+            # 星级（优先统计点亮）
+            try:
+                lit = item.locator(".jin-list-item__header-right .jin-star i[style*='var(--rise)']").count()
+                if lit and lit > 0:
+                    star = lit
+                else:
+                    total = item.locator(".jin-list-item__header-right .jin-star i").count()
+                    gray = item.locator(
+                        ".jin-list-item__header-right .jin-star "
+                        "i[style*='on-rise-light-lowest']"
+                    ).count()
+                    star = (max(0, total - gray) if total and gray and gray > 0 else None)
+            except Exception:
+                star = None
+            # 名称与详情链接
+            slot = item.locator(".jin-list-item__slot .data").first
+            name_text = None
+            detail_url = None
+            try:
+                a = slot.locator(".data-name a").first
+                if a and a.count():
+                    name_text = _text_or_none(a.text_content())
+                    href = a.get_attribute("href") or ""
+                    if href:
+                        detail_url = urljoin("https://rili.jin10.com/", href)
+                else:
+                    name_text = _text_or_none(slot.locator(".data-name").text_content())
+            except Exception:
+                name_text = _text_or_none(
+                    slot.locator(".data-name").text_content()
+                    if slot.locator(".data-name").count()
+                    else None
+                )
+            # 利多/利空标签
+            affect = None
+            try:
+                aff_el = slot.locator(".data-affect").first
+                if aff_el and aff_el.count():
+                    affect = _text_or_none(aff_el.text_content())
+            except Exception:
+                pass
+            # 前值/预期/公布
+            previous = consensus = actual = None
+            try:
+                vs = slot.locator(".data-footer .data-value")
+                if vs.count() >= 1:
+                    previous = _text_or_none(vs.nth(0).locator(".data-value__num").text_content())
+                if vs.count() >= 2:
+                    consensus = _text_or_none(vs.nth(1).locator(".data-value__num").text_content())
+                if vs.count() >= 3:
+                    actual = _text_or_none(vs.nth(2).locator(".data-value__num").text_content())
+            except Exception:
+                pass
+
+            row = {
+                "date": target_date,
+                "time": time_text,
+                "country": country,
+                "name": name_text,
+                "star": star,
+                "previous": _to_float_or_str(previous),
+                "consensus": _to_float_or_str(consensus),
+                "actual": _to_float_or_str(actual),
+                "affect": affect,
+                "detail_url": detail_url,
+            }
+            key = (row.get("time") or "", row.get("name") or "", row.get("previous") or "", row.get("actual") or "")
+            if key not in seen_keys:
+                seen_keys.add(key)
+                rows.append(row)
+    except Exception:
+        pass
+
+    return rows
 
 
-def _calendar_extract_rows_fast(page: Page, target_date: str) -> List[Dict[str, Any]]:
+def _extract_rows_fast(page: Page, target_date: str) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     try:
         data = page.evaluate(
             """
             () => {
               const res = [];
-              const text = (el) => (
-                (el && el.textContent ? el.textContent.trim() : null) || null
-              );
-              const shown = (el) => {
-                if (!el) return false;
-                const cs = window.getComputedStyle(el);
-                if (
-                  cs &&
-                  (cs.display === 'none' || cs.visibility === 'hidden')
-                ) return false;
-                const rect = el.getBoundingClientRect();
-                if (
-                  rect && (rect.width <= 0 || rect.height <= 0)
-                ) return false;
-                // offsetParent 在部分布局下可能为 null，这里放宽为尺寸检测
-                return true;
-              };
+              const text = (el) => (el && el.textContent ? el.textContent.trim() : null) || null;
               const getStar = (container) => {
                 if (!container) return null;
-                const lit = container
-                  .querySelectorAll(".jin-star i[style*='var(--rise)']")
-                  .length;
+                const lit = container.querySelectorAll(".jin-star i[style*='var(--rise)']").length;
                 if (lit > 0) return lit;
-                const total = container
-                  .querySelectorAll(".jin-star i")
-                  .length;
-                const gray = container
-.querySelectorAll(
-                    ".jin-star i[style*='on-rise-" +
-                    "light-" +
-                    "lowest']"
-                  )
-.length;
-                if (total && gray && gray > 0) {
-                  return Math.max(0, total - gray);
-                }
+                const total = container.querySelectorAll(".jin-star i").length;
+                const gray = container.querySelectorAll(".jin-star i[style*='on-rise-light-lowest']").length;
+                if (total && gray && gray > 0) return Math.max(0, total - gray);
                 return null;
               };
-              const tableRows = Array.from(
-                document.querySelectorAll(
-                  'div.jin-table-body ' + 'div.jin-table-row'
-                )
-              );
+              const tableRows = Array.from(document.querySelectorAll('div.jin-table-body div.jin-table-row'));
               if (tableRows.length > 0) {
                 for (const r of tableRows) {
-                  if (!shown(r)) continue;
                   const cols = r.querySelectorAll('div.jin-table-column');
-                  if (!cols || cols.length < 2) continue;
+                  if (!cols || cols.length < 6) continue;
                   const time_text = text(cols[0]);
                   const name_cell = cols[1];
-                  const name_text = (
-                    text(name_cell.querySelector('.data-name-text')) ||
-                    text(name_cell)
-                  );
-                  const star = getStar(cols[2] || null);
-                  res.push({time: time_text, name: name_text, star});
+                  const name_text = text(name_cell.querySelector('.data-name-text')) || text(name_cell);
+                  const flag_img = name_cell.querySelector('img.jin-flag');
+                  const flag_src = flag_img ? (flag_img.getAttribute('src') || '') : '';
+                  const star = getStar(cols[2]);
+                  const previous = text(cols[3]);
+                  const consensus = text(cols[4]);
+                  const actual = text(cols[5]);
+                  const a = name_cell.querySelector("a[href^='/detail/']");
+                  const detail_href = a ? (a.getAttribute('href') || '') : '';
+                  const affect = text(r.querySelector('.data-affect'));
+                  res.push({
+                    time: time_text,
+                    name: name_text,
+                    flag_src,
+                    star,
+                    previous,
+                    consensus,
+                    actual,
+                    affect,
+                    detail_href,
+                  });
                 }
                 return res;
               }
-              const items = Array.from(
-                document.querySelectorAll(
-                  'div.jin-list ' + '.jin-list-item'
-                )
-              );
+              const items = Array.from(document.querySelectorAll('div.jin-list .jin-list-item'));
               for (const item of items) {
-                if (!shown(item)) continue;
-                const dataSlot = item.querySelector(
-                  '.jin-list-item__slot .data'
-                );
+                const dataSlot = item.querySelector('.jin-list-item__slot .data');
                 if (!dataSlot) continue;
-                const time_text = text(
-                  item.querySelector('.jin-list-item__header-left .time')
-                );
+                const time_text = text(item.querySelector('.jin-list-item__header-left .time'));
+                const fimg = item.querySelector('.jin-list-item__header-left img.jin-flag');
+                const flag_src = fimg ? (fimg.getAttribute('src') || '') : '';
+                const star = getStar(item.querySelector('.jin-list-item__header-right'));
                 const a = dataSlot.querySelector('.data-name a');
-                let name_text = null;
+                let name_text = null, detail_href = '';
                 if (a) {
                   name_text = text(a);
+                  detail_href = a.getAttribute('href') || '';
                 } else {
                   name_text = text(dataSlot.querySelector('.data-name'));
                 }
-                const star = getStar(
-                  item.querySelector('.jin-list-item__header-right')
-                );
-                res.push({time: time_text, name: name_text, star});
+                const affect = text(dataSlot.querySelector('.data-affect'));
+                let previous = null, consensus = null, actual = null;
+                const vs = dataSlot.querySelectorAll('.data-footer .data-value .data-value__num');
+                if (vs && vs.length >= 1) previous = text(vs[0]);
+                if (vs && vs.length >= 2) consensus = text(vs[1]);
+                if (vs && vs.length >= 3) actual = text(vs[2]);
+                res.push({
+                  time: time_text,
+                  name: name_text,
+                  flag_src,
+                  star,
+                  previous,
+                  consensus,
+                  actual,
+                  affect,
+                  detail_href,
+                });
               }
               return res;
             }
             """
         )
     except Exception:
-        data = []
+        try:
+            return _extract_rows_from_page(page, target_date)
+        except Exception:
+            return []
+
+    seen = set()
     for it in (data or []):
-        rows.append({
-            'time': (it or {}).get('time'),
-            'name': (it or {}).get('name'),
-            'star': (it or {}).get('star'),
-        })
+        time_text = _text_or_none((it or {}).get("time"))
+        name_text = _text_or_none((it or {}).get("name"))
+        previous = _to_float_or_str(_text_or_none((it or {}).get("previous")))
+        consensus = _to_float_or_str(_text_or_none((it or {}).get("consensus")))
+        actual = _to_float_or_str(_text_or_none((it or {}).get("actual")))
+        affect = _text_or_none((it or {}).get("affect"))
+        flag_src = (it or {}).get("flag_src") or ""
+        detail_href = (it or {}).get("detail_href") or ""
+        country = _parse_country_from_flag_src(flag_src)
+        detail_url = urljoin("https://rili.jin10.com/", detail_href) if detail_href else None
+        row = {
+            "date": target_date,
+            "time": time_text,
+            "country": country,
+            "name": name_text,
+            "star": (it or {}).get("star"),
+            "previous": previous,
+            "consensus": consensus,
+            "actual": actual,
+            "affect": affect,
+            "detail_url": detail_url,
+        }
+        key = (row.get("time") or "", row.get("name") or "", row.get("previous") or "", row.get("actual") or "")
+        if key not in seen:
+            seen.add(key)
+            rows.append(row)
     return rows
 
 
+def _current_date_from_url(page: Page) -> Optional[date]:
+    try:
+        m = re.search(r"/day/(\d{4}-\d{2}-\d{2})", page.url)
+        if not m:
+            return None
+        return datetime.strptime(m.group(1), "%Y-%m-%d").date()
+    except Exception:
+        return None
+
+
+def _switch_date_via_slider(page: Page, cur_date: date, target_date: date, debug: bool = False) -> bool:
+    try:
+        _ensure_data_tab(page, debug=debug)
+        try:
+            page.wait_for_selector("div.date-slider", timeout=5000)
+        except Exception:
+            pass
+        slider = page.locator("div.date-slider").first
+        if not slider or slider.count() == 0:
+            return False
+        # 仅处理7天窗口内的切换，避免过度滚动
+        ad = _current_date_from_url(page) or cur_date
+        delta_days = (ad - target_date).days
+        if abs(delta_days) > 7:
+            return False
+        # 直接点击具体的日号；若不在窗口则尝试移动周窗口
+        target_day = str(target_date.day)
+        try:
+            max_shift = 6
+            for _ in range(max_shift + 1):
+                items = page.locator("ul.date-slider__day li.date-slider__day-item")
+                n = items.count()
+                idx = -1
+                for i in range(n):
+                    txt = (items.nth(i).locator("span.date-text").text_content() or "").strip()
+                    if txt == target_day:
+                        idx = i
+                        break
+                if idx != -1:
+                    items.nth(idx).click()
+                    page.wait_for_timeout(150)
+                    break
+                # 未找到则移动窗口一格并等待窗口变化
+                # 记录窗口首日文本用于检测变化
+                if n > 0:
+                    first_item = items.nth(0)
+                    first_txt_el = first_item.locator("span.date-text")
+                    raw_before = first_txt_el.text_content() or ""
+                    first_text_before = raw_before.strip()
+                else:
+                    first_text_before = ""
+                if target_date < ad:
+                    page.locator("div.date-slider__prev").first.click()
+                else:
+                    page.locator("div.date-slider__next").first.click()
+                # 等待首日文本发生变化，避免连续无效点击
+                for _wait in range(10):
+                    page.wait_for_timeout(80)
+                    items2 = page.locator(
+                        "ul.date-slider__day li.date-slider__day-item"
+                    )
+                    if items2.count() > 0:
+                        first_item2 = items2.nth(0)
+                        first_txt_el2 = first_item2.locator("span.date-text")
+                        raw_after = first_txt_el2.text_content() or ""
+                        first_text_after = raw_after.strip()
+                        if first_text_after != first_text_before:
+                            break
+            else:
+                return False
+        except Exception:
+            return False
+        # 最终确认
+        ad_final = _current_date_from_url(page)
+        if ad_final != target_date:
+            return False
+        try:
+            page.wait_for_selector("div.jin-table-body, .jin-list .jin-list-item", timeout=15000)
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
+
+
 def crawl_calendar(
-    start_date: str,
-    end_date: str,
-    out_csv: str,
-    db_path: str,
-    source: str,
-    delay: float,
+    months: int = 3,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
     headless: bool = True,
-    debug_dir: str = '',
+    debug: bool = False,
     important_only: bool = False,
-    user_data_dir: str = '',
+    user_data_dir: Optional[str] = None,
+    out_path: Optional[str] = None,
+    db_path: Optional[str] = None,
+    source: str = 'listing_data',
+    recheck_important_every: int = 30,
+    use_slider: bool = False,
     setup_seconds: int = 0,
-) -> None:
-    since = dt.datetime.strptime(start_date, '%Y-%m-%d').date()
-    until = dt.datetime.strptime(end_date, '%Y-%m-%d').date()
-    # 允许用户传入反向日期区间，自动交换保证自早至晚
-    if since > until:
-        since, until = until, since
+    no_important_only: bool = False,
+) -> int:
+    """抓取最近 N 个月或指定日期区间的日历数据。"""
+    # 计算日期区间
+    if start and end:
+        start_date = datetime.strptime(start, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end, "%Y-%m-%d").date()
+    else:
+        end_date = date.today()
+        start_date = end_date - timedelta(days=months * 30)
 
-    all_items: List[Dict[str, str]] = []
-    total_streamed = 0  # 边爬边入库的累计条数（仅 calendar 用）
+    total_written = 0
 
-    with sync_playwright() as pw:
-        storage_state_path = ''
-        # 可选：运行前开启带界面浏览器供人工确认（例如登录态/筛选），随后自动关闭
+    with sync_playwright() as p:
+        # 计算起始 URL（从区间终止日开始）
+        first_day_str = end_date.strftime("%Y-%m-%d")
+        first_url = f"https://rili.jin10.com/day/{first_day_str}"
+
+        # 手动调试阶段：开启带界面，等待后自动关闭
         if setup_seconds and setup_seconds > 0:
-            tmp_br = None
-            tmp_ctx = None
+            tmp_browser = None
+            tmp_context = None
             try:
                 if user_data_dir:
-                    tmp_ctx = pw.chromium.launch_persistent_context(
+                    tmp_context = p.chromium.launch_persistent_context(
                         user_data_dir=user_data_dir,
                         headless=False,
                         args=[
                             "--disable-blink-features=AutomationControlled"
                         ],
+                        locale="zh-CN",
                         user_agent=DEFAULT_UA,
-                        locale='zh-CN',
-                        extra_http_headers={
-                            'Accept-Language': 'zh-CN,zh;q=0.9'
-                        },
                     )
                 else:
-                    tmp_br = pw.chromium.launch(
+                    tmp_browser = p.chromium.launch(
                         headless=False,
-                        args=[
-                            "--disable-blink-features=AutomationControlled"
-                        ],
+                        args=["--disable-blink-features=AutomationControlled"],
                     )
-                    tmp_ctx = tmp_br.new_context(
+                    tmp_context = tmp_browser.new_context(
+                        locale="zh-CN",
                         user_agent=DEFAULT_UA,
-                        locale='zh-CN',
-                        extra_http_headers={
-                            'Accept-Language': 'zh-CN,zh;q=0.9'
-                        },
                     )
-                tmp_page = tmp_ctx.new_page()
-                ds = since.strftime('%Y-%m-%d')
-                first_url = f"https://rili.jin10.com/day/{ds}"
+                tmp_page = tmp_context.new_page()
                 try:
-                    tmp_page.goto(first_url, timeout=60000)
-                    tmp_page.wait_for_load_state(
-                        'domcontentloaded', timeout=60000
-                    )
-                except Exception:
-                    pass
-                try:
-                    print(f"[DEBUG] 预览阶段，等待 {setup_seconds} 秒后开始正式抓取…")
-                except Exception:
-                    pass
-                try:
-                    tmp_page.wait_for_timeout(setup_seconds * 1000)
-                except Exception:
-                    pass
-                # 将预览阶段的登录态导出为 storage_state，供正式阶段复用
-                try:
-                    base_dir = (debug_dir or '.')
-                    os.makedirs(base_dir, exist_ok=True)
-                    storage_state_path = os.path.join(
-                        base_dir, 'jin10_calendar_state.json'
-                    )
-                    tmp_ctx.storage_state(path=storage_state_path)
+                    tmp_page.goto(first_url, wait_until="domcontentloaded", timeout=30000)
                     try:
-                        print('[DEBUG] 已导出登录态 storage_state')
+                        tmp_page.wait_for_load_state("networkidle", timeout=30000)
+                    except Exception:
+                        if debug:
+                            try:
+                                print("[DEBUG] networkidle 等待超时，继续")
+                            except Exception:
+                                pass
+                except Exception:
+                    try:
+                        tmp_page.goto(first_url, wait_until="load", timeout=45000)
                     except Exception:
                         pass
-                except Exception:
-                    storage_state_path = ''
+                if debug:
+                    try:
+                        print(
+                            f"[DEBUG] 手动设置阶段，等待 {setup_seconds} 秒后切换到无界面运行"
+                        )
+                    except Exception:
+                        pass
+                tmp_page.wait_for_timeout(setup_seconds * 1000)
             finally:
                 try:
-                    tmp_ctx.close()
+                    tmp_context.close()
                 except Exception:
                     pass
-                if tmp_br:
+                if tmp_browser:
                     try:
-                        tmp_br.close()
+                        tmp_browser.close()
                     except Exception:
                         pass
 
-        # 正式抓取：根据是否使用预览阶段决定是否有界面
-        try:
-            print('[DEBUG] 预览阶段结束，启动正式抓取…')
-        except Exception:
-            pass
-        try:
-            time.sleep(0.8)
-        except Exception:
-            pass
-        run_headless = (
-            True if (setup_seconds and setup_seconds > 0) else headless
-        )
-        br = None
-        prefer_state = (
-            bool(user_data_dir)
-            and bool(setup_seconds and setup_seconds > 0)
-            and bool(
-                storage_state_path and os.path.exists(storage_state_path)
+        # 正式运行阶段：若存在手动阶段，则强制无界面运行
+        browser = None
+        run_headless = True if (setup_seconds and setup_seconds > 0) else headless
+        if user_data_dir:
+            context = p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                headless=run_headless,
+                args=[
+                    "--disable-blink-features=AutomationControlled"
+                ],
+                locale="zh-CN",
+                user_agent=DEFAULT_UA,
             )
-        )
-        if user_data_dir and not prefer_state:
-            try:
-                ctx = pw.chromium.launch_persistent_context(
-                    user_data_dir=user_data_dir,
-                    headless=run_headless,
-                    args=["--disable-blink-features=AutomationControlled"],
-                    user_agent=DEFAULT_UA,
-                    locale='zh-CN',
-                    extra_http_headers={'Accept-Language': 'zh-CN,zh;q=0.9'},
-                )
-            except Exception:
-                try:
-                    print('[WARN] 持久化上下文启动失败，改用非持久化重试')
-                except Exception:
-                    pass
-                br = pw.chromium.launch(
-                    headless=run_headless,
-                    args=["--disable-blink-features=AutomationControlled"],
-                )
-                ctx = br.new_context(
-                    user_agent=DEFAULT_UA,
-                    locale='zh-CN',
-                    extra_http_headers={'Accept-Language': 'zh-CN,zh;q=0.9'},
-                )
         else:
-            br = pw.chromium.launch(
+            browser = p.chromium.launch(
                 headless=run_headless,
                 args=["--disable-blink-features=AutomationControlled"],
             )
-            if prefer_state:
-                ctx = br.new_context(
-                    user_agent=DEFAULT_UA,
-                    locale='zh-CN',
-                    extra_http_headers={'Accept-Language': 'zh-CN,zh;q=0.9'},
-                    storage_state=storage_state_path,
-                )
-            else:
-                ctx = br.new_context(
-                    user_agent=DEFAULT_UA,
-                    locale='zh-CN',
-                    extra_http_headers={'Accept-Language': 'zh-CN,zh;q=0.9'},
-                )
-
-        try:
-            print(
-                '[DEBUG] 正式阶段: headless=', run_headless,
-                ' persist=', bool(user_data_dir)
+            context = browser.new_context(
+                locale="zh-CN",
+                user_agent=DEFAULT_UA,
             )
-        except Exception:
-            pass
-        _install_request_blocker(ctx)
-        page = ctx.new_page()
-
-        cur = until
-        try:
-            print('[DEBUG] 抓取区间: ', since, ' -> ', until)
-        except Exception:
-            pass
-        # 可选：打开数据库连接用于边爬边入库
+        # 正式阶段启用请求拦截以提升速度
+        _install_request_blocker(context, debug=debug)
+        page = context.new_page()
+        # 可选：打开数据库连接
         conn = None
         if db_path and Article is not None:
             try:
@@ -1265,254 +744,277 @@ def crawl_calendar(
                 ensure_schema(conn)
             except Exception:
                 conn = None
-        while cur >= since:
-            date_s = cur.strftime('%Y-%m-%d')
-            # 直达每日页面（更稳定）
-            url = f'https://rili.jin10.com/day/{date_s}'
+
+        if debug:
             try:
-                print('[DEBUG] 加载日期页: ', date_s)
+                print("[DEBUG] 开始逐日抓取并增量写入CSV")
             except Exception:
                 pass
-            page.goto(url, timeout=60000)
-            page.wait_for_load_state('domcontentloaded', timeout=60000)
+        else:
             try:
-                page.wait_for_load_state('networkidle', timeout=15000)
+                print("开始逐日抓取...")
             except Exception:
                 pass
+
+        cur = end_date
+        since_last_check = 999999
+        while cur >= start_date:
+            day_str = cur.strftime("%Y-%m-%d")
+            if debug:
+                try:
+                    print(f"[DEBUG] 目标日期: {day_str}")
+                except Exception:
+                    pass
+
+            url = f"https://rili.jin10.com/day/{day_str}"
+            if debug:
+                try:
+                    print(f"[DEBUG] 直达页面: {url}")
+                except Exception:
+                    pass
             try:
-                tab = page.locator('text=经济数据').first
-                if tab and tab.count():
-                    tab.click()
-                    page.wait_for_timeout(200)
+                page.goto(url, wait_until="domcontentloaded", timeout=15000)
             except Exception:
-                pass
+                try:
+                    page.goto(url, wait_until="load", timeout=20000)
+                except Exception:
+                    if debug:
+                        try:
+                            print("[DEBUG] 页面打开失败，跳过当日")
+                        except Exception:
+                            pass
+                    cur -= timedelta(days=1)
+                    continue
+            # 仅按周期确保一次“只看重要”，减少每日固定成本
+            if not no_important_only and since_last_check >= recheck_important_every:
+                _ensure_data_tab(page, debug=debug)
+                _ensure_important_only(page, debug=debug)
+                since_last_check = 0
+
             try:
                 page.wait_for_selector(
-                    'div.jin-table-body div.jin-table-row, '
-                    '.jin-list .jin-list-item',
-                    timeout=10000,
+                    "div.jin-table-body, "
+                    ".jin-list .jin-list-item",
+                    timeout=7000,
                 )
             except Exception:
-                pass
-            try:
-                page.wait_for_timeout(800)
-            except Exception:
-                pass
-            # 可选：尝试开启“只看重要”开关（若存在）
-            if important_only:
-                try:
-                    _ensure_important_only(page)
-                except Exception:
-                    pass
-            # 调试：保存每日页面
-            if debug_dir:
-                os.makedirs(debug_dir, exist_ok=True)
-                try:
-                    with open(
-                        os.path.join(debug_dir, f'calendar_{date_s}.html'),
-                        'w', encoding='utf-8'
-                    ) as f:
-                        f.write(page.content())
-                except Exception:
-                    pass
-            fast_rows = _calendar_extract_rows_fast(page, target_date=date_s)
-            if important_only:
-                try:
-                    fast_rows = [
-                        r for r in (fast_rows or [])
-                        if (
-                            isinstance(r.get('star'), int) and
-                            r.get('star') >= 3
-                        )
-                    ]
-                except Exception:
-                    pass
-            cur_items = []
-            if fast_rows:
-                for r in fast_rows:
-                    ttxt = (r.get('time') or '')
-                    if not ttxt:
-                        continue
-                    m = re.search(
-                        r'(\d{1,2}:[0-9]{2}(?::[0-9]{2})?)',
-                        ttxt or ''
-                    )
-                    if not m:
-                        continue
-                    hhmmss = m.group(1)
-                    if hhmmss.count(':') == 1:
-                        hhmmss = hhmmss + ':00'
-                    pub = f'{date_s} {hhmmss}'
-                    title = (r.get('name') or '').strip()
-                    if not title:
-                        continue
-                    cur_items.append({
-                        'url': '',
-                        'title': title,
-                        'date_text': ttxt,
-                        'content_text': title,
-                        'published_at': pub,
-                    })
-            else:
-                cur_items = _parse_calendar_items(page, assume_date=date_s)
-            if cur_items:
-                all_items.extend(cur_items)
-                # 边爬边入库（若提供了 db_path）
-                if conn is not None:
+                if debug:
                     try:
-                        rows = []
-                        for r in cur_items:
-                            rows.append(
-                                Article(
-                                    site='rili.jin10.com',
-                                    source=source or 'listing_data',
-                                    title=(r.get('title') or '').strip(),
-                                    content=(
-                                        (r.get('content_text') or '').strip()
-                                    ),
-                                    published_at=(
-                                        (
-                                            r.get('published_at') or ''
-                                        ).strip()
-                                        or None
-                                    ),
-                                    url=(
-                                        (r.get('url') or '').strip() or None
-                                    ),
-                                    raw_html=None,
-                                    extra_json={
-                                        'date_text': (
-                                            (r.get('date_text') or '').strip()
-                                        )
-                                    },
-                                )
-                            )
-                        if rows:
-                            upsert_many(conn, rows)
-                            total_streamed += len(rows)
+                        print(
+                            "[DEBUG] 未找到当日数据表格，跳过"
+                        )
                     except Exception:
                         pass
+                cur -= timedelta(days=1)
+                continue
+
+            # 使用URL中的日期作为“当日”标识（直达可靠）；若缺失则退回目标日
+            used_day = _current_date_from_url(page) or cur
+            used_day_str = used_day.strftime("%Y-%m-%d")
+
+            # 快速解析（失败时自动退回慢速解析）
+            day_rows = _extract_rows_fast(page, used_day_str)
+            # 客户端兜底过滤：若要求“只看重要”，按星级>=3保留
+            if not no_important_only:
+                try:
+                    day_rows = [r for r in (day_rows or []) if isinstance(r.get("star"), int) and r.get("star") >= 3]
+                except Exception:
+                    pass
+            if debug:
                 try:
                     print(
-                        f"{date_s} 提取 {len(cur_items)} 条（累计入库 "
-                        f"{total_streamed}）"
+                        f"[DEBUG] {used_day_str} 提取 {len(day_rows)} 条"
                     )
                 except Exception:
                     pass
             else:
                 try:
-                    print(f"{date_s} 提取 0 条")
+                    print(
+                        f"{used_day_str} 提取 {len(day_rows)} 条"
+                    )
                 except Exception:
                     pass
-            cur -= dt.timedelta(days=1)
-            time.sleep(max(0.1, delay))
 
-        # 关闭上下文
-        if br:
-            br.close()
-        else:
-            ctx.close()
+            # 边爬边入库（若提供了 db_path 且 storage 可用）
+            if day_rows and (Article is not None) and (conn is not None):
+                try:
+                    rows_db = []
+                    for r in day_rows:
+                        ttxt = (r.get('time') or '').strip() if isinstance(r.get('time'), str) else ''
+                        pub = None
+                        if re.search(r'\d{1,2}:[0-9]{2}', ttxt or ''):
+                            hhmmss = ttxt if ttxt.count(':') >= 2 else f"{ttxt}:00"
+                            pub = f"{r.get('date')} {hhmmss}"
+                        rows_db.append(
+                            Article(
+                                site='rili.jin10.com',
+                                source=source or 'listing_data',
+                                title=(r.get('name') or '').strip(),
+                                content=(r.get('name') or '').strip(),
+                                published_at=pub,
+                                url=((r.get('detail_url') or '').strip() or None),
+                                raw_html=None,
+                                extra_json={
+                                    'date': r.get('date'),
+                                    'time': r.get('time'),
+                                    'country': r.get('country'),
+                                    'star': r.get('star'),
+                                    'previous': r.get('previous'),
+                                    'consensus': r.get('consensus'),
+                                    'actual': r.get('actual'),
+                                    'affect': r.get('affect'),
+                                },
+                            )
+                        )
+                    if rows_db:
+                        upsert_many(conn, rows_db)
+                except Exception:
+                    pass
 
-    # 去重与输出
-    seen = set()
-    uniq: List[Dict[str, str]] = []
-    for r in all_items:
-        k = (
-            (r.get('title') or '').strip(),
-            (r.get('content_text') or '').strip(),
-            (r.get('published_at') or '').strip(),
-        )
-        if k in seen:
-            continue
-        seen.add(k)
-        uniq.append(r)
+            if out_path and day_rows:
+                prefer = [
+                    "date",
+                    "time",
+                    "country",
+                    "name",
+                    "star",
+                    "previous",
+                    "consensus",
+                    "actual",
+                    "affect",
+                    "detail_url",
+                ]
+                exists = os.path.exists(out_path)
+                mode = "a" if exists else "w"
+                try:
+                    with open(
+                        out_path,
+                        mode,
+                        encoding=CSV_ENCODING,
+                        newline="",
+                    ) as f:
+                        writer = csv.DictWriter(f, fieldnames=prefer)
+                        if not exists:
+                            writer.writeheader()
+                        # 补全缺失列为 None
+                        for r in day_rows:
+                            for c in prefer:
+                                if c not in r:
+                                    r[c] = None
+                            writer.writerow(r)
+                    total_written += len(day_rows)
+                    if debug:
+                        try:
+                            print(
+                                f"[DEBUG] 已写入 {len(day_rows)} 条到 {out_path}"
+                            )
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            print(
+                                f"已写入 {len(day_rows)} 条到 {out_path}"
+                            )
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+            elif out_path and not day_rows:
+                if debug:
+                    try:
+                        print(
+                            f"[DEBUG] {day_str} 无数据，跳过写入"
+                        )
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        print(
+                            f"{day_str} 无数据，跳过写入"
+                        )
+                    except Exception:
+                        pass
 
-    # 输出 CSV
-    if out_csv:
-        os.makedirs(os.path.dirname(out_csv) or '.', exist_ok=True)
-        import csv
+            cur -= timedelta(days=1)
+            since_last_check += 1
 
-        with open(out_csv, 'w', encoding='utf-8', newline='') as f:
-            w = csv.writer(f)
-            w.writerow([
-                'url', 'title', 'date_text', 'content_text', 'published_at'
-            ])
-            for r in uniq:
-                w.writerow([
-                    (r.get('url') or '').strip(),
-                    (r.get('title') or '').strip(),
-                    (r.get('date_text') or '').strip(),
-                    (r.get('content_text') or '').strip(),
-                    (r.get('published_at') or '').strip(),
-                ])
+        context.close()
+        if browser:
+            browser.close()
+        # 关闭数据库连接
+        if db_path and (conn is not None):
+            try:
+                conn.close()
+            except Exception:
+                pass
 
-    # 入库（若前面已边爬边保存，这里可以跳过；但保留兜底逻辑，避免关闭连接后无数据写入）
-    if db_path and Article is not None:
-        try:
-            conn = get_conn(db_path)
-            ensure_schema(conn)
-            rows = []
-            for r in uniq:
-                rows.append(
-                    Article(
-                        site='rili.jin10.com',
-                        source=source or 'listing_data',
-                        title=(r.get('title') or '').strip(),
-                        content=(r.get('content_text') or '').strip(),
-                        published_at=(
-                            (r.get('published_at') or '').strip() or None
-                        ),
-                        url=(r.get('url') or '').strip() or None,
-                        raw_html=None,
-                        extra_json={
-                            'date_text': (r.get('date_text') or '').strip()
-                        },
-                    )
-                )
-            if rows:
-                upsert_many(conn, rows)
-            conn.close()
-        except Exception:
-            pass
-
-    print('calendar done: items=', len(uniq))
+    return total_written
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument(
-        '--mode',
-        required=False,
-        default='calendar',
-        choices=['calendar'],
+def to_csv(rows: List[Dict[str, Any]], out_path: str) -> None:
+    df = pd.DataFrame(rows or [])
+    # 固定列顺序
+    prefer = [
+        "date",
+        "time",
+        "country",
+        "name",
+        "star",
+        "previous",
+        "consensus",
+        "actual",
+        "affect",
+        "detail_url",
+    ]
+    for c in prefer:
+        if c not in df.columns:
+            df[c] = None
+    df = df[prefer]
+    df.to_csv(out_path, index=False, encoding=CSV_ENCODING)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="金十 日历数据抓取")
+    parser.add_argument("--months", type=int, default=3, help="最近月份数，与 start/end 互斥")
+    parser.add_argument("--start", type=str, default="", help="开始日期 YYYY-MM-DD")
+    parser.add_argument("--end", type=str, default="", help="结束日期 YYYY-MM-DD")
+    parser.add_argument("--output", type=str, default="calendar_last_3m.csv", help="输出CSV路径")
+    parser.add_argument("--db", type=str, default="", help="SQLite 数据库路径（留空则不入库）")
+    parser.add_argument("--source", type=str, default="listing_data", help="Article.source 字段值")
+    parser.add_argument("--headed", action="store_true", help="以带界面模式运行浏览器，便于调试")
+    parser.add_argument("--debug", action="store_true", help="打印调试信息与抓取进度")
+    parser.add_argument("--important-only", action="store_true", help="页面内开启‘只看重要’过滤")
+    parser.add_argument("--user-data-dir", type=str, default="", help="持久化浏览器用户数据目录，用于复用登录状态")
+    parser.add_argument(
+        "--recheck-important-every",
+        type=int,
+        default=30,
+        help=(
+            "每隔N天重新校验一次‘只看重要’开关（0表示每次都校验，"
+            "1表示仅切换后校验一次）"
+        ),
     )
-    ap.add_argument('--start-date', required=True)
-    ap.add_argument('--end-date', required=True)
-    ap.add_argument('--out-csv', default='')
-    ap.add_argument('--db', default='')
-    ap.add_argument('--source', default='listing_data')
-    ap.add_argument('--delay', type=float, default=1.0)
-    ap.add_argument('--headless', action='store_true')
-    ap.add_argument('--debug-dir', default='')
-    ap.add_argument('--user-data-dir', default='')
-    ap.add_argument('--setup-seconds', type=int, default=0)
-    ap.add_argument('--important-only', action='store_true')
-    args = ap.parse_args()
+    parser.add_argument("--use-slider", action="store_true", help="启用7天内的滑块切换（默认关闭，使用直达URL）")
+    parser.add_argument("--setup-seconds", type=int, default=0, help="手动调试阶段的秒数，等待后自动关闭界面并转入无界面运行")
+    args = parser.parse_args()
 
-    crawl_calendar(
-        start_date=args.start_date,
-        end_date=args.end_date,
-        out_csv=args.out_csv,
-        db_path=args.db,
+    total = crawl_calendar(
+        months=args.months,
+        start=args.start or None,
+        end=args.end or None,
+        headless=not args.headed,
+        debug=args.debug,
+        important_only=getattr(args, "important_only", False),
+        user_data_dir=(args.user_data_dir or None),
+        out_path=args.output,
+        db_path=(args.db or None),
         source=args.source,
-        delay=args.delay,
-        headless=args.headless,
-        debug_dir=args.debug_dir,
-        important_only=args.important_only,
-        user_data_dir=args.user_data_dir,
-        setup_seconds=args.setup_seconds,
+        recheck_important_every=getattr(args, "recheck_important_every", 30),
+        use_slider=getattr(args, "use_slider", False),
+        setup_seconds=getattr(args, "setup_seconds", 0),
     )
+    print(f"已输出 {total} 条记录到: {args.output}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
