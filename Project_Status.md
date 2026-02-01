@@ -87,6 +87,11 @@
       - 组合多类（label_multi_cls）：优先级 观望(5) > 兑现(3/4) > 基础方向(1/2) > 中性(0)。
     - 指标输出：`ret_post/pre_ret/range_ratio/abs_ret_post/surprise` 等；包含异常值裁剪与分位阈值鲁棒化。
 
+- 数据 QA 与归档
+  - [X] 新增脚本：`scripts/qa/validate_datasets.py`，输出 `data/processed/qa_dataset_report.json`。
+  - [ ] 运行 QA：确认多类数据集时间跨度（期望约 2024-01-01 至 2026-02-01）、事件不跨集合（any_overlap=false）、`event_id` 去重无异常、标签分布合理，并校验 DB 的 `events/event_impacts/prices_m1` 覆盖范围。
+  - [ ] 基于报告的 `archive_suggestions` 制定归档清单（可迁移至 `archive/` 或 Git LFS/Release）。
+
 - 数据扩展与校验
   - [ ] 如需：补齐其余时间段或其他 MT5 符号（如 XAUUSD.i、GOLD）并复检覆盖率。
   - [ ] 交易时段/夏令时敏感性检查与说明。
@@ -268,6 +273,25 @@
       --symbol "XAUUSD" `
       --out "data\processed\xauusd_m1_mt5_2024_2025.csv"
     ```
+  - 数据 QA 校验与归档建议（输出 JSON 报告）
+    ```powershell
+    python scripts/qa/validate_datasets.py `
+      --processed_dir data/processed `
+      --raw_dir data/raw `
+      --db finance_analysis.db `
+      --ticker XAUUSD
+    ```
+    - 报告路径：`data/processed/qa_dataset_report.json`。请检查：
+      - 三个多类集合的时间范围是否覆盖 2024-01-01 至 2026-02-01（或你期望的区间）。
+      - `cross_split_event_id_intersections.any_overlap` 应为 false（无事件跨集合）。
+      - `dups_event_id.dups` 应为 0（`event_id` 无重复）。
+      - 标签分布是否合理（少数类比例）。
+      - 数据库 `events/event_impacts/prices_m1` 的时间覆盖是否与预期一致。
+
+  - Colab 训练（推荐，GPU）：
+    1) 打开 https://colab.research.google.com 并选择 GPU（Runtime → Change runtime type → GPU）。
+    2) 打开本仓库中的笔记本：`notebooks/bert_multilabel_colab.ipynb`（Colab 文件 → GitHub 选项卡搜索仓库名）。
+    3) 依次执行单元：安装依赖 → 克隆仓库 → 上传三份 CSV → 启动训练 → 查看指标 → 打包下载模型输出。
   - 复合标签训练集导出（15 分钟基础 + 前 120 分钟趋势对照）
     ```powershell
     python scripts/modeling/prepare_multilabel_dataset.py `

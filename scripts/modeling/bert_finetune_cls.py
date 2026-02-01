@@ -143,13 +143,14 @@ def main() -> None:
     inv = {i: v for v, i in mp.items()}
     for df in (train, val, test):
         df["label_mapped"] = df[lbl_col].astype(int).map(mp)
+        df["labels"] = df["label_mapped"]
 
     # 转为 HF Datasets
     ds = DatasetDict(
         {
-            "train": Dataset.from_pandas(train[["text2", "label_mapped"]]),
-            "val": Dataset.from_pandas(val[["text2", "label_mapped"]]),
-            "test": Dataset.from_pandas(test[["text2", "label_mapped"]]),
+            "train": Dataset.from_pandas(train[["text2", "labels"]]),
+            "val": Dataset.from_pandas(val[["text2", "labels"]]),
+            "test": Dataset.from_pandas(test[["text2", "labels"]]),
         }
     )
 
@@ -157,8 +158,13 @@ def main() -> None:
     tok = AutoTokenizer.from_pretrained(args.model_name, use_fast=True)
 
     def tok_fn(batch):
+        texts = batch["text2"]
+        if not isinstance(texts, list):
+            texts = [texts]
+        # 兜底转为字符串，处理 None/NaN/其他类型
+        texts = ["" if (t is None) else (t if isinstance(t, str) else str(t)) for t in texts]
         return tok(
-            batch["text2"],
+            texts,
             truncation=True,
             padding="max_length",
             max_length=args.max_length,
@@ -169,21 +175,32 @@ def main() -> None:
     # 模型与训练器
     model = AutoModelForSequenceClassification.from_pretrained(args.model_name, num_labels=len(mp))
 
-    training_args = TrainingArguments(
-        output_dir=args.output_dir,
-        learning_rate=args.lr,
-        num_train_epochs=args.epochs,
-        per_device_train_batch_size=args.train_bs,
-        per_device_eval_batch_size=args.eval_bs,
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
-        load_best_model_at_end=True,
-        metric_for_best_model="macro_f1",
-        save_total_limit=2,
-        logging_steps=50,
-        report_to=[],  # 关闭 wandb 等外部上报，避免无意联网
-        seed=args.seed,
-    )
+    # 兼容老版本 transformers：若不支持 evaluation_strategy 等参数，则退化为最小参数集
+    try:
+        training_args = TrainingArguments(
+            output_dir=args.output_dir,
+            learning_rate=args.lr,
+            num_train_epochs=args.epochs,
+            per_device_train_batch_size=args.train_bs,
+            per_device_eval_batch_size=args.eval_bs,
+            evaluation_strategy="epoch",
+            save_strategy="epoch",
+            load_best_model_at_end=True,
+            metric_for_best_model="macro_f1",
+            save_total_limit=2,
+            logging_steps=50,
+            report_to=[],  # 关闭 wandb 等外部上报，避免无意联网
+            seed=args.seed,
+        )
+    except TypeError:
+        training_args = TrainingArguments(
+            output_dir=args.output_dir,
+            learning_rate=args.lr,
+            num_train_epochs=args.epochs,
+            per_device_train_batch_size=args.train_bs,
+            per_device_eval_batch_size=args.eval_bs,
+            seed=args.seed,
+        )
 
     trainer = Trainer(
         model=model,
