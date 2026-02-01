@@ -17,7 +17,7 @@
 
 | **任务模块**              | **具体内容**                                             | **推荐技术栈**                                      | **产出物**                |
 | ------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------- |
-| **1. K****线数据**  | 获取目标标的（如A股个股、黄金、美股）的分钟级或日级OHLCV数据。 | `Tushare`(A股),`yfinance`(美股/大宗),`baostock`     | `market_data.csv`             |
+| **1. K**线数据            | 获取目标标的（如A股个股、黄金、美股）的分钟级或日级OHLCV数据。 | `Tushare`(A股),`yfinance`(美股/大宗),`baostock`     | `market_data.csv`             |
 | **2.** **高频快讯** | 爬取金十数据、财联社等网站的7x24小时直播快讯（时间戳+内容）。  | `Requests`,`BeautifulSoup`,`Selenium`(处理动态加载) | `fast_news.csv`               |
 | **3.** **深度财报** | 下载上市公司的季度/年度财报（PDF格式）。                       | `巨潮资讯网`爬虫,`PyMuPDF`(PDF解析)                   | PDF文件夹&`reports_text.json` |
 | **4.** **数据存储** | 建立本地SQLite数据库，统一管理结构化与非结构化数据。           | `SQLite`,`SQLAlchemy`                                 | `finance.db`                  |
@@ -65,13 +65,13 @@
 
 最终方案： 本地UI (Streamlit) + 云端大脑 (API)
 
-| **组件**                     | **运行位置** | **实现方案**                                                                                                                                                                                   |
-| ---------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **用户界面(UI)**             | **本地PC**   | 使用 `Streamlit`构建聊天窗口和图表展示页。                                                                                                                                                         |
-| **K****线可视化**      | **本地PC**   | 使用 `Pyecharts`或 `Plotly`绘制交互式K线图。                                                                                                                                                     |
-| **快讯引擎(BERT)**           | **本地PC**   | 使用CPU运行BERT模型进行实时分类（轻负载）。                                                                                                                                                          |
-| **财报引擎(RAG)**            | **本地PC**   | 使用 `ChromaDB`进行本地检索（轻负载）。                                                                                                                                                            |
-| **Agent****大脑(LLM)** | **云端API**  | \*\*(关键策略)\*\*本地不加载7B模型。Agent逻辑通过API调用云端大模型（如阿里通义千问API或Deepseek API）。*注：若必须展示微调成果，可在Colab上部署微调后的模型并开启API接口(ngrok)，本地调用该接口。* |
+| **组件**           | **运行位置** | **实现方案**                                                                                                                                                                                   |
+| ------------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **用户界面(UI)**   | **本地PC**   | 使用 `Streamlit`构建聊天窗口和图表展示页。                                                                                                                                                         |
+| **K**线可视化      | **本地PC**   | 使用 `Pyecharts`或 `Plotly`绘制交互式K线图。                                                                                                                                                     |
+| **快讯引擎(BERT)** | **本地PC**   | 使用CPU运行BERT模型进行实时分类（轻负载）。                                                                                                                                                          |
+| **财报引擎(RAG)**  | **本地PC**   | 使用 `ChromaDB`进行本地检索（轻负载）。                                                                                                                                                            |
+| **Agent**大脑(LLM) | **云端API**  | \*\*(关键策略)\*\*本地不加载7B模型。Agent逻辑通过API调用云端大模型（如阿里通义千问API或Deepseek API）。*注：若必须展示微调成果，可在Colab上部署微调后的模型并开启API接口(ngrok)，本地调用该接口。* |
 
 ## 7. 附录：针对 MX570 (2G显存) 的具体操作指南
 
@@ -91,3 +91,124 @@
 2. **数据处理创新：** 引入“基于K线走势的代理标注 (Proxy Labeling)”方法，解决了金融领域缺乏大规模情感标注数据的痛点。
 3. **工程实现创新：** 基于 Agent 思想，实现了从数据检索、模型推理到可视化呈现的端到端自动化流程。
 4. **模型定制：** 利用 PEFT (QLoRA) 技术对通用大模型进行了金融领域的低资源微调，提升了模型在特定领域的表现。
+
+---
+
+## 9. 分钟级冲击建模脚本（Baseline / BERT）
+
+基于 `finance_analysis.db` 导出的 `train_30m_labeled.csv / val_30m_labeled.csv / test_30m_labeled.csv`，提供两套开箱即用的训练脚本。
+
+### 9.1 基线：TF-IDF + LinearSVC（CPU 即可）
+
+```powershell
+python scripts/modeling/baseline_tfidf_svm.py ^
+  --train_csv data\processed\train_30m_labeled.csv ^
+  --val_csv   data\processed\val_30m_labeled.csv ^
+  --test_csv  data\processed\test_30m_labeled.csv ^
+  --output_dir models\baseline_tfidf_svm
+```
+
+输出：
+
+- tfidf.pkl / model.pkl（可复用推理）
+- metrics_val.json / metrics_test.json、report_*.txt
+- pred_test.csv（含 event_id 若存在）
+
+可选参数：`--no_prefix` 关闭前缀特征；`--analyzer char|word`、`--ngram_min/max` 等。
+
+### 9.2 BERT 中文微调（RoBERTa-wwm-ext）
+
+安装依赖（首次）：
+
+```powershell
+pip install -U transformers datasets accelerate evaluate
+# 无 GPU 可安装 CPU 版 torch：
+pip install --index-url https://download.pytorch.org/whl/cpu torch
+```
+
+训练与评估：
+
+```powershell
+python scripts/modeling/bert_finetune_cls.py ^
+  --train_csv data\processed\train_30m_labeled.csv ^
+  --val_csv   data\processed\val_30m_labeled.csv ^
+  --test_csv  data\processed\test_30m_labeled.csv ^
+  --output_dir models\bert_xauusd_cls ^
+  --epochs 2 --lr 2e-5 --max_length 256
+```
+
+输出：
+
+- models/bert_xauusd_cls/best（最优权重）
+- metrics_val.json / metrics_test.json、report_test.txt
+- pred_test.csv（-1/0/1 标签）
+
+### 9.3 多窗口数据集（可选）
+
+当前 30 分钟窗口数据集仅包含 `window_min=30` 的样本。若希望每个事件形成 4 条样本（5/10/15/30 分钟），可生成“多窗口版”数据集：
+
+```powershell
+$code = @'
+import sqlite3, pandas as pd, os, json
+c = sqlite3.connect("finance_analysis.db")
+q = """
+select
+  ei.event_id, e.source, e.ts_local as event_ts_local, e.ts_utc as event_ts_utc,
+  e.country, e.name, e.content, e.star, e.previous, e.consensus, e.actual,
+  e.affect, e.detail_url, e.important, e.hot, e.indicator_name, e.unit,
+  ei.ticker, ei.window_min, ei.price_event, ei.price_future, ei.delta, ei.ret
+from event_impacts ei
+join events e on e.event_id = ei.event_id
+where ei.ticker='XAUUSD' and ei.window_min in (5,10,15,30)
+order by e.ts_local asc, ei.window_min asc
+"""
+df = pd.read_sql_query(q, c); c.close()
+
+# 文本优先 content，其次 name
+df["text"] = df["content"].fillna("").astype(str)
+mask = df["text"].str.len()==0
+df.loc[mask, "text"] = df.loc[mask, "name"].fillna("").astype(str)
+
+# 时间切分
+df["event_ts_local"] = pd.to_datetime(df["event_ts_local"], errors="coerce")
+t1, t2, t3 = pd.Timestamp("2025-08-01 00:00:00"), pd.Timestamp("2025-11-01 00:00:00"), pd.Timestamp("2026-02-01 00:00:00")
+train = df[df["event_ts_local"] < t1].copy()
+val   = df[(df["event_ts_local"] >= t1) & (df["event_ts_local"] < t2)].copy()
+test  = df[(df["event_ts_local"] >= t2) & (df["event_ts_local"] < t3)].copy()
+
+# 按窗口在训练集上分别计算阈值（更贴合各窗口分布）
+def thresholds_per_window(train_df):
+    qmap = {}
+    for w, g in train_df.dropna(subset=["ret"]).groupby("window_min"):
+        qmap[w] = (
+            float(g["ret"].quantile(0.30)),
+            float(g["ret"].quantile(0.70)),
+        )
+    return qmap
+
+q = thresholds_per_window(train)
+def lab(row):
+    r = row["ret"]
+    w = int(row["window_min"])
+    lo, hi = q.get(w, (-0.001, 0.001))
+    if pd.isna(r): return 0
+    return -1 if r <= lo else (1 if r >= hi else 0)
+
+for part in (train, val, test):
+    part["label"] = part.apply(lab, axis=1)
+
+keep = [
+  "event_id","event_ts_local","event_ts_utc","source","country","name","content","text",
+  "star","previous","consensus","actual","affect","detail_url","important","hot","indicator_name","unit",
+  "ticker","window_min","price_event","price_future","delta","ret","label"
+]
+os.makedirs(r"data\processed", exist_ok=True)
+train[keep].to_csv(r"data\processed\train_multi_labeled.csv", index=False, encoding="utf-8")
+val[keep].to_csv(  r"data\processed\val_multi_labeled.csv",   index=False, encoding="utf-8")
+test[keep].to_csv( r"data\processed\test_multi_labeled.csv",  index=False, encoding="utf-8")
+print("done")
+'@
+$code | python -
+```
+
+训练脚本依旧可用，若希望模型“感知窗口”，建议保留 `window_min`（可编码为前缀 token 或数值特征）。

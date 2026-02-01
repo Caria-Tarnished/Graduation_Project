@@ -1,6 +1,6 @@
 # Project Status
 
-更新时间：2026-01-29
+更新时间：2026-02-01
 负责人：Caria-Tarnished
 
 ---
@@ -11,6 +11,7 @@
 - 时间范围：2024-01-01 至 2026-01-21（Asia/Shanghai）。
 - 标的池：000001.SH、300750.SZ、600036.SH、XAUUSD=X、NVDA。
 - 数据存储：SQLite（finance.db），向量库：Chroma（后续）。
+- 新增（分钟级冲击分析）：基于 MT5 XAUUSD M1 + 金十（flash/calendar），统一至 finance_analysis.db；价格覆盖 2024-01-02 09:00 至 2026-01-31 07:59（Asia/Shanghai）。
 
 ## 2) 已完成（Done）
 
@@ -26,6 +27,24 @@
   - `scripts/crawlers/jin10_dynamic.py`：日历模式已稳定可用，支持“只看重要”开关、DB 入库与 CSV 增量写入；接口与参考脚本保持一致（`--months/--start/--end/--output/--db/...`）。
   - `scripts/crawlers/jin10_flash_api.py`：快讯 API 模式（支持接口发现/过滤/CSV 流式/SQLite 入库）。
 - SQLite 存储：`scripts/crawlers/storage.py`（upsert、URL/内容哈希去重、索引）。
+
+- 分钟级冲击分析（MT5 + 金十，已联通）
+  - MT5 分钟价抓取：`scripts/fetch_intraday_xauusd_mt5.py`（自动符号选择、分片抓取、时区标准化、UTF-8 CSV）。
+  - 冲击计算与入库：`scripts/build_finance_analysis.py`（prices_m1 / events / event_impacts 三表，时间索引、asof 对齐、UPSERT）。
+  - 数据库：`finance_analysis.db`（prices_m1=736,304 行；覆盖 2024-01-02 09:00 至 2026-01-31 07:59，Asia/Shanghai）。
+  - 覆盖率验证（自 2026-01-27 起）：events_total=1475、events_with_impacts=1475、coverage=100%；四窗口均为 1475（5/10/15/30 分钟）。
+  - 导出训练集：
+    - `data/processed/training_event_impacts_xauusd_2025Q4_2026Jan.csv`（35808×27）。
+    - 全量：`data/processed/training_event_impacts_xauusd_all.csv` 与 `.parquet`（104,728×27）。
+  - 30 分钟窗口打标与切分：
+    - `data/processed/train_30m_labeled.csv`、`val_30m_labeled.csv`、`test_30m_labeled.csv`。
+    - `data/processed/labeling_thresholds.json`（q_low=-0.0003825, q_high=0.0004687；train=15071、val=3122、test=7989）。
+    - 标注规则（30 分钟窗口）：
+      - 时间切分：按 `event_ts_local` 做时间切分（train/val/test），保证同一事件不跨集合，避免泄漏。
+      - 收益定义：`ret = (price_future - price_event) / price_event`；`price_event`/`price_future` 均由分钟价在北京时间对齐得到（asof 对齐；窗口 30 分钟）。
+      - 阈值估计：仅在训练集上计算 `ret` 的分位阈值（默认 30%/70%），得到 `q_low` 与 `q_high`，写入 `labeling_thresholds.json`。
+      - 标签映射：`-1` 若 `ret <= q_low`；`1` 若 `ret >= q_high`；否则 `0`。
+      - 一致性：验证/测试集沿用训练集阈值（固定阈值），避免信息泄漏。
 
 ## 3) 进行中 / 下一步（Next）
 
@@ -44,6 +63,28 @@
 
 - [X] 非爬虫脚本（`scripts/fetch_news.py`、`scripts/fetch_prices.py`、`scripts/ingest_listing_csv.py`、`scripts/label_events.py`、`scripts/uplift_articles_to_news.py`）如近期不用，可归档至 `archive/unused_scripts_YYYYMMDD/`。
 
+- 分钟级冲击建模（新增）
+  - [ ] 文本清洗与特征工程脚本化（保留前缀特征，如 `[SRC=]`/`[STAR=]`/`[IMP=]`/`[CTRY=]`，正则去噪）。
+  - [X] 快速基线：TF-IDF + LinearSVC，输出指标与预测明细（完成多组对比）。
+    - 实验组合与指标（macro_f1，val/test）：
+      - 默认（char 2-4，含前缀，未加权）：0.3659 / 0.3458。
+      - char 1-3 + balanced：0.3667 / 0.3376。
+      - char 1-3 + balanced + C=2.0：0.3565 / 0.3394。
+      - char 2-4 + balanced：0.3707 / 0.3422。
+      - 无前缀：0.3666 / 0.3378。
+    - 推荐基线：char 2-4，保留前缀，不加权（测试集最优）。
+  - [ ] BERT 微调（中文 RoBERTa-wwm-ext，时间切分不泄漏），保存最优 checkpoint 与推理脚本。
+  - [ ] 多窗口样本导出（5/10/15/30 作为样本，事件×4 行），统一标签或多任务设置。
+  - [ ] 阈值与标签策略调参（如 25/75 或固定阈值），并固化至 JSON。
+
+- 数据扩展与校验
+  - [ ] 如需：补齐其余时间段或其他 MT5 符号（如 XAUUSD.i、GOLD）并复检覆盖率。
+  - [ ] 交易时段/夏令时敏感性检查与说明。
+
+- 交付与文档
+  - [ ] 训练集字段字典与处理流程文档。
+  - [ ] 训练/验证/测试集统计报告与可视化。
+
 ## 4) 备忘 / 风险（Memos / Risks）
 
 - 登录与反爬：部分站点需登录，建议用 `--user-data-dir` 或 `--storage` 持久化登录态。
@@ -60,6 +101,16 @@
   - [ ] 测试与样例：为日历解析与 API 解析准备最小样例（页面快照/接口 JSON 片段）和断言，确保升级后解析/入库不回退。
 
 ## 5) 变更记录（Changelog）
+
+- 2026-02-01
+
+  - 新增：分钟级冲击分析管线（MT5 + 金十）：
+    - `scripts/fetch_intraday_xauusd_mt5.py`（分钟价抓取）。
+    - `scripts/build_finance_analysis.py`（构建 finance_analysis.db，计算事件冲击）。
+  - 回填与重建：抓取 2024–2025 M1 并重建 `finance_analysis.db`；`prices_m1` 共 736,304 行（2024-01-02 09:00 至 2026-01-31 07:59）。
+  - 验证：自 2026-01-27 起，事件覆盖率 100%，四窗口统计各 1475。
+  - 导出：全量与区间训练集（CSV/Parquet），并生成 30 分钟窗口打标与时间切分数据集与阈值 JSON。
+  - 基线：新增 `scripts/modeling/baseline_tfidf_svm.py` 支持 `--class_weight/--C`；完成 char 1-3/2-4 与加权对比，锁定推荐基线配置。
 
 - 2026-01-29
 
@@ -193,6 +244,141 @@
   python scripts/label_events.py --csv path\to\news.csv --out-csv data\processed\labels.csv
   ```
 
+- 分钟级冲击分析（MT5 + 金十）
+  - 抓取分钟价（示例：2024–2025 全量）
+    ```powershell
+    python scripts\fetch_intraday_xauusd_mt5.py `
+      --timeframe M1 `
+      --start "2024-01-01 00:00:00" `
+      --end   "2025-12-31 23:59:59" `
+      --chunk_days 15 `
+      --tz_out "Asia/Shanghai" `
+      --label_ticker "XAUUSD" `
+      --symbol "XAUUSD" `
+      --out "data\processed\xauusd_m1_mt5_2024_2025.csv"
+    ```
+  - 构建与计算冲击（UPSERT 幂等）
+    ```powershell
+    python scripts\build_finance_analysis.py `
+      --prices_csv "data\processed\xauusd_m1_mt5_2024_2025.csv" `
+      --flash_csv "data\raw\flash_last_14m.csv" `
+      --calendar_csv "data\raw\jin10_calendar_q4.csv" `
+      --db "finance_analysis.db" `
+      --price_tz "Asia/Shanghai" --flash_tz "Asia/Shanghai" --calendar_tz "Asia/Shanghai" `
+      --ticker "XAUUSD" `
+      --windows 5 10 15 30
+    ```
+  - 覆盖率复检（PowerShell here-string → Python 标准输入，稳定免转义）
+    ```powershell
+    $code = @'
+    import sqlite3, pandas as pd
+    c = sqlite3.connect("finance_analysis.db")
+    q = "select (select count(*) from events where ts_local>='2026-01-27 00:00:00') as events_total, (select count(distinct e.event_id) from events e join event_impacts ei on ei.event_id=e.event_id and ei.ticker='XAUUSD' where e.ts_local>='2026-01-27 00:00:00') as events_with_impacts, round(1.0*(select count(distinct e.event_id) from events e join event_impacts ei on ei.event_id=e.event_id and ei.ticker='XAUUSD' where e.ts_local>='2026-01-27 00:00:00')/(select count(*) from events where ts_local>='2026-01-27 00:00:00'),4) as coverage"
+    print(pd.read_sql_query(q, c))
+    c.close()
+    '@
+    $code | python -
+    ```
+
+  - 建模脚本（Baseline / BERT）
+    ```powershell
+    # 基线：TF-IDF + LinearSVC（CPU 即可）
+    python scripts/modeling/baseline_tfidf_svm.py \
+      --train_csv data/processed/train_30m_labeled.csv \
+      --val_csv   data/processed/val_30m_labeled.csv \
+      --test_csv  data/processed/test_30m_labeled.csv \
+      --output_dir models/baseline_tfidf_svm
+
+    # BERT 中文微调（RoBERTa-wwm-ext）
+    # 依赖：pip install -U transformers datasets accelerate evaluate; 如无 GPU，可安装 CPU 版 torch
+    python scripts/modeling/bert_finetune_cls.py \
+      --train_csv data/processed/train_30m_labeled.csv \
+      --val_csv   data/processed/val_30m_labeled.csv \
+      --test_csv  data/processed/test_30m_labeled.csv \
+      --output_dir models/bert_xauusd_cls \
+      --epochs 2 --lr 2e-5 --max_length 256
+    ```
+  - 导出训练集（全量 CSV + Parquet）
+    ```powershell
+    $code = @'
+    import sqlite3, pandas as pd, os
+    c = sqlite3.connect("finance_analysis.db")
+    q = """
+    select
+      ei.event_id,
+      e.source,
+      e.ts_local as event_ts_local,
+      e.ts_utc   as event_ts_utc,
+      e.country, e.name, e.content, e.star, e.previous, e.consensus, e.actual,
+      e.affect, e.detail_url, e.important, e.hot, e.indicator_name, e.unit,
+      ei.ticker, ei.window_min,
+      ei.price_event, ei.price_future, ei.delta, ei.ret,
+      ei.price_event_ts_local, ei.price_future_ts_local,
+      ei.price_event_ts_utc,   ei.price_future_ts_utc
+    from event_impacts ei
+    join events e on e.event_id = ei.event_id
+    where ei.ticker='XAUUSD'
+    order by e.ts_local asc, ei.window_min asc
+    """
+    df = pd.read_sql_query(q, c)
+    c.close()
+    os.makedirs(r"data\processed", exist_ok=True)
+    out_csv = r"data\processed\training_event_impacts_xauusd_all.csv"
+    df.to_csv(out_csv, index=False, encoding="utf-8")
+    try:
+        import pyarrow  # noqa: F401
+        df.to_parquet(r"data\processed\training_event_impacts_xauusd_all.parquet", engine="pyarrow", index=False)
+    except Exception:
+        pass
+    print(out_csv, df.shape)
+    '@
+    $code | python -
+    ```
+  - 30 分钟窗口打标与切分（时间切分避免泄漏）
+    ```powershell
+    $code = @'
+    import sqlite3, pandas as pd, os, json
+    c = sqlite3.connect("finance_analysis.db")
+    q = """
+    select
+      ei.event_id, e.source, e.ts_local as event_ts_local, e.ts_utc as event_ts_utc,
+      e.country, e.name, e.content, e.star, e.previous, e.consensus, e.actual,
+      e.affect, e.detail_url, e.important, e.hot, e.indicator_name, e.unit,
+      ei.ticker, ei.window_min, ei.price_event, ei.price_future, ei.delta, ei.ret
+    from event_impacts ei
+    join events e on e.event_id = ei.event_id
+    where ei.ticker='XAUUSD' and ei.window_min=30
+    order by e.ts_local asc
+    """
+    df = pd.read_sql_query(q, c)
+    c.close()
+    df["text"] = df["content"].fillna("").astype(str)
+    m = df["text"].str.len()==0
+    df.loc[m, "text"] = df.loc[m, "name"].fillna("").astype(str)
+    df["event_ts_local"] = pd.to_datetime(df["event_ts_local"], errors="coerce")
+    t1, t2, t3 = pd.Timestamp("2025-08-01 00:00:00"), pd.Timestamp("2025-11-01 00:00:00"), pd.Timestamp("2026-02-01 00:00:00")
+    train = df[df["event_ts_local"] < t1].copy()
+    val   = df[(df["event_ts_local"] >= t1) & (df["event_ts_local"] < t2)].copy()
+    test  = df[(df["event_ts_local"] >= t2) & (df["event_ts_local"] < t3)].copy()
+    train = train.dropna(subset=["ret"]).copy()
+    ql, qh = (float(train["ret"].quantile(0.30)) if len(train) else -0.001), (float(train["ret"].quantile(0.70)) if len(train) else 0.001)
+    def lab(x, lo, hi):
+        import math
+        return 0 if pd.isna(x) else (-1 if x<=lo else (1 if x>=hi else 0))
+    for part in (train,val,test):
+        part["label"] = part["ret"].apply(lambda x: lab(x, ql, qh))
+    keep=["event_id","event_ts_local","event_ts_utc","source","country","name","content","text","star","previous","consensus","actual","affect","detail_url","important","hot","indicator_name","unit","ticker","window_min","price_event","price_future","delta","ret","label"]
+    os.makedirs(r"data\processed", exist_ok=True)
+    train[keep].to_csv(r"data\processed\train_30m_labeled.csv", index=False, encoding="utf-8")
+    val[keep].to_csv(  r"data\processed\val_30m_labeled.csv",   index=False, encoding="utf-8")
+    test[keep].to_csv( r"data\processed\test_30m_labeled.csv",  index=False, encoding="utf-8")
+    with open(r"data\processed\labeling_thresholds.json","w",encoding="utf-8") as f:
+        json.dump({"window_min":30,"q_low":ql,"q_high":qh,"sizes":{"train":len(train),"val":len(val),"test":len(test)},"splits":{"train_end":str(t1),"val_end":str(t2),"test_end":str(t3)}}, f, ensure_ascii=False, indent=2)
+    print("done")
+    '@
+    $code | python -
+    ```
+
 ## 7) 关键文件
 
 - 计划：`PLAN.md`
@@ -200,10 +386,15 @@
 - 配置：`configs/config.yaml`
 - 环境：`.env.example`
 - 数据库：`finance.db`
+- 分钟级冲击数据库：`finance_analysis.db`
 - 脚本：`scripts/`
   - `scripts/crawlers/jin10_dynamic.py`
   - `scripts/crawlers/jin10_flash_api.py`
   - `scripts/crawlers/storage.py`
+  - `scripts/fetch_intraday_xauusd_mt5.py`
+  - `scripts/build_finance_analysis.py`
+  - `scripts/modeling/baseline_tfidf_svm.py`
+  - `scripts/modeling/bert_finetune_cls.py`
 
 ## 8) 常用指令（数据库）
 

@@ -792,21 +792,20 @@ def crawl_calendar(
                 since_last_check = 0
 
             try:
+                page.wait_for_load_state("networkidle", timeout=12000)
+            except Exception:
+                pass
+            try:
                 page.wait_for_selector(
                     "div.jin-table-body, "
                     ".jin-list .jin-list-item",
-                    timeout=7000,
+                    timeout=20000,
                 )
             except Exception:
-                if debug:
-                    try:
-                        print(
-                            "[DEBUG] 未找到当日数据表格，跳过"
-                        )
-                    except Exception:
-                        pass
-                cur -= timedelta(days=1)
-                continue
+                try:
+                    page.wait_for_timeout(2000)
+                except Exception:
+                    pass
 
             # 使用URL中的日期作为“当日”标识（直达可靠）；若缺失则退回目标日
             used_day = _current_date_from_url(page) or cur
