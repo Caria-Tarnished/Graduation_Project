@@ -73,9 +73,19 @@
       - char 2-4 + balanced：0.3707 / 0.3422。
       - 无前缀：0.3666 / 0.3378。
     - 推荐基线：char 2-4，保留前缀，不加权（测试集最优）。
+    - 增强：新增 `--sublinear_tf/--norm/--dual` 参数，便于正则化与适配样本-特征维度关系。
   - [ ] BERT 微调（中文 RoBERTa-wwm-ext，时间切分不泄漏），保存最优 checkpoint 与推理脚本。
   - [ ] 多窗口样本导出（5/10/15/30 作为样本，事件×4 行），统一标签或多任务设置。
   - [ ] 阈值与标签策略调参（如 25/75 或固定阈值），并固化至 JSON。
+
+  - [X] 多维复合标签数据集（15 分钟基础 + 前 120 分钟趋势对照）
+    - 生成脚本：`scripts/modeling/prepare_multilabel_dataset.py`
+    - 标签体系：
+      - 基础方向（label_base）：基于 15 分钟收益 `ret_post` 的训练集分位阈值，映射为 `-1/0/1`（bearish/neutral/bullish，固定阈值避免泄漏）。
+      - 预期兑现（label_priced_in）：若前 120 分钟存在显著单边（|pre_ret|≥阈），且“基本面方向”（`actual-consensus`）与发布后 15 分钟方向相反，则标注，区分 `bullish_priced_in` 与 `bearish_priced_in`。
+      - 观望（label_watch）：发布后窗口内 Range 显著放大但 |ret_post| 极小（高波动低净变动）。
+      - 组合多类（label_multi_cls）：优先级 观望(5) > 兑现(3/4) > 基础方向(1/2) > 中性(0)。
+    - 指标输出：`ret_post/pre_ret/range_ratio/abs_ret_post/surprise` 等；包含异常值裁剪与分位阈值鲁棒化。
 
 - 数据扩展与校验
   - [ ] 如需：补齐其余时间段或其他 MT5 符号（如 XAUUSD.i、GOLD）并复检覆盖率。
@@ -110,7 +120,8 @@
   - 回填与重建：抓取 2024–2025 M1 并重建 `finance_analysis.db`；`prices_m1` 共 736,304 行（2024-01-02 09:00 至 2026-01-31 07:59）。
   - 验证：自 2026-01-27 起，事件覆盖率 100%，四窗口统计各 1475。
   - 导出：全量与区间训练集（CSV/Parquet），并生成 30 分钟窗口打标与时间切分数据集与阈值 JSON。
-  - 基线：新增 `scripts/modeling/baseline_tfidf_svm.py` 支持 `--class_weight/--C`；完成 char 1-3/2-4 与加权对比，锁定推荐基线配置。
+  - 基线：`scripts/modeling/baseline_tfidf_svm.py` 现支持 `--class_weight/--C/--sublinear_tf/--norm/--dual`；完成 char 1-3/2-4 与加权对比，锁定推荐基线配置。
+  - 新增：`scripts/modeling/prepare_multilabel_dataset.py`，输出 `train/val/test_multi_labeled.csv` 与 `labeling_thresholds_multilabel.json`，实现“基础方向/预期兑现/建议观望”的复合标签。
 
 - 2026-01-29
 
@@ -257,6 +268,15 @@
       --symbol "XAUUSD" `
       --out "data\processed\xauusd_m1_mt5_2024_2025.csv"
     ```
+  - 复合标签训练集导出（15 分钟基础 + 前 120 分钟趋势对照）
+    ```powershell
+    python scripts/modeling/prepare_multilabel_dataset.py `
+      --db finance_analysis.db `
+      --ticker XAUUSD `
+      --window_post 15 `
+      --pre_minutes 120 `
+      --out_dir data\processed
+    ```
   - 构建与计算冲击（UPSERT 幂等）
     ```powershell
     python scripts\build_finance_analysis.py `
@@ -287,7 +307,8 @@
       --train_csv data/processed/train_30m_labeled.csv \
       --val_csv   data/processed/val_30m_labeled.csv \
       --test_csv  data/processed/test_30m_labeled.csv \
-      --output_dir models/baseline_tfidf_svm
+      --output_dir models/baseline_tfidf_svm \
+      --sublinear_tf --norm l2 --dual auto
 
     # BERT 中文微调（RoBERTa-wwm-ext）
     # 依赖：pip install -U transformers datasets accelerate evaluate; 如无 GPU，可安装 CPU 版 torch

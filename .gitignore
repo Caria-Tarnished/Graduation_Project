@@ -50,11 +50,9 @@ data/processed/**
 !data/processed/.gitkeep
 
 # Models (keep directory, ignore contents)
-models/bert/**
-!models/bert/.gitkeep
-
-models/rag/**
-!models/rag/.gitkeep
+models/**
+!models/.gitkeep
+!models/**/.gitkeep
 
 # RAG stores / vector DB
 models/rag/chroma/**

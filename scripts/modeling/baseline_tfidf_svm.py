@@ -123,6 +123,25 @@ def main() -> None:
         help="类别权重：空=不使用；balanced=按类频率自动加权",
     )
     parser.add_argument("--C", type=float, default=1.0, help="LinearSVC 的正则化强度")
+    parser.add_argument(
+        "--sublinear_tf",
+        action="store_true",
+        help="TF 子线性缩放（对长文本词频做 log 缩放），默认关闭以保持兼容",
+    )
+    parser.add_argument(
+        "--norm",
+        type=str,
+        default="l2",
+        choices=["l2", "l1", "none"],
+        help="TF-IDF 向量归一化方式（l2/l1/none）",
+    )
+    parser.add_argument(
+        "--dual",
+        type=str,
+        default="auto",
+        choices=["auto", "true", "false"],
+        help="LinearSVC 的 dual 选项：auto=按样本/特征数自动选择",
+    )
 
     args = parser.parse_args()
     use_prefix = not args.no_prefix
@@ -150,6 +169,8 @@ def main() -> None:
         ngram_range=(args.ngram_min, args.ngram_max),
         min_df=args.min_df,
         max_features=args.max_features,
+        sublinear_tf=args.sublinear_tf,
+        norm=(None if args.norm == "none" else args.norm),
     )
     Xtr = vec.fit_transform(_to_str_list(X_tr))
     Xva = vec.transform(_to_str_list(X_va))
@@ -157,7 +178,11 @@ def main() -> None:
 
     # 线性 SVM 作为强基线
     cw = None if (args.class_weight or "").strip() == "" else args.class_weight
-    clf = LinearSVC(C=args.C, class_weight=cw)
+    if args.dual == "auto":
+        dual_flag = True if Xtr.shape[0] < Xtr.shape[1] else False
+    else:
+        dual_flag = True if args.dual == "true" else False
+    clf = LinearSVC(C=args.C, class_weight=cw, dual=dual_flag)
     clf.fit(Xtr, y_tr)
 
     # 评估与保存
