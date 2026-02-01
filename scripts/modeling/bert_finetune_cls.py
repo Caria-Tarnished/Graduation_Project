@@ -114,6 +114,7 @@ def main() -> None:
     parser.add_argument("--max_length", type=int, default=256)
     parser.add_argument("--no_prefix", action="store_true", help="不使用前缀特征")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--label_col", type=str, default="label")
 
     args = parser.parse_args()
     use_prefix = not args.no_prefix
@@ -125,9 +126,23 @@ def main() -> None:
     val = _read_csv(args.val_csv)
     test = _read_csv(args.test_csv)
 
+    # 文本
     for df in (train, val, test):
         df["text2"] = _build_text(df, use_prefix)
-        df["label_mapped"] = _map_label_series(df["label"])  # {0,1,2}
+
+    # 标签列与映射
+    lbl_col = args.label_col
+    y_train = train[lbl_col].astype(int)
+    y_val = val[lbl_col].astype(int)
+    y_test = test[lbl_col].astype(int)
+    classes_sorted = sorted(set(list(y_train.values) + list(y_val.values) + list(y_test.values)))
+    if classes_sorted == [-1, 0, 1]:
+        mp = {-1: 0, 0: 1, 1: 2}
+    else:
+        mp = {v: i for i, v in enumerate(classes_sorted)}
+    inv = {i: v for v, i in mp.items()}
+    for df in (train, val, test):
+        df["label_mapped"] = df[lbl_col].astype(int).map(mp)
 
     # 转为 HF Datasets
     ds = DatasetDict(
@@ -152,7 +167,7 @@ def main() -> None:
     ds_tok = ds.map(tok_fn, batched=True, remove_columns=["text2"])
 
     # 模型与训练器
-    model = AutoModelForSequenceClassification.from_pretrained(args.model_name, num_labels=3)
+    model = AutoModelForSequenceClassification.from_pretrained(args.model_name, num_labels=len(mp))
 
     training_args = TrainingArguments(
         output_dir=args.output_dir,
@@ -193,8 +208,8 @@ def main() -> None:
     # 生成测试集分类报告与预测明细（映射回 {-1,0,1}）
     preds = trainer.predict(ds_tok["test"]).predictions
     yhat_idx = np.argmax(preds, axis=-1)
-    yhat = _inv_map_label_array(yhat_idx)
-    ytrue = test["label"].astype(int).values
+    yhat = np.vectorize(lambda x: inv.get(int(x), 0))(yhat_idx)
+    ytrue = test[lbl_col].astype(int).values
 
     rpt = classification_report(ytrue, yhat, digits=4)
     with open(os.path.join(args.output_dir, "report_test.txt"), "w", encoding="utf-8") as f:
