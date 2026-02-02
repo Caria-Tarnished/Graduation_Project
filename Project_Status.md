@@ -1,6 +1,6 @@
 # Project Status
 
-更新时间：2026-02-01
+更新时间：2026-02-02
 负责人：Caria-Tarnished
 
 ---
@@ -292,6 +292,25 @@
     1) 打开 https://colab.research.google.com 并选择 GPU（Runtime → Change runtime type → GPU）。
     2) 打开本仓库中的笔记本：`notebooks/bert_multilabel_colab.ipynb`（Colab 文件 → GitHub 选项卡搜索仓库名）。
     3) 依次执行单元：安装依赖 → 克隆仓库 → 上传三份 CSV → 启动训练 → 查看指标 → 打包下载模型输出。
+  - Colab 训练（多标签 6 类 + Drive，FinBERT/中文 BERT）
+    - 挂载 Drive 并设置目录：`DATA_DIR=/content/drive/MyDrive/datasets/xauusd_multilabel`，`MODEL_DIR=/content/drive/MyDrive/models/bert_xauusd_multilabel_6cls`。
+    - 确认 Drive 下存在三份 CSV：`train_multi_labeled.csv`、`val_multi_labeled.csv`、`test_multi_labeled.csv`。若缺失，可运行笔记本中的“从仓库复制到 Drive”或手动上传。
+    - 设置预训练模型 `MODEL_NAME`：
+      - 中文数据：优先使用中文预训练模型（推荐 `hfl/chinese-roberta-wwm-ext` 作为强基线）。
+      - 英文文本：可用 `ProsusAI/finbert`（英文金融领域）。
+      - 说明：若数据为中文，不建议使用英文 FinBERT；其分词词表对中文支持有限，效果通常显著劣于中文模型。
+    - 运行“6 分类训练（使用原始 CSV 与 `label_multi_cls`）”单元。其等价 CLI 示例（PowerShell）：
+      ```powershell
+      python scripts/modeling/bert_finetune_cls.py `
+        --train_csv data/processed/train_multi_labeled.csv `
+        --val_csv   data/processed/val_multi_labeled.csv `
+        --test_csv  data/processed/test_multi_labeled.csv `
+        --output_dir models/bert_xauusd_multilabel_6cls `
+        --label_col label_multi_cls `
+        --model_name hfl/chinese-roberta-wwm-ext `
+        --train_bs 16 --eval_bs 32 --epochs 2 --lr 2e-5 --max_length 256
+      ```
+    - 产出：`metrics_val.json`、`metrics_test.json`、`report_test.txt`、`pred_test.csv` 与 `best/`（最优模型）。
   - 复合标签训练集导出（15 分钟基础 + 前 120 分钟趋势对照）
     ```powershell
     python scripts/modeling/prepare_multilabel_dataset.py `
