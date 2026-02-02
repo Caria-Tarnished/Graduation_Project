@@ -107,6 +107,14 @@ def _compute_metrics_builder() -> callable:
     return _fn
 
 
+def _to_hf_dataset(df: pd.DataFrame) -> Dataset:
+    """将 Pandas DataFrame 安全转换为 HF Dataset，兼容旧版 datasets 无 preserve_index 的情况。"""
+    try:
+        return Dataset.from_pandas(df, preserve_index=False)
+    except TypeError:
+        return Dataset.from_pandas(df)
+
+
 class WeightedTrainer(Trainer):
     """带类权重的 Trainer，实现对少数类的损失放大。
 
@@ -114,7 +122,22 @@ class WeightedTrainer(Trainer):
     """
 
     def __init__(self, *args, class_weights=None, **kwargs):
-        super().__init__(*args, **kwargs)
+        # 兼容旧版 transformers.Trainer 不支持 tokenizer/callbacks 等参数
+        try:
+            super().__init__(*args, **kwargs)
+        except TypeError:
+            # 渐进式丢弃不被支持的关键字参数
+            for k in ("tokenizer", "callbacks"):
+                if k in kwargs:
+                    kwargs.pop(k, None)
+                    try:
+                        super().__init__(*args, **kwargs)
+                        break
+                    except TypeError:
+                        continue
+            else:
+                # 仍失败则直接再次触发异常，暴露真实问题
+                super().__init__(*args, **kwargs)
         self.class_weights = class_weights
 
     def compute_loss(self, model, inputs, return_outputs=False):
@@ -197,9 +220,9 @@ def main() -> None:
     # 转为 HF Datasets
     ds = DatasetDict(
         {
-            "train": Dataset.from_pandas(train[["text2", "labels"]]),
-            "val": Dataset.from_pandas(val[["text2", "labels"]]),
-            "test": Dataset.from_pandas(test[["text2", "labels"]]),
+            "train": _to_hf_dataset(train[["text2", "labels"]]),
+            "val": _to_hf_dataset(val[["text2", "labels"]]),
+            "test": _to_hf_dataset(test[["text2", "labels"]]),
         }
     )
 
@@ -259,6 +282,7 @@ def main() -> None:
             save_steps=args.save_steps,
             load_best_model_at_end=True,
             metric_for_best_model="macro_f1",
+            greater_is_better=True,
             save_total_limit=2,
             logging_steps=50,
             report_to=[],  # 关闭 wandb 等外部上报，避免无意联网
@@ -276,11 +300,30 @@ def main() -> None:
             per_device_eval_batch_size=args.eval_bs,
             seed=args.seed,
         )
+        # 确保早停所需的关键字段在旧版 transformers 下也存在
+        try:
+            setattr(training_args, "metric_for_best_model", "macro_f1")
+            setattr(training_args, "greater_is_better", True)
+            setattr(training_args, "load_best_model_at_end", True)
+            setattr(training_args, "evaluation_strategy", "steps")
+            setattr(training_args, "save_strategy", "steps")
+            setattr(training_args, "eval_steps", args.eval_steps)
+            setattr(training_args, "save_steps", args.save_steps)
+            setattr(training_args, "logging_steps", 50)
+            setattr(training_args, "report_to", [])
+        except Exception:
+            pass
 
     # 提前停止回调（若可用）
     callbacks = []
     try:
-        if args.early_stopping_patience and args.early_stopping_patience > 0:
+        # 仅当具备 metric_for_best_model 且启用了 load_best_model_at_end 时再启用早停，避免断言报错
+        if (
+            args.early_stopping_patience
+            and args.early_stopping_patience > 0
+            and getattr(training_args, "metric_for_best_model", None)
+            and getattr(training_args, "load_best_model_at_end", False)
+        ):
             callbacks.append(
                 EarlyStoppingCallback(early_stopping_patience=args.early_stopping_patience)
             )
@@ -333,6 +376,11 @@ def main() -> None:
     best_dir = os.path.join(args.output_dir, "best")
     _ensure_dir(best_dir)
     trainer.save_model(best_dir)
+    # 兼容旧版 Trainer 未持有 tokenizer：显式保存分词器，便于下游加载
+    try:
+        tok.save_pretrained(best_dir)
+    except Exception:
+        pass
     print("完成：模型与评估结果已保存至", os.path.abspath(args.output_dir))
 
 
