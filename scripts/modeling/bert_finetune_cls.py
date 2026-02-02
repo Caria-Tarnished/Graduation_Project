@@ -172,8 +172,19 @@ def main() -> None:
 
     ds_tok = ds.map(tok_fn, batched=True, remove_columns=["text2"])
 
-    # 模型与训练器
-    model = AutoModelForSequenceClassification.from_pretrained(args.model_name, num_labels=len(mp))
+    # 模型与训练器（允许分类头尺寸不匹配，如从 3 类迁移到 5 类）
+    try:
+        model = AutoModelForSequenceClassification.from_pretrained(
+            args.model_name,
+            num_labels=len(mp),
+            ignore_mismatched_sizes=True,
+        )
+    except TypeError:
+        # 兼容旧版 transformers 不支持 ignore_mismatched_sizes 的情况
+        model = AutoModelForSequenceClassification.from_pretrained(
+            args.model_name,
+            num_labels=len(mp),
+        )
 
     # 兼容老版本 transformers：若不支持 evaluation_strategy 等参数，则退化为最小参数集
     try:
