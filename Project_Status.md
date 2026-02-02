@@ -311,6 +311,15 @@
         --train_bs 16 --eval_bs 32 --epochs 2 --lr 2e-5 --max_length 256
       ```
     - 产出：`metrics_val.json`、`metrics_test.json`、`report_test.txt`、`pred_test.csv` 与 `best/`（最优模型）。
+  - 6 类 BERT 首次评估（中文 RoBERTa-wwm-ext）
+    - val：accuracy=0.4321，macro_f1=0.1822。
+    - test：accuracy=0.4251，macro_f1=0.1631。
+    - 按类简述（test 支持数：0/1/2/3/4/5 = 4030/1654/1417/15/5/868）：
+      - 0（中性）：F1=0.6013（主导类）。
+      - 1/2（方向）：F1 偏低。
+      - 3/4（兑现）：样本极少，F1=0。
+      - 5（观望）：F1=0。
+    - 改进方向：更久训练（epochs↑）、更长序列（max_length↑）、类权重（加权交叉熵）、早停（EarlyStopping）、warmup 与 weight_decay、按 steps 验证与保存。
   - 复合标签训练集导出（15 分钟基础 + 前 120 分钟趋势对照）
     ```powershell
     python scripts/modeling/prepare_multilabel_dataset.py `

@@ -33,6 +33,13 @@ from transformers import (  # type: ignore
     TrainingArguments,
 )
 import evaluate  # type: ignore
+import torch  # type: ignore
+try:
+    from transformers import EarlyStoppingCallback  # type: ignore
+except Exception:  # 兼容旧版 transformers 无 EarlyStoppingCallback 的情况
+    class EarlyStoppingCallback:  # type: ignore
+        def __init__(self, *args, **kwargs) -> None:
+            pass
 
 
 def _ensure_dir(path: str) -> None:
@@ -100,6 +107,36 @@ def _compute_metrics_builder() -> callable:
     return _fn
 
 
+class WeightedTrainer(Trainer):
+    """带类权重的 Trainer，实现对少数类的损失放大。
+
+    - 若未提供 `class_weights`，则退化为标准 CrossEntropyLoss。
+    """
+
+    def __init__(self, *args, class_weights=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.class_weights = class_weights
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        # 使用自定义的带权重交叉熵计算损失（中文数据需确保 labels 为整型索引）
+        labels = inputs.get("labels")
+        outputs = model(**{k: v for k, v in inputs.items() if k != "labels"})
+        logits = outputs.get("logits")
+        if labels is not None:
+            if self.class_weights is not None:
+                loss_fn = torch.nn.CrossEntropyLoss(
+                    weight=self.class_weights.to(logits.device)
+                )
+            else:
+                loss_fn = torch.nn.CrossEntropyLoss()
+            loss = loss_fn(logits.view(-1, logits.size(-1)), labels.view(-1))
+        else:
+            loss = outputs["loss"]
+        if return_outputs:
+            return loss, outputs
+        return loss
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="BERT 中文文本分类微调脚本")
     parser.add_argument("--train_csv", type=str, required=True)
@@ -115,6 +152,18 @@ def main() -> None:
     parser.add_argument("--no_prefix", action="store_true", help="不使用前缀特征")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--label_col", type=str, default="label")
+    # 训练增强参数（默认与旧版兼容）
+    parser.add_argument("--warmup_ratio", type=float, default=0.06)
+    parser.add_argument("--weight_decay", type=float, default=0.01)
+    parser.add_argument("--eval_steps", type=int, default=100)
+    parser.add_argument("--save_steps", type=int, default=100)
+    parser.add_argument("--early_stopping_patience", type=int, default=2)
+    parser.add_argument(
+        "--gradient_accumulation_steps", type=int, default=1
+    )
+    parser.add_argument(
+        "--class_weight", type=str, default="none", choices=["none", "auto"]
+    )
 
     args = parser.parse_args()
     use_prefix = not args.no_prefix
@@ -172,6 +221,16 @@ def main() -> None:
 
     ds_tok = ds.map(tok_fn, batched=True, remove_columns=["text2"])
 
+    # 类权重计算：若启用 --class_weight auto，则按训练集频次的反比例计算。
+    class_weights = None
+    if args.class_weight != "none":
+        vc = train["labels"].value_counts().reindex(range(len(mp)), fill_value=0).astype(float)
+        total = float(vc.sum()) if float(vc.sum()) > 0 else 1.0
+        num_c = len(vc)
+        # 经典平衡权重：N / (K * n_i)。若某类在训练集计数为 0，则权重置 0（训练中不会出现该类标签）。
+        w = np.where(vc.values > 0, total / (num_c * vc.values), 0.0)
+        class_weights = torch.tensor(w, dtype=torch.float)
+
     # 模型与训练器（允许分类头尺寸不匹配，如从 3 类迁移到 5 类）
     try:
         model = AutoModelForSequenceClassification.from_pretrained(
@@ -186,7 +245,7 @@ def main() -> None:
             num_labels=len(mp),
         )
 
-    # 兼容老版本 transformers：若不支持 evaluation_strategy 等参数，则退化为最小参数集
+    # 兼容老版本 transformers：若不支持部分参数，则退化为最小参数集
     try:
         training_args = TrainingArguments(
             output_dir=args.output_dir,
@@ -194,14 +253,19 @@ def main() -> None:
             num_train_epochs=args.epochs,
             per_device_train_batch_size=args.train_bs,
             per_device_eval_batch_size=args.eval_bs,
-            evaluation_strategy="epoch",
-            save_strategy="epoch",
+            evaluation_strategy="steps",
+            save_strategy="steps",
+            eval_steps=args.eval_steps,
+            save_steps=args.save_steps,
             load_best_model_at_end=True,
             metric_for_best_model="macro_f1",
             save_total_limit=2,
             logging_steps=50,
             report_to=[],  # 关闭 wandb 等外部上报，避免无意联网
             seed=args.seed,
+            warmup_ratio=args.warmup_ratio,
+            weight_decay=args.weight_decay,
+            gradient_accumulation_steps=args.gradient_accumulation_steps,
         )
     except TypeError:
         training_args = TrainingArguments(
@@ -213,13 +277,25 @@ def main() -> None:
             seed=args.seed,
         )
 
-    trainer = Trainer(
+    # 提前停止回调（若可用）
+    callbacks = []
+    try:
+        if args.early_stopping_patience and args.early_stopping_patience > 0:
+            callbacks.append(
+                EarlyStoppingCallback(early_stopping_patience=args.early_stopping_patience)
+            )
+    except Exception:
+        pass
+
+    trainer = WeightedTrainer(
         model=model,
         args=training_args,
         train_dataset=ds_tok["train"],
         eval_dataset=ds_tok["val"],
         tokenizer=tok,
         compute_metrics=_compute_metrics_builder(),
+        class_weights=class_weights,
+        callbacks=callbacks,
     )
 
     trainer.train()
