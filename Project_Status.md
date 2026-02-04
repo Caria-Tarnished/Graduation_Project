@@ -1,6 +1,6 @@
 # Project Status
 
-更新时间：2026-02-02
+更新时间：2026-02-04
 负责人：Caria-Tarnished
 
 ---
@@ -116,6 +116,16 @@
   - [ ] 测试与样例：为日历解析与 API 解析准备最小样例（页面快照/接口 JSON 片段）和断言，确保升级后解析/入库不回退。
 
 ## 5) 变更记录（Changelog）
+
+- 2026-02-04
+
+  - 新增：训练工作流文档 `Model_Training_Workflow.md`，采用“本地开发 + 云端训练（GitHub 代码 + Drive 数据）”的存算分离方案；提供 Colab 最小 Runner 与本地结果同步脚本说明。
+  - 新增：`scripts/tools/sync_results.py`，将 Drive 下 `experiments/...` 小型产物（`eval_results.json/metrics*.json/report*.txt/pred*.csv/best/config.json`）同步至本地 `reports/...`，默认跳过大权重，支持 `--dry_run/--include/--exclude`。
+  - 增强：`scripts/modeling/bert_finetune_cls.py`
+    - 兼容旧版 transformers：`Trainer(tokenizer/callbacks)` 参数的 `TypeError` 自动回退；修复 `EarlyStopping` 断言（无论版本均设置 `metric_for_best_model/greater_is_better/load_best_model_at_end`，并按条件注册回调）。
+    - 新增 `eval_results.json` 汇总（val/test 指标与输出目录），便于本地脚本/Agent 读取。
+    - 稳健性：pandas→HF Dataset 在旧版 datasets 下自动回退；显式保存 tokenizer 以便下游加载。
+  - 可选：`train_logic.py` 作为统一入口（Colab 可 `!python train_logic.py ...`）。基于当前工作流，此文件“可选”，可保留也可删除；直接调用底层脚本同样可行。
 
 - 2026-02-01
 

@@ -381,6 +381,26 @@ def main() -> None:
         tok.save_pretrained(best_dir)
     except Exception:
         pass
+    # 汇总评估结果到固定文件，便于本地 Agent/脚本监控（Drive 自动同步）
+    try:
+        summary = {
+            "val": {
+                "macro_f1": float(metrics_val.get("eval_macro_f1", metrics_val.get("macro_f1", 0.0))),
+                "accuracy": float(metrics_val.get("eval_accuracy", metrics_val.get("accuracy", 0.0))),
+                "loss": float(metrics_val.get("eval_loss", metrics_val.get("loss", 0.0))),
+            },
+            "test": {
+                "macro_f1": float(metrics_test.get("eval_macro_f1", metrics_test.get("macro_f1", 0.0))),
+                "accuracy": float(metrics_test.get("eval_accuracy", metrics_test.get("accuracy", 0.0))),
+                "loss": float(metrics_test.get("eval_loss", metrics_test.get("loss", 0.0))),
+            },
+            "output_dir": os.path.abspath(args.output_dir),
+            "best_dir": os.path.abspath(best_dir),
+        }
+        with open(os.path.join(args.output_dir, "eval_results.json"), "w", encoding="utf-8") as f:
+            json.dump(summary, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
     print("完成：模型与评估结果已保存至", os.path.abspath(args.output_dir))
 
 

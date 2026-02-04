@@ -74,6 +74,8 @@ finance.db
 tmp/
 temp/
 *.tmp
+.tmp.driveupload
+.tmp.drivedownload
 
 # Node (future UI dependencies)
 node_modules/
