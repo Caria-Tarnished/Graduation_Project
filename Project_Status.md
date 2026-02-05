@@ -96,8 +96,8 @@
 
 - 数据 QA 与归档
   - [X] 新增脚本：`scripts/qa/validate_datasets.py`，输出 `data/processed/qa_dataset_report.json`。
-  - [ ] 运行 QA：确认多类数据集时间跨度（期望约 2024-01-01 至 2026-02-01）、事件不跨集合（any_overlap=false）、`event_id` 去重无异常、标签分布合理，并校验 DB 的 `events/event_impacts/prices_m1` 覆盖范围。
-  - [ ] 基于报告的 `archive_suggestions` 制定归档清单（可迁移至 `archive/` 或 Git LFS/Release）。
+  - [X] 运行 QA：确认多类数据集时间跨度、事件不跨集合（any_overlap=false）、`event_id` 去重无异常、标签分布合理，并校验 DB 的 `events/event_impacts/prices_m1` 覆盖范围。
+  - [X] 基于报告的 `archive_suggestions` 归档：已将候选 raw/processed 大文件迁移至 `archive/20260201_211652/`，并打包为 `archive/archive_20260201_211652.zip`。
 
 - 数据扩展与校验
   - [ ] 如需：补齐其余时间段或其他 MT5 符号（如 XAUUSD.i、GOLD）并复检覆盖率。
