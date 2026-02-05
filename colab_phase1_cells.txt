@@ -166,7 +166,29 @@ else:
 print("use_gpu =", use_gpu)
 print("output_dir =", output_dir)
 print("CMD:\n", " ".join(cmd))
-subprocess.run(cmd, check=True)
+proc = subprocess.Popen(
+    cmd,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+    text=True,
+    bufsize=1,
+)
+
+tail_lines = []
+assert proc.stdout is not None
+for line in proc.stdout:
+    print(line, end="")
+    tail_lines.append(line)
+    if len(tail_lines) > 200:
+        tail_lines = tail_lines[-200:]
+
+ret = proc.wait()
+if ret != 0:
+    print("\n" + "=" * 80)
+    print("TRAIN PROCESS FAILED. LAST 200 LINES:")
+    print("=" * 80)
+    print("".join(tail_lines))
+    raise RuntimeError(f"Training process exited with code {ret}")
 
 
 # ============================================================
