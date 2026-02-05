@@ -24,6 +24,7 @@ from typing import Dict
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+import datasets  # type: ignore
 from datasets import Dataset, DatasetDict  # type: ignore
 from sklearn.metrics import classification_report, f1_score  # type: ignore
 from transformers import (  # type: ignore
@@ -32,6 +33,7 @@ from transformers import (  # type: ignore
     Trainer,
     TrainingArguments,
 )
+from transformers.utils import logging as hf_logging  # type: ignore
 import evaluate  # type: ignore
 import torch  # type: ignore
 try:
@@ -156,6 +158,11 @@ class WeightedTrainer(Trainer):
         outputs = model(**{k: v for k, v in inputs.items() if k != "labels"})
         logits = outputs.get("logits")
         if labels is not None:
+            # 明确转为 long，避免 labels 类型异常导致的 GPU 端错误
+            try:
+                labels = labels.long()
+            except Exception:
+                pass
             if self.class_weights is not None:
                 loss_fn = torch.nn.CrossEntropyLoss(
                     weight=self.class_weights.to(logits.device)
@@ -203,10 +210,25 @@ def main() -> None:
     parser.add_argument(
         "--class_weight", type=str, default="none", choices=["none", "auto"]
     )
+    parser.add_argument(
+        "--disable_tqdm",
+        action="store_true",
+        help="禁用训练/数据集处理过程的 tqdm 进度条输出（适用于 Colab，减少输出与缓存压力）",
+    )
 
     args = parser.parse_args()
     use_prefix = not args.no_prefix
     text_col = str(args.text_col).strip().lower() if args.text_col else "text"
+
+    if bool(getattr(args, "disable_tqdm", False)):
+        try:
+            hf_logging.disable_progress_bar()
+        except Exception:
+            pass
+        try:
+            datasets.disable_progress_bars()
+        except Exception:
+            pass
 
     _ensure_dir(args.output_dir)
 
@@ -235,6 +257,19 @@ def main() -> None:
     for df in (train, val, test):
         df["label_mapped"] = df[lbl_col].astype(int).map(mp)
         df["labels"] = df["label_mapped"]
+
+    # 训练前做标签合法性校验：避免 GPU 端 CrossEntropy 因 label 越界触发非法内存访问
+    for name, df in (("train", train), ("val", val), ("test", test)):
+        if df["labels"].isna().any():
+            bad = df.loc[df["labels"].isna(), lbl_col].head(20).tolist()
+            raise ValueError(f"{name} contains unmapped labels. examples={bad}")
+        df["labels"] = df["labels"].astype(int)
+        mn = int(df["labels"].min()) if len(df) > 0 else 0
+        mx = int(df["labels"].max()) if len(df) > 0 else 0
+        if mn < 0 or mx >= len(mp):
+            raise ValueError(
+                f"{name} label out of range: min={mn}, max={mx}, num_labels={len(mp)}"
+            )
 
     # 转为 HF Datasets
     ds = DatasetDict(

@@ -77,6 +77,7 @@ import pandas as pd
 import torch
 
 use_gpu = bool(torch.cuda.is_available())
+disable_tqdm = True
 
 train_csv = "/content/Graduation_Project/data/processed/train_enhanced.csv"
 val_csv = "/content/Graduation_Project/data/processed/val_enhanced.csv"
@@ -127,6 +128,11 @@ cmd = [
     "--early_stopping_patience",
     "0",
 ]
+
+if disable_tqdm:
+    cmd += [
+        "--disable_tqdm",
+    ]
 
 if use_gpu:
     cmd += [
