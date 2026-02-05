@@ -276,7 +276,7 @@ def main() -> None:
             num_train_epochs=args.epochs,
             per_device_train_batch_size=args.train_bs,
             per_device_eval_batch_size=args.eval_bs,
-            evaluation_strategy="steps",
+            eval_strategy="steps",  # 新版本使用 eval_strategy 而非 evaluation_strategy
             save_strategy="steps",
             eval_steps=args.eval_steps,
             save_steps=args.save_steps,
@@ -292,37 +292,68 @@ def main() -> None:
             gradient_accumulation_steps=args.gradient_accumulation_steps,
         )
     except TypeError:
-        training_args = TrainingArguments(
-            output_dir=args.output_dir,
-            learning_rate=args.lr,
-            num_train_epochs=args.epochs,
-            per_device_train_batch_size=args.train_bs,
-            per_device_eval_batch_size=args.eval_bs,
-            seed=args.seed,
-        )
-        # 确保早停所需的关键字段在旧版 transformers 下也存在
+        # 如果 eval_strategy 不支持，尝试旧版本的 evaluation_strategy
         try:
-            setattr(training_args, "metric_for_best_model", "macro_f1")
-            setattr(training_args, "greater_is_better", True)
-            setattr(training_args, "load_best_model_at_end", True)
-            setattr(training_args, "evaluation_strategy", "steps")
-            setattr(training_args, "save_strategy", "steps")
-            setattr(training_args, "eval_steps", args.eval_steps)
-            setattr(training_args, "save_steps", args.save_steps)
-            setattr(training_args, "logging_steps", 50)
-            setattr(training_args, "report_to", [])
-        except Exception:
-            pass
+            training_args = TrainingArguments(
+                output_dir=args.output_dir,
+                learning_rate=args.lr,
+                num_train_epochs=args.epochs,
+                per_device_train_batch_size=args.train_bs,
+                per_device_eval_batch_size=args.eval_bs,
+                evaluation_strategy="steps",
+                save_strategy="steps",
+                eval_steps=args.eval_steps,
+                save_steps=args.save_steps,
+                load_best_model_at_end=True,
+                metric_for_best_model="macro_f1",
+                greater_is_better=True,
+                save_total_limit=2,
+                logging_steps=50,
+                report_to=[],
+                seed=args.seed,
+                warmup_ratio=args.warmup_ratio,
+                weight_decay=args.weight_decay,
+                gradient_accumulation_steps=args.gradient_accumulation_steps,
+            )
+        except TypeError:
+            # 最小参数集
+            training_args = TrainingArguments(
+                output_dir=args.output_dir,
+                learning_rate=args.lr,
+                num_train_epochs=args.epochs,
+                per_device_train_batch_size=args.train_bs,
+                per_device_eval_batch_size=args.eval_bs,
+                seed=args.seed,
+            )
+            # 手动设置必要字段
+            try:
+                setattr(training_args, "metric_for_best_model", "macro_f1")
+                setattr(training_args, "greater_is_better", True)
+                setattr(training_args, "load_best_model_at_end", True)
+                setattr(training_args, "eval_strategy", "steps")
+                setattr(training_args, "evaluation_strategy", "steps")
+                setattr(training_args, "save_strategy", "steps")
+                setattr(training_args, "eval_steps", args.eval_steps)
+                setattr(training_args, "save_steps", args.save_steps)
+                setattr(training_args, "logging_steps", 50)
+                setattr(training_args, "report_to", [])
+            except Exception:
+                pass
 
     # 提前停止回调（若可用）
     callbacks = []
     try:
-        # 仅当具备 metric_for_best_model 且启用了 load_best_model_at_end 时再启用早停，避免断言报错
+        # 仅当具备 metric_for_best_model 且启用了 load_best_model_at_end 且有 evaluation_strategy 时再启用早停
+        has_eval_strategy = (
+            getattr(training_args, "evaluation_strategy", None) == "steps" or
+            getattr(training_args, "eval_strategy", None) == "steps"
+        )
         if (
             args.early_stopping_patience
             and args.early_stopping_patience > 0
             and getattr(training_args, "metric_for_best_model", None)
             and getattr(training_args, "load_best_model_at_end", False)
+            and has_eval_strategy
         ):
             callbacks.append(
                 EarlyStoppingCallback(early_stopping_patience=args.early_stopping_patience)
