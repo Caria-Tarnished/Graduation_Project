@@ -279,6 +279,7 @@ def main() -> None:
             args.model_name,
             num_labels=len(mp),
             ignore_mismatched_sizes=True,
+            use_safetensors=False,
         )
     except TypeError:
         # 兼容旧版 transformers 不支持 ignore_mismatched_sizes 的情况
