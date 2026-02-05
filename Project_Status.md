@@ -1,217 +1,254 @@
 # Project Status
 
-¸üĞÂÊ±¼ä£º2026-02-04
-¸ºÔğÈË£ºCaria-Tarnished
+æ›´æ–°æ—¶é—´ï¼š2026-02-04
+è´Ÿè´£äººï¼šCaria-Tarnished
 
 ---
 
-## 1) ¸ÅÀÀ
+## 1) æ¦‚è§ˆ
 
-- Ä¿±ê£º²Æ¾­¿ìÑ¶Çé¸Ğ·ÖÀà£¨´úÀí±ê×¢ÑéÖ¤£©+ ²Æ±¨ RAG£¨ºóĞøÀï³Ì±®£©+ Streamlit UI¡£
-- Ê±¼ä·¶Î§£º2024-01-01 ÖÁ 2026-01-21£¨Asia/Shanghai£©¡£
-- ±êµÄ³Ø£º000001.SH¡¢300750.SZ¡¢600036.SH¡¢XAUUSD=X¡¢NVDA¡£
-- Êı¾İ´æ´¢£ºSQLite£¨finance.db£©£¬ÏòÁ¿¿â£ºChroma£¨ºóĞø£©¡£
-- ĞÂÔö£¨·ÖÖÓ¼¶³å»÷·ÖÎö£©£º»ùÓÚ MT5 XAUUSD M1 + ½ğÊ®£¨flash/calendar£©£¬Í³Ò»ÖÁ finance_analysis.db£»¼Û¸ñ¸²¸Ç 2024-01-02 09:00 ÖÁ 2026-01-31 07:59£¨Asia/Shanghai£©¡£
+- ç›®æ ‡ï¼šè´¢ç»å¿«è®¯æƒ…æ„Ÿåˆ†ç±»ï¼ˆä»£ç†æ ‡æ³¨éªŒè¯ï¼‰+ è´¢æŠ¥ RAGï¼ˆåç»­é‡Œç¨‹ç¢‘ï¼‰+ Streamlit UIã€‚
+- æ—¶é—´èŒƒå›´ï¼š2024-01-01 è‡³ 2026-01-21ï¼ˆAsia/Shanghaiï¼‰ã€‚
+- æ ‡çš„æ± ï¼š000001.SHã€300750.SZã€600036.SHã€XAUUSD=Xã€NVDAã€‚
+- æ•°æ®å­˜å‚¨ï¼šSQLiteï¼ˆfinance.dbï¼‰ï¼Œå‘é‡åº“ï¼šChromaï¼ˆåç»­ï¼‰ã€‚
+- æ–°å¢ï¼ˆåˆ†é’Ÿçº§å†²å‡»åˆ†æï¼‰ï¼šåŸºäº MT5 XAUUSD M1 + é‡‘åï¼ˆflash/calendarï¼‰ï¼Œç»Ÿä¸€è‡³ finance_analysis.dbï¼›ä»·æ ¼è¦†ç›– 2024-01-02 09:00 è‡³ 2026-01-31 07:59ï¼ˆAsia/Shanghaiï¼‰ã€‚
 
-## 2) ÒÑÍê³É£¨Done£©
+## 2) å·²å®Œæˆï¼ˆDoneï¼‰
 
-- ¼Æ»®ÎÄµµ£º`PLAN.md`£¨Ä¿±ê¡¢¼Ü¹¹¡¢Àï³Ì±®¡¢ÑéÊÕ±ê×¼£©¡£
-- ÅäÖÃÓëÄ¿Â¼£º`configs/config.yaml`¡¢`.env.example`¡¢±ê×¼Ä¿Â¼Óë `.gitkeep`¡£
-- ÒÀÀµ£º`requirements.txt`¡£
-- Êı¾İ¿â³õÊ¼»¯£º`scripts/init_db.py`£¨prices/news/labels/reports/trading_calendar£©¡£
-- ĞĞÇé×¥È¡£º`scripts/fetch_prices.py`£¨A ¹ÉÖ¸Êı/¸ö¹É£ºTushare£»ÃÀ¹É/»Æ½ğ£ºyfinance£©¡£
-- ĞÂÎÅµ¼Èë£º`scripts/fetch_news.py`£¨CSV Èë¿âÓëÈ¥ÖØ£©¡£
-- ´úÀí±ê×¢£¨¡°ÈÕ¼¶´°¡±£©£º`scripts/label_events.py`£¨CSV »ò DB ¡ú labels£©¡£
-- ´úÂë·ç¸ñ£ºÒÑ½øĞĞÊ×´Î PEP8 ÕûÀí£¨³¤ĞĞ/¿ÕĞĞ£©¡£
-- ½ğÊ®ÅÀ³æ£¨µ±Ç°ÔÚÓÃ£©ÓëÈë¿â£º
-  - `scripts/crawlers/jin10_dynamic.py`£ºÈÕÀúÄ£Ê½ÒÑÎÈ¶¨¿ÉÓÃ£¬Ö§³Ö¡°Ö»¿´ÖØÒª¡±¿ª¹Ø¡¢DB Èë¿âÓë CSV ÔöÁ¿Ğ´Èë£»½Ó¿ÚÓë²Î¿¼½Å±¾±£³ÖÒ»ÖÂ£¨`--months/--start/--end/--output/--db/...`£©¡£
-  - `scripts/crawlers/jin10_flash_api.py`£º¿ìÑ¶ API Ä£Ê½£¨Ö§³Ö½Ó¿Ú·¢ÏÖ/¹ıÂË/CSV Á÷Ê½/SQLite Èë¿â£©¡£
-- SQLite ´æ´¢£º`scripts/crawlers/storage.py`£¨upsert¡¢URL/ÄÚÈİ¹şÏ£È¥ÖØ¡¢Ë÷Òı£©¡£
+- è®¡åˆ’æ–‡æ¡£ï¼š`PLAN.md`ï¼ˆç›®æ ‡ã€æ¶æ„ã€é‡Œç¨‹ç¢‘ã€éªŒæ”¶æ ‡å‡†ï¼‰ã€‚
+- é…ç½®ä¸ç›®å½•ï¼š`configs/config.yaml`ã€`.env.example`ã€æ ‡å‡†ç›®å½•ä¸ `.gitkeep`ã€‚
+- ä¾èµ–ï¼š`requirements.txt`ã€‚
+- æ•°æ®åº“åˆå§‹åŒ–ï¼š`scripts/init_db.py`ï¼ˆprices/news/labels/reports/trading_calendarï¼‰ã€‚
+- è¡Œæƒ…æŠ“å–ï¼š`scripts/fetch_prices.py`ï¼ˆA è‚¡æŒ‡æ•°/ä¸ªè‚¡ï¼šTushareï¼›ç¾è‚¡/é»„é‡‘ï¼šyfinanceï¼‰ã€‚
+- æ–°é—»å¯¼å…¥ï¼š`scripts/fetch_news.py`ï¼ˆCSV å…¥åº“ä¸å»é‡ï¼‰ã€‚
+- ä»£ç†æ ‡æ³¨ï¼ˆâ€œæ—¥çº§çª—â€ï¼‰ï¼š`scripts/label_events.py`ï¼ˆCSV æˆ– DB â†’ labelsï¼‰ã€‚
+- ä»£ç é£æ ¼ï¼šå·²è¿›è¡Œé¦–æ¬¡ PEP8 æ•´ç†ï¼ˆé•¿è¡Œ/ç©ºè¡Œï¼‰ã€‚
+- é‡‘åçˆ¬è™«ï¼ˆå½“å‰åœ¨ç”¨ï¼‰ä¸å…¥åº“ï¼š
+  - `scripts/crawlers/jin10_dynamic.py`ï¼šæ—¥å†æ¨¡å¼å·²ç¨³å®šå¯ç”¨ï¼Œæ”¯æŒâ€œåªçœ‹é‡è¦â€å¼€å…³ã€DB å…¥åº“ä¸ CSV å¢é‡å†™å…¥ï¼›æ¥å£ä¸å‚è€ƒè„šæœ¬ä¿æŒä¸€è‡´ï¼ˆ`--months/--start/--end/--output/--db/...`ï¼‰ã€‚
+  - `scripts/crawlers/jin10_flash_api.py`ï¼šå¿«è®¯ API æ¨¡å¼ï¼ˆæ”¯æŒæ¥å£å‘ç°/è¿‡æ»¤/CSV æµå¼/SQLite å…¥åº“ï¼‰ã€‚
+- SQLite å­˜å‚¨ï¼š`scripts/crawlers/storage.py`ï¼ˆupsertã€URL/å†…å®¹å“ˆå¸Œå»é‡ã€ç´¢å¼•ï¼‰ã€‚
 
-- ·ÖÖÓ¼¶³å»÷·ÖÎö£¨MT5 + ½ğÊ®£¬ÒÑÁªÍ¨£©
-  - MT5 ·ÖÖÓ¼Û×¥È¡£º`scripts/fetch_intraday_xauusd_mt5.py`£¨×Ô¶¯·ûºÅÑ¡Ôñ¡¢·ÖÆ¬×¥È¡¡¢Ê±Çø±ê×¼»¯¡¢UTF-8 CSV£©¡£
-  - ³å»÷¼ÆËãÓëÈë¿â£º`scripts/build_finance_analysis.py`£¨prices_m1 / events / event_impacts Èı±í£¬Ê±¼äË÷Òı¡¢asof ¶ÔÆë¡¢UPSERT£©¡£
-  - Êı¾İ¿â£º`finance_analysis.db`£¨prices_m1=736,304 ĞĞ£»¸²¸Ç 2024-01-02 09:00 ÖÁ 2026-01-31 07:59£¬Asia/Shanghai£©¡£
-  - ¸²¸ÇÂÊÑéÖ¤£¨×Ô 2026-01-27 Æğ£©£ºevents_total=1475¡¢events_with_impacts=1475¡¢coverage=100%£»ËÄ´°¿Ú¾ùÎª 1475£¨5/10/15/30 ·ÖÖÓ£©¡£
-  - µ¼³öÑµÁ·¼¯£º
-    - `data/processed/training_event_impacts_xauusd_2025Q4_2026Jan.csv`£¨35808¡Á27£©¡£
-    - È«Á¿£º`data/processed/training_event_impacts_xauusd_all.csv` Óë `.parquet`£¨104,728¡Á27£©¡£
-  - 30 ·ÖÖÓ´°¿Ú´ò±êÓëÇĞ·Ö£º
-    - `data/processed/train_30m_labeled.csv`¡¢`val_30m_labeled.csv`¡¢`test_30m_labeled.csv`¡£
-    - `data/processed/labeling_thresholds.json`£¨q_low=-0.0003825, q_high=0.0004687£»train=15071¡¢val=3122¡¢test=7989£©¡£
-    - ±ê×¢¹æÔò£¨30 ·ÖÖÓ´°¿Ú£©£º
-      - Ê±¼äÇĞ·Ö£º°´ `event_ts_local` ×öÊ±¼äÇĞ·Ö£¨train/val/test£©£¬±£Ö¤Í¬Ò»ÊÂ¼ş²»¿ç¼¯ºÏ£¬±ÜÃâĞ¹Â©¡£
-      - ÊÕÒæ¶¨Òå£º`ret = (price_future - price_event) / price_event`£»`price_event`/`price_future` ¾ùÓÉ·ÖÖÓ¼ÛÔÚ±±¾©Ê±¼ä¶ÔÆëµÃµ½£¨asof ¶ÔÆë£»´°¿Ú 30 ·ÖÖÓ£©¡£
-      - ãĞÖµ¹À¼Æ£º½öÔÚÑµÁ·¼¯ÉÏ¼ÆËã `ret` µÄ·ÖÎ»ãĞÖµ£¨Ä¬ÈÏ 30%/70%£©£¬µÃµ½ `q_low` Óë `q_high`£¬Ğ´Èë `labeling_thresholds.json`¡£
-      - ±êÇ©Ó³Éä£º`-1` Èô `ret <= q_low`£»`1` Èô `ret >= q_high`£»·ñÔò `0`¡£
-      - Ò»ÖÂĞÔ£ºÑéÖ¤/²âÊÔ¼¯ÑØÓÃÑµÁ·¼¯ãĞÖµ£¨¹Ì¶¨ãĞÖµ£©£¬±ÜÃâĞÅÏ¢Ğ¹Â©¡£
+- åˆ†é’Ÿçº§å†²å‡»åˆ†æï¼ˆMT5 + é‡‘åï¼Œå·²è”é€šï¼‰
+  - MT5 åˆ†é’Ÿä»·æŠ“å–ï¼š`scripts/fetch_intraday_xauusd_mt5.py`ï¼ˆè‡ªåŠ¨ç¬¦å·é€‰æ‹©ã€åˆ†ç‰‡æŠ“å–ã€æ—¶åŒºæ ‡å‡†åŒ–ã€UTF-8 CSVï¼‰ã€‚
+  - å†²å‡»è®¡ç®—ä¸å…¥åº“ï¼š`scripts/build_finance_analysis.py`ï¼ˆprices_m1 / events / event_impacts ä¸‰è¡¨ï¼Œæ—¶é—´ç´¢å¼•ã€asof å¯¹é½ã€UPSERTï¼‰ã€‚
+  - æ•°æ®åº“ï¼š`finance_analysis.db`ï¼ˆprices_m1=736,304 è¡Œï¼›è¦†ç›– 2024-01-02 09:00 è‡³ 2026-01-31 07:59ï¼ŒAsia/Shanghaiï¼‰ã€‚
+  - è¦†ç›–ç‡éªŒè¯ï¼ˆè‡ª 2026-01-27 èµ·ï¼‰ï¼ševents_total=1475ã€events_with_impacts=1475ã€coverage=100%ï¼›å››çª—å£å‡ä¸º 1475ï¼ˆ5/10/15/30 åˆ†é’Ÿï¼‰ã€‚
+  - å¯¼å‡ºè®­ç»ƒé›†ï¼š
+    - `data/processed/training_event_impacts_xauusd_2025Q4_2026Jan.csv`ï¼ˆ35808Ã—27ï¼‰ã€‚
+    - å…¨é‡ï¼š`data/processed/training_event_impacts_xauusd_all.csv` ä¸ `.parquet`ï¼ˆ104,728Ã—27ï¼‰ã€‚
+  - 30 åˆ†é’Ÿçª—å£æ‰“æ ‡ä¸åˆ‡åˆ†ï¼š
+    - `data/processed/train_30m_labeled.csv`ã€`val_30m_labeled.csv`ã€`test_30m_labeled.csv`ã€‚
+    - `data/processed/labeling_thresholds.json`ï¼ˆq_low=-0.0003825, q_high=0.0004687ï¼›train=15071ã€val=3122ã€test=7989ï¼‰ã€‚
+    - æ ‡æ³¨è§„åˆ™ï¼ˆ30 åˆ†é’Ÿçª—å£ï¼‰ï¼š
+      - æ—¶é—´åˆ‡åˆ†ï¼šæŒ‰ `event_ts_local` åšæ—¶é—´åˆ‡åˆ†ï¼ˆtrain/val/testï¼‰ï¼Œä¿è¯åŒä¸€äº‹ä»¶ä¸è·¨é›†åˆï¼Œé¿å…æ³„æ¼ã€‚
+      - æ”¶ç›Šå®šä¹‰ï¼š`ret = (price_future - price_event) / price_event`ï¼›`price_event`/`price_future` å‡ç”±åˆ†é’Ÿä»·åœ¨åŒ—äº¬æ—¶é—´å¯¹é½å¾—åˆ°ï¼ˆasof å¯¹é½ï¼›çª—å£ 30 åˆ†é’Ÿï¼‰ã€‚
+      - é˜ˆå€¼ä¼°è®¡ï¼šä»…åœ¨è®­ç»ƒé›†ä¸Šè®¡ç®— `ret` çš„åˆ†ä½é˜ˆå€¼ï¼ˆé»˜è®¤ 30%/70%ï¼‰ï¼Œå¾—åˆ° `q_low` ä¸ `q_high`ï¼Œå†™å…¥ `labeling_thresholds.json`ã€‚
+      - æ ‡ç­¾æ˜ å°„ï¼š`-1` è‹¥ `ret <= q_low`ï¼›`1` è‹¥ `ret >= q_high`ï¼›å¦åˆ™ `0`ã€‚
+      - ä¸€è‡´æ€§ï¼šéªŒè¯/æµ‹è¯•é›†æ²¿ç”¨è®­ç»ƒé›†é˜ˆå€¼ï¼ˆå›ºå®šé˜ˆå€¼ï¼‰ï¼Œé¿å…ä¿¡æ¯æ³„æ¼ã€‚
 
-## 3) ½øĞĞÖĞ / ÏÂÒ»²½£¨Next£©
+## 3) è¿›è¡Œä¸­ / ä¸‹ä¸€æ­¥ï¼ˆNextï¼‰
 
-- ½ğÊ®£¨ÓÅÏÈ£©£º
-  - [X] Ê¹ÓÃ `jin10_flash_api.py`£¨API Ä£Ê½£¬Ö§³Ö `--db` Èë¿â£©×÷Îª¿ìÑ¶Ö÷×¥È¡£»Î´Öª½Ó¿ÚÊ±Ê¹ÓÃ¡°½Ó¿Ú·¢ÏÖ¡±¡£
-  - [X] Ê¹ÓÃ `jin10_dynamic.py` ÈÕÀúÄ£Ê½ÖğÈÕ×¥È¡£¨Ö±´ï URL£¬Ö§³Ö¡°Ö»¿´ÖØÒª¡±£©£¬¿ÉÖ±½ÓÈë¿â `finance.db` ²¢Í¬²½Ğ´ CSV£¨ÒÑÍê³É³õ°æÁªµ÷£©¡£
-  - [X] ÈçĞè¸ü¶àÀ´Ô´£¬ºóĞøÔÙÒıÈë£¨ÏÖ½×¶Î¾Û½¹½ğÊ®£©¡£
-- ¶«·½²Æ¸»£º
-  - [ ] Ôİ»º£¨ÇåÀí½×¶Î²»±£ÁôÏà¹ØÅÀ³æÓë½Å±¾£©¡£
-- Yahoo Finance£º
-  - [ ] Ôİ»º¡£
-- ´úÀí±ê×¢Óë»ùÏß£º
-  - [ ] Ê¹ÓÃÈë¿âĞÂÎÅÔËĞĞ `scripts/label_events.py` Éú³É labels£¨´°¿Ú 1/3/5 Ìì¡¢`neutral_band=¡À0.3%`£©¡£
-  - [ ] ÑµÁ· `train_baseline.py` ²¢²ú³ö±¨¸æÓëÔ¤²âÃ÷Ï¸£¨reports/£©¡£
-- ½Å±¾ÕûÀí£º
+- **Phase 1 ä¼˜åŒ–è®­ç»ƒï¼ˆè¿›è¡Œä¸­ï¼‰**
+  - [X] æ•°æ®å¢å¼ºï¼šæ·»åŠ å¸‚åœºä¸Šä¸‹æ–‡å‰ç¼€ï¼ˆ`build_enhanced_dataset.py`ï¼‰ã€‚
+  - [X] ä¿®å¤ Colab å…¼å®¹æ€§ï¼šEarlyStoppingCallback ä¸ compute_loss å‚æ•°ã€‚
+  - [ ] **Colab è®­ç»ƒæ‰§è¡Œ**ï¼šè¿è¡Œ Phase 1 è®­ç»ƒï¼ˆå¢å¼ºæ•°æ® + è‡ªåŠ¨ç±»æƒé‡ï¼‰ã€‚
+  - [ ] **ç»“æœè¯„ä¼°**ï¼šå¯¹æ¯”åŸºçº¿ï¼ˆmacro_f1=0.163ï¼‰ï¼Œç›®æ ‡ >0.35ï¼›æ£€æŸ¥ç¨€æœ‰ç±»åˆ«ï¼ˆ3/4/5ï¼‰F1 æ˜¯å¦ >0ã€‚
+  - [ ] å¦‚æœæ•ˆæœä¸ä½³ï¼šè€ƒè™‘ Phase 2ï¼ˆåˆæˆæ•°æ®ç”Ÿæˆã€æ‰‹åŠ¨ç±»æƒé‡è°ƒæ•´ï¼‰ã€‚
 
-- [X] ·ÇÅÀ³æ½Å±¾£¨`scripts/fetch_news.py`¡¢`scripts/fetch_prices.py`¡¢`scripts/ingest_listing_csv.py`¡¢`scripts/label_events.py`¡¢`scripts/uplift_articles_to_news.py`£©Èç½üÆÚ²»ÓÃ£¬¿É¹éµµÖÁ `archive/unused_scripts_YYYYMMDD/`¡£
+- é‡‘åï¼ˆä¼˜å…ˆï¼‰ï¼š
+  - [X] ä½¿ç”¨ `jin10_flash_api.py`ï¼ˆAPI æ¨¡å¼ï¼Œæ”¯æŒ `--db` å…¥åº“ï¼‰ä½œä¸ºå¿«è®¯ä¸»æŠ“å–ï¼›æœªçŸ¥æ¥å£æ—¶ä½¿ç”¨â€œæ¥å£å‘ç°â€ã€‚
+  - [X] ä½¿ç”¨ `jin10_dynamic.py` æ—¥å†æ¨¡å¼é€æ—¥æŠ“å–ï¼ˆç›´è¾¾ URLï¼Œæ”¯æŒâ€œåªçœ‹é‡è¦â€ï¼‰ï¼Œå¯ç›´æ¥å…¥åº“ `finance.db` å¹¶åŒæ­¥å†™ CSVï¼ˆå·²å®Œæˆåˆç‰ˆè”è°ƒï¼‰ã€‚
+  - [X] å¦‚éœ€æ›´å¤šæ¥æºï¼Œåç»­å†å¼•å…¥ï¼ˆç°é˜¶æ®µèšç„¦é‡‘åï¼‰ã€‚
+- ä¸œæ–¹è´¢å¯Œï¼š
+  - [ ] æš‚ç¼“ï¼ˆæ¸…ç†é˜¶æ®µä¸ä¿ç•™ç›¸å…³çˆ¬è™«ä¸è„šæœ¬ï¼‰ã€‚
+- Yahoo Financeï¼š
+  - [ ] æš‚ç¼“ã€‚
+- ä»£ç†æ ‡æ³¨ä¸åŸºçº¿ï¼š
+  - [ ] ä½¿ç”¨å…¥åº“æ–°é—»è¿è¡Œ `scripts/label_events.py` ç”Ÿæˆ labelsï¼ˆçª—å£ 1/3/5 å¤©ã€`neutral_band=Â±0.3%`ï¼‰ã€‚
+  - [ ] è®­ç»ƒ `train_baseline.py` å¹¶äº§å‡ºæŠ¥å‘Šä¸é¢„æµ‹æ˜ç»†ï¼ˆreports/ï¼‰ã€‚
+- è„šæœ¬æ•´ç†ï¼š
 
-- ·ÖÖÓ¼¶³å»÷½¨Ä££¨ĞÂÔö£©
-  - [ ] ÎÄ±¾ÇåÏ´ÓëÌØÕ÷¹¤³Ì½Å±¾»¯£¨±£ÁôÇ°×ºÌØÕ÷£¬Èç `[SRC=]`/`[STAR=]`/`[IMP=]`/`[CTRY=]`£¬ÕıÔòÈ¥Ôë£©¡£
-  - [X] ¿ìËÙ»ùÏß£ºTF-IDF + LinearSVC£¬Êä³öÖ¸±êÓëÔ¤²âÃ÷Ï¸£¨Íê³É¶à×é¶Ô±È£©¡£
-    - ÊµÑé×éºÏÓëÖ¸±ê£¨macro_f1£¬val/test£©£º
-      - Ä¬ÈÏ£¨char 2-4£¬º¬Ç°×º£¬Î´¼ÓÈ¨£©£º0.3659 / 0.3458¡£
-      - char 1-3 + balanced£º0.3667 / 0.3376¡£
-      - char 1-3 + balanced + C=2.0£º0.3565 / 0.3394¡£
-      - char 2-4 + balanced£º0.3707 / 0.3422¡£
-      - ÎŞÇ°×º£º0.3666 / 0.3378¡£
-    - ÍÆ¼ö»ùÏß£ºchar 2-4£¬±£ÁôÇ°×º£¬²»¼ÓÈ¨£¨²âÊÔ¼¯×îÓÅ£©¡£
-    - ÔöÇ¿£ºĞÂÔö `--sublinear_tf/--norm/--dual` ²ÎÊı£¬±ãÓÚÕıÔò»¯ÓëÊÊÅäÑù±¾-ÌØÕ÷Î¬¶È¹ØÏµ¡£
-  - [ ] BERT Î¢µ÷£¨ÖĞÎÄ RoBERTa-wwm-ext£¬Ê±¼äÇĞ·Ö²»Ğ¹Â©£©£¬±£´æ×îÓÅ checkpoint ÓëÍÆÀí½Å±¾¡£
-  - [ ] ¶à´°¿ÚÑù±¾µ¼³ö£¨5/10/15/30 ×÷ÎªÑù±¾£¬ÊÂ¼ş¡Á4 ĞĞ£©£¬Í³Ò»±êÇ©»ò¶àÈÎÎñÉèÖÃ¡£
-  - [ ] ãĞÖµÓë±êÇ©²ßÂÔµ÷²Î£¨Èç 25/75 »ò¹Ì¶¨ãĞÖµ£©£¬²¢¹Ì»¯ÖÁ JSON¡£
+- [X] éçˆ¬è™«è„šæœ¬ï¼ˆ`scripts/fetch_news.py`ã€`scripts/fetch_prices.py`ã€`scripts/ingest_listing_csv.py`ã€`scripts/label_events.py`ã€`scripts/uplift_articles_to_news.py`ï¼‰å¦‚è¿‘æœŸä¸ç”¨ï¼Œå¯å½’æ¡£è‡³ `archive/unused_scripts_YYYYMMDD/`ã€‚
 
-  - [X] ¶àÎ¬¸´ºÏ±êÇ©Êı¾İ¼¯£¨15 ·ÖÖÓ»ù´¡ + Ç° 120 ·ÖÖÓÇ÷ÊÆ¶ÔÕÕ£©
-    - Éú³É½Å±¾£º`scripts/modeling/prepare_multilabel_dataset.py`
-    - ±êÇ©ÌåÏµ£º
-      - »ù´¡·½Ïò£¨label_base£©£º»ùÓÚ 15 ·ÖÖÓÊÕÒæ `ret_post` µÄÑµÁ·¼¯·ÖÎ»ãĞÖµ£¬Ó³ÉäÎª `-1/0/1`£¨bearish/neutral/bullish£¬¹Ì¶¨ãĞÖµ±ÜÃâĞ¹Â©£©¡£
-      - Ô¤ÆÚ¶ÒÏÖ£¨label_priced_in£©£ºÈôÇ° 120 ·ÖÖÓ´æÔÚÏÔÖøµ¥±ß£¨|pre_ret|¡İãĞ£©£¬ÇÒ¡°»ù±¾Ãæ·½Ïò¡±£¨`actual-consensus`£©Óë·¢²¼ºó 15 ·ÖÖÓ·½ÏòÏà·´£¬Ôò±ê×¢£¬Çø·Ö `bullish_priced_in` Óë `bearish_priced_in`¡£
-      - ¹ÛÍû£¨label_watch£©£º·¢²¼ºó´°¿ÚÄÚ Range ÏÔÖø·Å´óµ« |ret_post| ¼«Ğ¡£¨¸ß²¨¶¯µÍ¾»±ä¶¯£©¡£
-      - ×éºÏ¶àÀà£¨label_multi_cls£©£ºÓÅÏÈ¼¶ ¹ÛÍû(5) > ¶ÒÏÖ(3/4) > »ù´¡·½Ïò(1/2) > ÖĞĞÔ(0)¡£
-    - Ö¸±êÊä³ö£º`ret_post/pre_ret/range_ratio/abs_ret_post/surprise` µÈ£»°üº¬Òì³£Öµ²Ã¼ôÓë·ÖÎ»ãĞÖµÂ³°ô»¯¡£
+- åˆ†é’Ÿçº§å†²å‡»å»ºæ¨¡ï¼ˆæ–°å¢ï¼‰
+  - [ ] æ–‡æœ¬æ¸…æ´—ä¸ç‰¹å¾å·¥ç¨‹è„šæœ¬åŒ–ï¼ˆä¿ç•™å‰ç¼€ç‰¹å¾ï¼Œå¦‚ `[SRC=]`/`[STAR=]`/`[IMP=]`/`[CTRY=]`ï¼Œæ­£åˆ™å»å™ªï¼‰ã€‚
+  - [X] å¿«é€ŸåŸºçº¿ï¼šTF-IDF + LinearSVCï¼Œè¾“å‡ºæŒ‡æ ‡ä¸é¢„æµ‹æ˜ç»†ï¼ˆå®Œæˆå¤šç»„å¯¹æ¯”ï¼‰ã€‚
+    - å®éªŒç»„åˆä¸æŒ‡æ ‡ï¼ˆmacro_f1ï¼Œval/testï¼‰ï¼š
+      - é»˜è®¤ï¼ˆchar 2-4ï¼Œå«å‰ç¼€ï¼ŒæœªåŠ æƒï¼‰ï¼š0.3659 / 0.3458ã€‚
+      - char 1-3 + balancedï¼š0.3667 / 0.3376ã€‚
+      - char 1-3 + balanced + C=2.0ï¼š0.3565 / 0.3394ã€‚
+      - char 2-4 + balancedï¼š0.3707 / 0.3422ã€‚
+      - æ— å‰ç¼€ï¼š0.3666 / 0.3378ã€‚
+    - æ¨èåŸºçº¿ï¼šchar 2-4ï¼Œä¿ç•™å‰ç¼€ï¼Œä¸åŠ æƒï¼ˆæµ‹è¯•é›†æœ€ä¼˜ï¼‰ã€‚
+    - å¢å¼ºï¼šæ–°å¢ `--sublinear_tf/--norm/--dual` å‚æ•°ï¼Œä¾¿äºæ­£åˆ™åŒ–ä¸é€‚é…æ ·æœ¬-ç‰¹å¾ç»´åº¦å…³ç³»ã€‚
+  - [ ] BERT å¾®è°ƒï¼ˆä¸­æ–‡ RoBERTa-wwm-extï¼Œæ—¶é—´åˆ‡åˆ†ä¸æ³„æ¼ï¼‰ï¼Œä¿å­˜æœ€ä¼˜ checkpoint ä¸æ¨ç†è„šæœ¬ã€‚
+  - [ ] å¤šçª—å£æ ·æœ¬å¯¼å‡ºï¼ˆ5/10/15/30 ä½œä¸ºæ ·æœ¬ï¼Œäº‹ä»¶Ã—4 è¡Œï¼‰ï¼Œç»Ÿä¸€æ ‡ç­¾æˆ–å¤šä»»åŠ¡è®¾ç½®ã€‚
+  - [ ] é˜ˆå€¼ä¸æ ‡ç­¾ç­–ç•¥è°ƒå‚ï¼ˆå¦‚ 25/75 æˆ–å›ºå®šé˜ˆå€¼ï¼‰ï¼Œå¹¶å›ºåŒ–è‡³ JSONã€‚
 
-- Êı¾İ QA Óë¹éµµ
-  - [X] ĞÂÔö½Å±¾£º`scripts/qa/validate_datasets.py`£¬Êä³ö `data/processed/qa_dataset_report.json`¡£
-  - [ ] ÔËĞĞ QA£ºÈ·ÈÏ¶àÀàÊı¾İ¼¯Ê±¼ä¿ç¶È£¨ÆÚÍûÔ¼ 2024-01-01 ÖÁ 2026-02-01£©¡¢ÊÂ¼ş²»¿ç¼¯ºÏ£¨any_overlap=false£©¡¢`event_id` È¥ÖØÎŞÒì³£¡¢±êÇ©·Ö²¼ºÏÀí£¬²¢Ğ£Ñé DB µÄ `events/event_impacts/prices_m1` ¸²¸Ç·¶Î§¡£
-  - [ ] »ùÓÚ±¨¸æµÄ `archive_suggestions` ÖÆ¶¨¹éµµÇåµ¥£¨¿ÉÇ¨ÒÆÖÁ `archive/` »ò Git LFS/Release£©¡£
+  - [X] å¤šç»´å¤åˆæ ‡ç­¾æ•°æ®é›†ï¼ˆ15 åˆ†é’ŸåŸºç¡€ + å‰ 120 åˆ†é’Ÿè¶‹åŠ¿å¯¹ç…§ï¼‰
+    - ç”Ÿæˆè„šæœ¬ï¼š`scripts/modeling/prepare_multilabel_dataset.py`
+    - æ ‡ç­¾ä½“ç³»ï¼š
+      - åŸºç¡€æ–¹å‘ï¼ˆlabel_baseï¼‰ï¼šåŸºäº 15 åˆ†é’Ÿæ”¶ç›Š `ret_post` çš„è®­ç»ƒé›†åˆ†ä½é˜ˆå€¼ï¼Œæ˜ å°„ä¸º `-1/0/1`ï¼ˆbearish/neutral/bullishï¼Œå›ºå®šé˜ˆå€¼é¿å…æ³„æ¼ï¼‰ã€‚
+      - é¢„æœŸå…‘ç°ï¼ˆlabel_priced_inï¼‰ï¼šè‹¥å‰ 120 åˆ†é’Ÿå­˜åœ¨æ˜¾è‘—å•è¾¹ï¼ˆ|pre_ret|â‰¥é˜ˆï¼‰ï¼Œä¸”â€œåŸºæœ¬é¢æ–¹å‘â€ï¼ˆ`actual-consensus`ï¼‰ä¸å‘å¸ƒå 15 åˆ†é’Ÿæ–¹å‘ç›¸åï¼Œåˆ™æ ‡æ³¨ï¼ŒåŒºåˆ† `bullish_priced_in` ä¸ `bearish_priced_in`ã€‚
+      - è§‚æœ›ï¼ˆlabel_watchï¼‰ï¼šå‘å¸ƒåçª—å£å†… Range æ˜¾è‘—æ”¾å¤§ä½† |ret_post| æå°ï¼ˆé«˜æ³¢åŠ¨ä½å‡€å˜åŠ¨ï¼‰ã€‚
+      - ç»„åˆå¤šç±»ï¼ˆlabel_multi_clsï¼‰ï¼šä¼˜å…ˆçº§ è§‚æœ›(5) > å…‘ç°(3/4) > åŸºç¡€æ–¹å‘(1/2) > ä¸­æ€§(0)ã€‚
+    - æŒ‡æ ‡è¾“å‡ºï¼š`ret_post/pre_ret/range_ratio/abs_ret_post/surprise` ç­‰ï¼›åŒ…å«å¼‚å¸¸å€¼è£å‰ªä¸åˆ†ä½é˜ˆå€¼é²æ£’åŒ–ã€‚
 
-- Êı¾İÀ©Õ¹ÓëĞ£Ñé
-  - [ ] ÈçĞè£º²¹ÆëÆäÓàÊ±¼ä¶Î»òÆäËû MT5 ·ûºÅ£¨Èç XAUUSD.i¡¢GOLD£©²¢¸´¼ì¸²¸ÇÂÊ¡£
-  - [ ] ½»Ò×Ê±¶Î/ÏÄÁîÊ±Ãô¸ĞĞÔ¼ì²éÓëËµÃ÷¡£
+- æ•°æ® QA ä¸å½’æ¡£
+  - [X] æ–°å¢è„šæœ¬ï¼š`scripts/qa/validate_datasets.py`ï¼Œè¾“å‡º `data/processed/qa_dataset_report.json`ã€‚
+  - [ ] è¿è¡Œ QAï¼šç¡®è®¤å¤šç±»æ•°æ®é›†æ—¶é—´è·¨åº¦ï¼ˆæœŸæœ›çº¦ 2024-01-01 è‡³ 2026-02-01ï¼‰ã€äº‹ä»¶ä¸è·¨é›†åˆï¼ˆany_overlap=falseï¼‰ã€`event_id` å»é‡æ— å¼‚å¸¸ã€æ ‡ç­¾åˆ†å¸ƒåˆç†ï¼Œå¹¶æ ¡éªŒ DB çš„ `events/event_impacts/prices_m1` è¦†ç›–èŒƒå›´ã€‚
+  - [ ] åŸºäºæŠ¥å‘Šçš„ `archive_suggestions` åˆ¶å®šå½’æ¡£æ¸…å•ï¼ˆå¯è¿ç§»è‡³ `archive/` æˆ– Git LFS/Releaseï¼‰ã€‚
 
-- ½»¸¶ÓëÎÄµµ
-  - [ ] ÑµÁ·¼¯×Ö¶Î×ÖµäÓë´¦ÀíÁ÷³ÌÎÄµµ¡£
-  - [ ] ÑµÁ·/ÑéÖ¤/²âÊÔ¼¯Í³¼Æ±¨¸æÓë¿ÉÊÓ»¯¡£
+- æ•°æ®æ‰©å±•ä¸æ ¡éªŒ
+  - [ ] å¦‚éœ€ï¼šè¡¥é½å…¶ä½™æ—¶é—´æ®µæˆ–å…¶ä»– MT5 ç¬¦å·ï¼ˆå¦‚ XAUUSD.iã€GOLDï¼‰å¹¶å¤æ£€è¦†ç›–ç‡ã€‚
+  - [ ] äº¤æ˜“æ—¶æ®µ/å¤ä»¤æ—¶æ•æ„Ÿæ€§æ£€æŸ¥ä¸è¯´æ˜ã€‚
 
-## 4) ±¸Íü / ·çÏÕ£¨Memos / Risks£©
+- äº¤ä»˜ä¸æ–‡æ¡£
+  - [ ] è®­ç»ƒé›†å­—æ®µå­—å…¸ä¸å¤„ç†æµç¨‹æ–‡æ¡£ã€‚
+  - [ ] è®­ç»ƒ/éªŒè¯/æµ‹è¯•é›†ç»Ÿè®¡æŠ¥å‘Šä¸å¯è§†åŒ–ã€‚
 
-- µÇÂ¼Óë·´ÅÀ£º²¿·ÖÕ¾µãĞèµÇÂ¼£¬½¨ÒéÓÃ `--user-data-dir` »ò `--storage` ³Ö¾Ã»¯µÇÂ¼Ì¬¡£
-- DOM ±ä¸ü£º¶¯Ì¬Õ¾µã½á¹¹±ä»¯Æµ·±£¬ĞèÍ¨¹ı `--debug-dir` ·´À¡ HTML ÒÔ¿ìËÙÊÊÅä¡£
-- ÔËĞĞÎÈ¶¨ĞÔ£ºÇëÎğÊÖ¶¯¹Ø±Õä¯ÀÀÆ÷£»³¤Ê±ÔËĞĞ½¨ÒéÎŞÍ·²¢¿ØÖÆ `--max-loads`¡¢`--delay`¡£
-- ËÙÂÊÓë·â½û£º±ØÒªÊ±Ìí¼ÓËæ»úÑÓ³Ù/´úÀí³Ø£»×ğÖØ robots.txt¡£
-- Ê±ÇøÓë½»Ò×ÈÕ£ºĞÂÎÅ¶ÔÆëµ½ÏÂÒ»¿ªÅÌÈÕ£¬½Ú¼ÙÈÕĞè×¢Òâ£¨¿ÉÀ©Õ¹½»Ò×ÈÕÀú£©¡£
-- Êı¾İÖÊÁ¿£º¿ìÑ¶Ò³²¿·ÖÌõÄ¿ÎŞÃ÷È·Ê±¼ä´Á£¬¿ÉÓÃ `--allow-undated` Ôİ±£Áô£¬ÊÂºóÈË¹¤²¹Æë¡£
-- ºóĞøÈÎÎñ£¨×¥È¡ÓëÈë¿â¹æ·¶£©£º
+## 4) å¤‡å¿˜ / é£é™©ï¼ˆMemos / Risksï¼‰
 
-  - [X] ÈÕÀúÅÀ³æĞ§¹ûÑéÖ¤£º¶ÔÕÕÍøÒ³¿É¼ûÏîÓë½âÎö½á¹û£¬³éÑùºË¶ÔÊ±¼ä/±êÌâ£»±ØÒªÊ±²¹³äÑ¡ÔñÆ÷»ØÍË²ßÂÔÓëĞÇ¼¶Ê¶±ğÂ³°ôĞÔ¡£
-  - [ ] Èë¿â½á¹¹ºË¶Ô£ºÑéÖ¤Á½Ìõ¹ÜÏßÈë¿â×Ö¶ÎÒ»ÖÂĞÔ£¨site/source/title/content/published_at/url/extra_json£©£¬Í³Ò» `extra_json` ¼üÃû£¨Èç date_text/hot_levels µÈ£©¡£
-  - [ ] ¹æ·¶»¯Óë¶à±í¶ÔÆë£ºÈçÓĞ±ØÒª£¬µ÷Õû `articles` ±í»òĞÂÔö¹æ·¶»¯±í£¨Èç indicators/events£©£¬Ã÷È·Ö÷¼ü£¨ÄÚÈİ/URL ¹şÏ££©ÓëÍâ¼ü£¨½»Ò×ÈÕ/±êµÄ£©£¬±£Ö¤¡°¿ìÑ¶/ÈÕÀú/ĞĞÇé¡±¶à±í¶ÔÆëÂß¼­¡£
-  - [ ] ²âÊÔÓëÑùÀı£ºÎªÈÕÀú½âÎöÓë API ½âÎö×¼±¸×îĞ¡ÑùÀı£¨Ò³Ãæ¿ìÕÕ/½Ó¿Ú JSON Æ¬¶Î£©ºÍ¶ÏÑÔ£¬È·±£Éı¼¶ºó½âÎö/Èë¿â²»»ØÍË¡£
+- ç™»å½•ä¸åçˆ¬ï¼šéƒ¨åˆ†ç«™ç‚¹éœ€ç™»å½•ï¼Œå»ºè®®ç”¨ `--user-data-dir` æˆ– `--storage` æŒä¹…åŒ–ç™»å½•æ€ã€‚
+- DOM å˜æ›´ï¼šåŠ¨æ€ç«™ç‚¹ç»“æ„å˜åŒ–é¢‘ç¹ï¼Œéœ€é€šè¿‡ `--debug-dir` åé¦ˆ HTML ä»¥å¿«é€Ÿé€‚é…ã€‚
+- è¿è¡Œç¨³å®šæ€§ï¼šè¯·å‹¿æ‰‹åŠ¨å…³é—­æµè§ˆå™¨ï¼›é•¿æ—¶è¿è¡Œå»ºè®®æ— å¤´å¹¶æ§åˆ¶ `--max-loads`ã€`--delay`ã€‚
+- é€Ÿç‡ä¸å°ç¦ï¼šå¿…è¦æ—¶æ·»åŠ éšæœºå»¶è¿Ÿ/ä»£ç†æ± ï¼›å°Šé‡ robots.txtã€‚
+- æ—¶åŒºä¸äº¤æ˜“æ—¥ï¼šæ–°é—»å¯¹é½åˆ°ä¸‹ä¸€å¼€ç›˜æ—¥ï¼ŒèŠ‚å‡æ—¥éœ€æ³¨æ„ï¼ˆå¯æ‰©å±•äº¤æ˜“æ—¥å†ï¼‰ã€‚
+- æ•°æ®è´¨é‡ï¼šå¿«è®¯é¡µéƒ¨åˆ†æ¡ç›®æ— æ˜ç¡®æ—¶é—´æˆ³ï¼Œå¯ç”¨ `--allow-undated` æš‚ä¿ç•™ï¼Œäº‹åäººå·¥è¡¥é½ã€‚
+- åç»­ä»»åŠ¡ï¼ˆæŠ“å–ä¸å…¥åº“è§„èŒƒï¼‰ï¼š
 
-## 5) ±ä¸ü¼ÇÂ¼£¨Changelog£©
+  - [X] æ—¥å†çˆ¬è™«æ•ˆæœéªŒè¯ï¼šå¯¹ç…§ç½‘é¡µå¯è§é¡¹ä¸è§£æç»“æœï¼ŒæŠ½æ ·æ ¸å¯¹æ—¶é—´/æ ‡é¢˜ï¼›å¿…è¦æ—¶è¡¥å……é€‰æ‹©å™¨å›é€€ç­–ç•¥ä¸æ˜Ÿçº§è¯†åˆ«é²æ£’æ€§ã€‚
+  - [ ] å…¥åº“ç»“æ„æ ¸å¯¹ï¼šéªŒè¯ä¸¤æ¡ç®¡çº¿å…¥åº“å­—æ®µä¸€è‡´æ€§ï¼ˆsite/source/title/content/published_at/url/extra_jsonï¼‰ï¼Œç»Ÿä¸€ `extra_json` é”®åï¼ˆå¦‚ date_text/hot_levels ç­‰ï¼‰ã€‚
+  - [ ] è§„èŒƒåŒ–ä¸å¤šè¡¨å¯¹é½ï¼šå¦‚æœ‰å¿…è¦ï¼Œè°ƒæ•´ `articles` è¡¨æˆ–æ–°å¢è§„èŒƒåŒ–è¡¨ï¼ˆå¦‚ indicators/eventsï¼‰ï¼Œæ˜ç¡®ä¸»é”®ï¼ˆå†…å®¹/URL å“ˆå¸Œï¼‰ä¸å¤–é”®ï¼ˆäº¤æ˜“æ—¥/æ ‡çš„ï¼‰ï¼Œä¿è¯â€œå¿«è®¯/æ—¥å†/è¡Œæƒ…â€å¤šè¡¨å¯¹é½é€»è¾‘ã€‚
+  - [ ] æµ‹è¯•ä¸æ ·ä¾‹ï¼šä¸ºæ—¥å†è§£æä¸ API è§£æå‡†å¤‡æœ€å°æ ·ä¾‹ï¼ˆé¡µé¢å¿«ç…§/æ¥å£ JSON ç‰‡æ®µï¼‰å’Œæ–­è¨€ï¼Œç¡®ä¿å‡çº§åè§£æ/å…¥åº“ä¸å›é€€ã€‚
+
+## 5) å˜æ›´è®°å½•ï¼ˆChangelogï¼‰
+
+- 2026-02-05
+  - **Phase 1 ä¼˜åŒ–å‡†å¤‡å®Œæˆ**ï¼šåŸºäº `Project_optimization_plan.md` çš„æ”¹è¿›æ–¹æ¡ˆï¼Œå®Œæˆè¾“å…¥å¢å¼ºä¸ç±»æƒé‡è®­ç»ƒå‡†å¤‡ã€‚
+  - æ–°å¢ï¼š`scripts/modeling/build_enhanced_dataset.py`
+    - åŠŸèƒ½ï¼šä¸ºè®­ç»ƒé›†æ·»åŠ å¸‚åœºä¸Šä¸‹æ–‡å‰ç¼€ï¼ˆåŸºäº `pre_ret` 120 åˆ†é’Ÿå›çœ‹ä¸ `range_ratio` æ³¢åŠ¨ç‡ï¼‰ã€‚
+    - å‰ç¼€ç±»å‹ï¼š`[Strong Rally]`ã€`[Sharp Decline]`ã€`[Sideways]`ã€`[Mild Rally]`ã€`[Weak Decline]`ã€`[High Volatility]`ã€‚
+    - å®è§‚æ•°æ®å‰ç¼€ï¼š`[Economic Data] [Actual X Exp Y] [Beat/Miss]`ï¼ˆåŸºäº `actual/consensus` å·®å¼‚ï¼‰ã€‚
+    - è¾“å‡ºï¼š`train/val/test_enhanced.csv`ï¼ˆæ–°å¢ `text_enhanced` åˆ—ï¼Œä¿ç•™åŸå§‹ `text`ï¼‰ã€‚
+    - å‰ç¼€åˆ†å¸ƒï¼ˆè®­ç»ƒé›†ï¼‰ï¼šSideways 65.8%ã€Mild Rally 13.5%ã€Weak Decline 11.1%ã€å…¶ä»– <10%ã€‚
+  - ä¿®å¤ï¼š`scripts/modeling/bert_finetune_cls.py` Colab å…¼å®¹æ€§é—®é¢˜
+    - **EarlyStoppingCallback æ¡ä»¶åˆ¤æ–­**ï¼šæ˜ç¡®æ£€æŸ¥ `patience > 0`ï¼Œç¡®ä¿ `--early_stopping_patience 0` æ—¶ä¸æ·»åŠ æ—©åœå›è°ƒï¼ˆé¿å… `AssertionError: EarlyStoppingCallback requires IntervalStrategy`ï¼‰ã€‚
+    - **compute_loss å‚æ•°å…¼å®¹**ï¼šå·²æ”¯æŒ `num_items_in_batch=None` å‚æ•°ï¼ˆå…¼å®¹æ–°ç‰ˆ transformersï¼‰ã€‚
+    - æ•°æ®è·¯å¾„ç»Ÿä¸€ï¼šColab è®­ç»ƒä½¿ç”¨ `/content/Graduation_Project/data/processed/`ï¼ˆä» GitHub æ‹‰å–ï¼‰ï¼Œè¾“å‡ºåˆ° `/content/drive/MyDrive/Graduation_Project/experiments/`ã€‚
+  - æ›´æ–°ï¼š`colab_phase1_cells.txt`
+    - å®Œæ•´çš„ Colab è®­ç»ƒå•å…ƒæ ¼ï¼ˆ5 ä¸ªå•å…ƒæ ¼ï¼‰ï¼šç¯å¢ƒå‡†å¤‡ â†’ æ•°æ®éªŒè¯/ç”Ÿæˆ â†’ é¢„è§ˆï¼ˆå¯é€‰ï¼‰â†’ è®­ç»ƒ â†’ ç»“æœåˆ†æã€‚
+    - è®­ç»ƒå‘½ä»¤ï¼šä½¿ç”¨ `label_multi_cls`ï¼ˆ6 ç±»ï¼‰ã€`--class_weight auto`ï¼ˆè‡ªåŠ¨ç±»æƒé‡ï¼‰ã€`--early_stopping_patience 0`ï¼ˆç¦ç”¨æ—©åœï¼‰ã€‚
+    - è¶…å‚æ•°ï¼š5 epochsã€lr=1e-5ã€max_length=384ã€train_bs=16ã€gradient_accumulation_steps=2ã€‚
+  - Colab è®­ç»ƒæµç¨‹ï¼ˆPhase 1ï¼‰
+    1. æœ¬åœ°æäº¤ä»£ç ï¼š`git push`ï¼ˆç¡®ä¿æœ€æ–°ä¿®å¤å·²æ¨é€ï¼‰ã€‚
+    2. Colab æ‹‰å–ä»£ç ï¼š`!cd /content/Graduation_Project && git pull`ã€‚
+    3. ç”Ÿæˆå¢å¼ºæ•°æ®ï¼šè¿è¡Œ `build_enhanced_dataset.py`ï¼ˆå¦‚æœ `*_enhanced.csv` ä¸å­˜åœ¨ï¼‰ã€‚
+    4. å¼€å§‹è®­ç»ƒï¼šè¿è¡Œ `bert_finetune_cls.py`ï¼ˆé¢„è®¡ 1-1.5 å°æ—¶ï¼ŒT4 GPUï¼‰ã€‚
+    5. æŸ¥çœ‹ç»“æœï¼š`metrics_test.json`ï¼ˆç›®æ ‡ï¼šmacro_f1 > 0.35ï¼ŒåŸºçº¿ 0.163ï¼‰ã€‚
+  - å¯å¿½ç•¥çš„è­¦å‘Š
+    - HuggingFace 403 Forbiddenï¼šè®¨è®ºåŠŸèƒ½è¢«ç¦ç”¨ï¼Œä¸å½±å“æ¨¡å‹åŠ è½½ã€‚
+    - UNEXPECTED/MISSING weightsï¼šåˆ†ç±»å¤´é‡æ–°åˆå§‹åŒ–ï¼Œæ­£å¸¸ç°è±¡ã€‚
+  - ç”¨æˆ·åå¥½è®°å½•
+    - **é¿å…åˆ›å»ºå†—ä½™ .md æ–‡æ¡£**ï¼Œä¿æŒä»“åº“æ•´æ´ã€‚
+    - **å°†æ›´æ–°è®°å½•å†™å…¥ `Project_Status.md`**ã€‚
+    - **å§‹ç»ˆä½¿ç”¨ä¸­æ–‡**å›ç­”ã€å†™æ–‡æ¡£å’Œæ³¨é‡Šã€‚
 
 - 2026-02-04
 
-  - ĞÂÔö£ºÑµÁ·¹¤×÷Á÷ÎÄµµ `Model_Training_Workflow.md`£¬²ÉÓÃ¡°±¾µØ¿ª·¢ + ÔÆ¶ËÑµÁ·£¨GitHub ´úÂë + Drive Êı¾İ£©¡±µÄ´æËã·ÖÀë·½°¸£»Ìá¹© Colab ×îĞ¡ Runner Óë±¾µØ½á¹ûÍ¬²½½Å±¾ËµÃ÷¡£
-  - ĞÂÔö£º`scripts/tools/sync_results.py`£¬½« Drive ÏÂ `experiments/...` Ğ¡ĞÍ²úÎï£¨`eval_results.json/metrics*.json/report*.txt/pred*.csv/best/config.json`£©Í¬²½ÖÁ±¾µØ `reports/...`£¬Ä¬ÈÏÌø¹ı´óÈ¨ÖØ£¬Ö§³Ö `--dry_run/--include/--exclude`¡£
-  - ÔöÇ¿£º`scripts/modeling/bert_finetune_cls.py`
-    - ¼æÈİ¾É°æ transformers£º`Trainer(tokenizer/callbacks)` ²ÎÊıµÄ `TypeError` ×Ô¶¯»ØÍË£»ĞŞ¸´ `EarlyStopping` ¶ÏÑÔ£¨ÎŞÂÛ°æ±¾¾ùÉèÖÃ `metric_for_best_model/greater_is_better/load_best_model_at_end`£¬²¢°´Ìõ¼ş×¢²á»Øµ÷£©¡£
-    - ĞÂÔö `eval_results.json` »ã×Ü£¨val/test Ö¸±êÓëÊä³öÄ¿Â¼£©£¬±ãÓÚ±¾µØ½Å±¾/Agent ¶ÁÈ¡¡£
-    - ÎÈ½¡ĞÔ£ºpandas¡úHF Dataset ÔÚ¾É°æ datasets ÏÂ×Ô¶¯»ØÍË£»ÏÔÊ½±£´æ tokenizer ÒÔ±ãÏÂÓÎ¼ÓÔØ¡£
-  - ¿ÉÑ¡£º`train_logic.py` ×÷ÎªÍ³Ò»Èë¿Ú£¨Colab ¿É `!python train_logic.py ...`£©¡£»ùÓÚµ±Ç°¹¤×÷Á÷£¬´ËÎÄ¼ş¡°¿ÉÑ¡¡±£¬¿É±£ÁôÒ²¿ÉÉ¾³ı£»Ö±½Óµ÷ÓÃµ×²ã½Å±¾Í¬Ñù¿ÉĞĞ¡£
+  - æ–°å¢ï¼šè®­ç»ƒå·¥ä½œæµæ–‡æ¡£ `Model_Training_Workflow.md`ï¼Œé‡‡ç”¨â€œæœ¬åœ°å¼€å‘ + äº‘ç«¯è®­ç»ƒï¼ˆGitHub ä»£ç  + Drive æ•°æ®ï¼‰â€çš„å­˜ç®—åˆ†ç¦»æ–¹æ¡ˆï¼›æä¾› Colab æœ€å° Runner ä¸æœ¬åœ°ç»“æœåŒæ­¥è„šæœ¬è¯´æ˜ã€‚
+  - æ–°å¢ï¼š`scripts/tools/sync_results.py`ï¼Œå°† Drive ä¸‹ `experiments/...` å°å‹äº§ç‰©ï¼ˆ`eval_results.json/metrics*.json/report*.txt/pred*.csv/best/config.json`ï¼‰åŒæ­¥è‡³æœ¬åœ° `reports/...`ï¼Œé»˜è®¤è·³è¿‡å¤§æƒé‡ï¼Œæ”¯æŒ `--dry_run/--include/--exclude`ã€‚
+  - å¢å¼ºï¼š`scripts/modeling/bert_finetune_cls.py`
+    - å…¼å®¹æ—§ç‰ˆ transformersï¼š`Trainer(tokenizer/callbacks)` å‚æ•°çš„ `TypeError` è‡ªåŠ¨å›é€€ï¼›ä¿®å¤ `EarlyStopping` æ–­è¨€ï¼ˆæ— è®ºç‰ˆæœ¬å‡è®¾ç½® `metric_for_best_model/greater_is_better/load_best_model_at_end`ï¼Œå¹¶æŒ‰æ¡ä»¶æ³¨å†Œå›è°ƒï¼‰ã€‚
+    - æ–°å¢ `eval_results.json` æ±‡æ€»ï¼ˆval/test æŒ‡æ ‡ä¸è¾“å‡ºç›®å½•ï¼‰ï¼Œä¾¿äºæœ¬åœ°è„šæœ¬/Agent è¯»å–ã€‚
+    - ç¨³å¥æ€§ï¼špandasâ†’HF Dataset åœ¨æ—§ç‰ˆ datasets ä¸‹è‡ªåŠ¨å›é€€ï¼›æ˜¾å¼ä¿å­˜ tokenizer ä»¥ä¾¿ä¸‹æ¸¸åŠ è½½ã€‚
+  - å¯é€‰ï¼š`train_logic.py` ä½œä¸ºç»Ÿä¸€å…¥å£ï¼ˆColab å¯ `!python train_logic.py ...`ï¼‰ã€‚åŸºäºå½“å‰å·¥ä½œæµï¼Œæ­¤æ–‡ä»¶â€œå¯é€‰â€ï¼Œå¯ä¿ç•™ä¹Ÿå¯åˆ é™¤ï¼›ç›´æ¥è°ƒç”¨åº•å±‚è„šæœ¬åŒæ ·å¯è¡Œã€‚
 
 - 2026-02-01
 
-  - ĞÂÔö£º·ÖÖÓ¼¶³å»÷·ÖÎö¹ÜÏß£¨MT5 + ½ğÊ®£©£º
-    - `scripts/fetch_intraday_xauusd_mt5.py`£¨·ÖÖÓ¼Û×¥È¡£©¡£
-    - `scripts/build_finance_analysis.py`£¨¹¹½¨ finance_analysis.db£¬¼ÆËãÊÂ¼ş³å»÷£©¡£
-  - »ØÌîÓëÖØ½¨£º×¥È¡ 2024¨C2025 M1 ²¢ÖØ½¨ `finance_analysis.db`£»`prices_m1` ¹² 736,304 ĞĞ£¨2024-01-02 09:00 ÖÁ 2026-01-31 07:59£©¡£
-  - ÑéÖ¤£º×Ô 2026-01-27 Æğ£¬ÊÂ¼ş¸²¸ÇÂÊ 100%£¬ËÄ´°¿ÚÍ³¼Æ¸÷ 1475¡£
-  - µ¼³ö£ºÈ«Á¿ÓëÇø¼äÑµÁ·¼¯£¨CSV/Parquet£©£¬²¢Éú³É 30 ·ÖÖÓ´°¿Ú´ò±êÓëÊ±¼äÇĞ·ÖÊı¾İ¼¯ÓëãĞÖµ JSON¡£
-  - »ùÏß£º`scripts/modeling/baseline_tfidf_svm.py` ÏÖÖ§³Ö `--class_weight/--C/--sublinear_tf/--norm/--dual`£»Íê³É char 1-3/2-4 Óë¼ÓÈ¨¶Ô±È£¬Ëø¶¨ÍÆ¼ö»ùÏßÅäÖÃ¡£
-  - ĞÂÔö£º`scripts/modeling/prepare_multilabel_dataset.py`£¬Êä³ö `train/val/test_multi_labeled.csv` Óë `labeling_thresholds_multilabel.json`£¬ÊµÏÖ¡°»ù´¡·½Ïò/Ô¤ÆÚ¶ÒÏÖ/½¨Òé¹ÛÍû¡±µÄ¸´ºÏ±êÇ©¡£
+  - æ–°å¢ï¼šåˆ†é’Ÿçº§å†²å‡»åˆ†æç®¡çº¿ï¼ˆMT5 + é‡‘åï¼‰ï¼š
+    - `scripts/fetch_intraday_xauusd_mt5.py`ï¼ˆåˆ†é’Ÿä»·æŠ“å–ï¼‰ã€‚
+    - `scripts/build_finance_analysis.py`ï¼ˆæ„å»º finance_analysis.dbï¼Œè®¡ç®—äº‹ä»¶å†²å‡»ï¼‰ã€‚
+  - å›å¡«ä¸é‡å»ºï¼šæŠ“å– 2024â€“2025 M1 å¹¶é‡å»º `finance_analysis.db`ï¼›`prices_m1` å…± 736,304 è¡Œï¼ˆ2024-01-02 09:00 è‡³ 2026-01-31 07:59ï¼‰ã€‚
+  - éªŒè¯ï¼šè‡ª 2026-01-27 èµ·ï¼Œäº‹ä»¶è¦†ç›–ç‡ 100%ï¼Œå››çª—å£ç»Ÿè®¡å„ 1475ã€‚
+  - å¯¼å‡ºï¼šå…¨é‡ä¸åŒºé—´è®­ç»ƒé›†ï¼ˆCSV/Parquetï¼‰ï¼Œå¹¶ç”Ÿæˆ 30 åˆ†é’Ÿçª—å£æ‰“æ ‡ä¸æ—¶é—´åˆ‡åˆ†æ•°æ®é›†ä¸é˜ˆå€¼ JSONã€‚
+  - åŸºçº¿ï¼š`scripts/modeling/baseline_tfidf_svm.py` ç°æ”¯æŒ `--class_weight/--C/--sublinear_tf/--norm/--dual`ï¼›å®Œæˆ char 1-3/2-4 ä¸åŠ æƒå¯¹æ¯”ï¼Œé”å®šæ¨èåŸºçº¿é…ç½®ã€‚
+  - æ–°å¢ï¼š`scripts/modeling/prepare_multilabel_dataset.py`ï¼Œè¾“å‡º `train/val/test_multi_labeled.csv` ä¸ `labeling_thresholds_multilabel.json`ï¼Œå®ç°â€œåŸºç¡€æ–¹å‘/é¢„æœŸå…‘ç°/å»ºè®®è§‚æœ›â€çš„å¤åˆæ ‡ç­¾ã€‚
 
 - 2026-01-29
 
-  - µ÷Õû£º`scripts/crawlers/jin10_dynamic.py` Óë²Î¿¼½Å±¾¶ÔÆë£¬²ÉÓÃÍ³Ò» CLI£º
-    - ĞÂÔö²ÎÊı£º`--months/--start/--end/--output/--db/--source/--headed/--debug/--important-only/--user-data-dir/--recheck-important-every/--use-slider/--setup-seconds`¡£
-    - Ö§³Ö±ßÅÀ±ßÈë¿â£¨`Article`£©£¬²¢°´²Î¿¼ÁĞË³ĞòÔöÁ¿Ğ´ CSV£»³¤ĞĞ£¨flake8 E501£©·ÖĞĞ´¦Àí¡£
-    - ±£ÁôÇëÇóÀ¹½Ø£¨½û image/media/font£©ÌáËÙ£¬È·±£¡°Ö»¿´ÖØÒª¡±¿ª¹ØÓëĞÇ¼¶¶µµ×¹ıÂË¡£
-  - ÎÄµµ£º¸üĞÂ±¾Ò³¡°½ğÊ®ÈÕÀú/Êı¾İ£¨ÖğÈÕ»ØÌî£©¡±Ê¹ÓÃÖ¸ÁîÎªĞÂ CLI¡£
+  - è°ƒæ•´ï¼š`scripts/crawlers/jin10_dynamic.py` ä¸å‚è€ƒè„šæœ¬å¯¹é½ï¼Œé‡‡ç”¨ç»Ÿä¸€ CLIï¼š
+    - æ–°å¢å‚æ•°ï¼š`--months/--start/--end/--output/--db/--source/--headed/--debug/--important-only/--user-data-dir/--recheck-important-every/--use-slider/--setup-seconds`ã€‚
+    - æ”¯æŒè¾¹çˆ¬è¾¹å…¥åº“ï¼ˆ`Article`ï¼‰ï¼Œå¹¶æŒ‰å‚è€ƒåˆ—é¡ºåºå¢é‡å†™ CSVï¼›é•¿è¡Œï¼ˆflake8 E501ï¼‰åˆ†è¡Œå¤„ç†ã€‚
+    - ä¿ç•™è¯·æ±‚æ‹¦æˆªï¼ˆç¦ image/media/fontï¼‰æé€Ÿï¼Œç¡®ä¿â€œåªçœ‹é‡è¦â€å¼€å…³ä¸æ˜Ÿçº§å…œåº•è¿‡æ»¤ã€‚
+  - æ–‡æ¡£ï¼šæ›´æ–°æœ¬é¡µâ€œé‡‘åæ—¥å†/æ•°æ®ï¼ˆé€æ—¥å›å¡«ï¼‰â€ä½¿ç”¨æŒ‡ä»¤ä¸ºæ–° CLIã€‚
 - 2026-01-27
 
-  - ĞÂÔö£º`scripts/crawlers/jin10_flash_api.py`£¨¿ìÑ¶ API ÅÀ³æ£¬Ö§³Ö½Ó¿Ú·¢ÏÖ¡¢É¸Ñ¡Óë CSV Á÷Ê½Ğ´Èë¡¢SQLite Èë¿â `--db`£©¡£
-  - ÔöÇ¿£º`scripts/crawlers/jin10_dynamic.py` ÈÕÀúÄ£Ê½£º
-    - Ö±´ï `https://rili.jin10.com/day/YYYY-MM-DD`£¬°´ÈÕÆÚµ¹Ğò×¥È¡£»
-    - ¿ªÆô×ÊÔ´À¹½Ø£¨ÆÁ±ÎÍ¼Æ¬/×ÖÌå/Ã½Ìå£©ÌáËÙ£»
-    - ½âÎöÖØ¹¹£ºÔÚÒ³Ãæ¶Ë `page.evaluate` ¿ìËÙÌáÈ¡£¬½öÍ³¼Æ¡°¿É¼û¡±ĞĞ£»
-    - Ö§³ÖĞÇ¼¶Ê¶±ğ²¢ÔÚ¿Í»§¶Ë¶µµ×¹ıÂË¡°Ö»¿´ÖØÒª¡±£¨¡İ3 ĞÇ£©£»
-    - ³¢ÊÔÈ·±£¡°¾­¼ÃÊı¾İ¡±Ò³Ç©Óë¡°Ö»¿´ÖØÒª¡±¿ª¹Ø£»
-    - Ô¤ÀÀ½×¶Î `storage_state` µ¼³ö¡¢ÕıÊ½½×¶Îµ¼Èë£¬±ÜÃâ Windows ÉÏ `user_data_dir` Ëøµ¼ÖÂ¿¨¶Ù£»
-    - ±ßÅÀ±ßÈë¿â£¨`upsert_many`£©£¬Êä³öÃ¿ÈÕÌáÈ¡ÓëÀÛ¼ÆÈë¿â¼ÆÊı£»
-    - ĞŞ¸´ 0 Ìõ/¿¨×¡ÎÊÌâµÄÈô¸ÉÂ³°ôĞÔÏ¸½ÚÓëµ÷ÊÔÈÕÖ¾¡£
-  - ÔöÇ¿£º`scripts/crawlers/jin10_flash_api.py` ½Ó¿Ú·¢ÏÖÓëÈë¿â£º
-    - Í¬Ê±¼àÌı request/response£¬½öÔÚ JSON ÏìÓ¦Óë°üº¬ `params=` µÄ URL Ê±È·ÈÏ£»
-    - ÊÕ½ôÖ÷»ú/Â·¾¶Æ¥Åä£¨ÅÅ³ıÖ÷Õ¾/ÈÕÀú/ÈÈ°ñµÈ·ÇÁĞ±í½Ó¿Ú£©£»
-    - Ê±¼ä×Ö¶Î¹æ·¶»¯¡¢×îºóÒ»ÌõÊ±¼äµ÷ÊÔÊä³ö¡¢ÍêÕûÇëÇóÍ·Í¸´«£»
-    - Ö§³Ö `--stream` ±ß×¥±ßĞ´ CSV Óë `--db` Èë¿â£¨URL/ÄÚÈİ¹şÏ£È¥ÖØ£©¡£
-  - ÎÄµµ£º²¹³ä¡°¿ìÑ¶ API Ä£Ê½¡±ºÍ¡°Êı¾İ¿â³£ÓÃÖ¸Áî£¨Ö»¶Á/É¾³ı£©¡±¡£
-  - ÇåÀí£º¹éµµÎ´Ê¹ÓÃÅÀ³æ½Å±¾ÖÁ `archive/unused_crawlers_20260127/`£º
-    - `scripts/crawlers/providers/` È«²¿
+  - æ–°å¢ï¼š`scripts/crawlers/jin10_flash_api.py`ï¼ˆå¿«è®¯ API çˆ¬è™«ï¼Œæ”¯æŒæ¥å£å‘ç°ã€ç­›é€‰ä¸ CSV æµå¼å†™å…¥ã€SQLite å…¥åº“ `--db`ï¼‰ã€‚
+  - å¢å¼ºï¼š`scripts/crawlers/jin10_dynamic.py` æ—¥å†æ¨¡å¼ï¼š
+    - ç›´è¾¾ `https://rili.jin10.com/day/YYYY-MM-DD`ï¼ŒæŒ‰æ—¥æœŸå€’åºæŠ“å–ï¼›
+    - å¼€å¯èµ„æºæ‹¦æˆªï¼ˆå±è”½å›¾ç‰‡/å­—ä½“/åª’ä½“ï¼‰æé€Ÿï¼›
+    - è§£æé‡æ„ï¼šåœ¨é¡µé¢ç«¯ `page.evaluate` å¿«é€Ÿæå–ï¼Œä»…ç»Ÿè®¡â€œå¯è§â€è¡Œï¼›
+    - æ”¯æŒæ˜Ÿçº§è¯†åˆ«å¹¶åœ¨å®¢æˆ·ç«¯å…œåº•è¿‡æ»¤â€œåªçœ‹é‡è¦â€ï¼ˆâ‰¥3 æ˜Ÿï¼‰ï¼›
+    - å°è¯•ç¡®ä¿â€œç»æµæ•°æ®â€é¡µç­¾ä¸â€œåªçœ‹é‡è¦â€å¼€å…³ï¼›
+    - é¢„è§ˆé˜¶æ®µ `storage_state` å¯¼å‡ºã€æ­£å¼é˜¶æ®µå¯¼å…¥ï¼Œé¿å… Windows ä¸Š `user_data_dir` é”å¯¼è‡´å¡é¡¿ï¼›
+    - è¾¹çˆ¬è¾¹å…¥åº“ï¼ˆ`upsert_many`ï¼‰ï¼Œè¾“å‡ºæ¯æ—¥æå–ä¸ç´¯è®¡å…¥åº“è®¡æ•°ï¼›
+    - ä¿®å¤ 0 æ¡/å¡ä½é—®é¢˜çš„è‹¥å¹²é²æ£’æ€§ç»†èŠ‚ä¸è°ƒè¯•æ—¥å¿—ã€‚
+  - å¢å¼ºï¼š`scripts/crawlers/jin10_flash_api.py` æ¥å£å‘ç°ä¸å…¥åº“ï¼š
+    - åŒæ—¶ç›‘å¬ request/responseï¼Œä»…åœ¨ JSON å“åº”ä¸åŒ…å« `params=` çš„ URL æ—¶ç¡®è®¤ï¼›
+    - æ”¶ç´§ä¸»æœº/è·¯å¾„åŒ¹é…ï¼ˆæ’é™¤ä¸»ç«™/æ—¥å†/çƒ­æ¦œç­‰éåˆ—è¡¨æ¥å£ï¼‰ï¼›
+    - æ—¶é—´å­—æ®µè§„èŒƒåŒ–ã€æœ€åä¸€æ¡æ—¶é—´è°ƒè¯•è¾“å‡ºã€å®Œæ•´è¯·æ±‚å¤´é€ä¼ ï¼›
+    - æ”¯æŒ `--stream` è¾¹æŠ“è¾¹å†™ CSV ä¸ `--db` å…¥åº“ï¼ˆURL/å†…å®¹å“ˆå¸Œå»é‡ï¼‰ã€‚
+  - æ–‡æ¡£ï¼šè¡¥å……â€œå¿«è®¯ API æ¨¡å¼â€å’Œâ€œæ•°æ®åº“å¸¸ç”¨æŒ‡ä»¤ï¼ˆåªè¯»/åˆ é™¤ï¼‰â€ã€‚
+  - æ¸…ç†ï¼šå½’æ¡£æœªä½¿ç”¨çˆ¬è™«è„šæœ¬è‡³ `archive/unused_crawlers_20260127/`ï¼š
+    - `scripts/crawlers/providers/` å…¨éƒ¨
     - `scripts/crawlers/list_crawl.py`
     - `scripts/crawlers/parse_listing.py`
     - `scripts/crawlers/fetch_from_urls.py`
-  - ´úÂë·ç¸ñ£º²¹³ä flake8 ÇåÀí£¨E501 ĞĞ¿í¡¢¿Õ°×ĞĞ W293/E306£©ÓÚ `jin10_dynamic.py` / `jin10_flash_api.py`£¬²»¸Ä¶¯ÒµÎñÂß¼­¡£
-  - Git£º`.gitignore` ĞÂÔöºöÂÔ `archive/` Óë `²Î¿¼´úÂëºÍÎÄµµ/`¡£
+  - ä»£ç é£æ ¼ï¼šè¡¥å…… flake8 æ¸…ç†ï¼ˆE501 è¡Œå®½ã€ç©ºç™½è¡Œ W293/E306ï¼‰äº `jin10_dynamic.py` / `jin10_flash_api.py`ï¼Œä¸æ”¹åŠ¨ä¸šåŠ¡é€»è¾‘ã€‚
+  - Gitï¼š`.gitignore` æ–°å¢å¿½ç•¥ `archive/` ä¸ `å‚è€ƒä»£ç å’Œæ–‡æ¡£/`ã€‚
 - 2026-01-23
 
-  - ĞÂÔö£º`scripts/crawlers/jin10_dynamic.py`£¨Playwright ¶¯Ì¬×¥È¡£º¿ìÑ¶µ¹Ğò»ØËİÓëÈÕÀúÄ£Ê½£»µÇÂ¼³Ö¾Ã»¯¡¢¿ç frame¡¢¹ö¶¯/¼ÓÔØ¸ü¶à¡¢µ÷ÊÔ¿ìÕÕ¡¢Èë¿â£©¡£
-  - ĞÂÔö£º`scripts/crawlers/ingest_listing_csv.py`£¨listing CSV Èë¿â£©¡£
-  - ĞÂÔö£º`scripts/crawlers/providers/jin10_events.py`£¨½ğÊ®ÖØÒªÊÂ¼şÁĞ±í£©¡£
-  - ÔöÇ¿£º`scripts/crawlers/list_crawl.py`£¨Ó¢ÎÄÏà¶ÔÊ±¼ä½âÎö¡¢Ê±¼ä´°¹ıÂË¡¢SQLite Èë¿â£©¡£
-  - ÔöÇ¿£º`scripts/crawlers/parse_listing.py`£¨Í³Ò» `content_text` Óë provider ×¢²á£©¡£
-  - ÔöÇ¿£º`scripts/crawlers/fetch_from_urls.py`£¨¼ÓÈë SQLite Èë¿âÓëÈ¥ÖØ£©¡£
-  - ĞŞ¸´£º`scripts/crawlers/storage.py` ³¤ĞĞÓëÎÈ½¡ĞÔ£¨upsert/È¥ÖØ£©¡£
+  - æ–°å¢ï¼š`scripts/crawlers/jin10_dynamic.py`ï¼ˆPlaywright åŠ¨æ€æŠ“å–ï¼šå¿«è®¯å€’åºå›æº¯ä¸æ—¥å†æ¨¡å¼ï¼›ç™»å½•æŒä¹…åŒ–ã€è·¨ frameã€æ»šåŠ¨/åŠ è½½æ›´å¤šã€è°ƒè¯•å¿«ç…§ã€å…¥åº“ï¼‰ã€‚
+  - æ–°å¢ï¼š`scripts/crawlers/ingest_listing_csv.py`ï¼ˆlisting CSV å…¥åº“ï¼‰ã€‚
+  - æ–°å¢ï¼š`scripts/crawlers/providers/jin10_events.py`ï¼ˆé‡‘åé‡è¦äº‹ä»¶åˆ—è¡¨ï¼‰ã€‚
+  - å¢å¼ºï¼š`scripts/crawlers/list_crawl.py`ï¼ˆè‹±æ–‡ç›¸å¯¹æ—¶é—´è§£æã€æ—¶é—´çª—è¿‡æ»¤ã€SQLite å…¥åº“ï¼‰ã€‚
+  - å¢å¼ºï¼š`scripts/crawlers/parse_listing.py`ï¼ˆç»Ÿä¸€ `content_text` ä¸ provider æ³¨å†Œï¼‰ã€‚
+  - å¢å¼ºï¼š`scripts/crawlers/fetch_from_urls.py`ï¼ˆåŠ å…¥ SQLite å…¥åº“ä¸å»é‡ï¼‰ã€‚
+  - ä¿®å¤ï¼š`scripts/crawlers/storage.py` é•¿è¡Œä¸ç¨³å¥æ€§ï¼ˆupsert/å»é‡ï¼‰ã€‚
 - 2026-01-20
 
-  - ¸üĞÂ `configs/config.yaml`£ºÉèÖÃ±êµÄ³ØÓë `windows_days=[1,3,5]`¡£
-  - ÊµÏÖ `scripts/label_events.py`£¨CSV/DB ¡ú labels£¬ÖĞÎÄÈÕÆÚ½âÎö£©¡£
-  - ÕûÀí `scripts/fetch_prices.py` Óë `scripts/fetch_news.py` µÄ PEP8¡£
-  - Ôö¼Ó±¾ÎÄ¼ş `Project_Status.md` Óë `.gitignore`£¨³õ°æ£©¡£
-  - ´´½¨±¾µØ Conda `.venv` »·¾³²¢°²×°ÒÀÀµ¡£
-  - Íê³É²¢¹æ·¶»¯ `scripts/train_baseline.py`£¨TF-IDF+LinearSVC£¬Ê±¼äÇĞ·Ö£»Ö§³Ö DB/CSV£»Éú³É±¨¸æÓëÔ¤²â£»flake8 Í¨¹ı£©¡£
-  - `.gitignore` ĞÂÔö `.windsurf/` Óë `ÎÄ×Ö²ÄÁÏÎÄµµ/`£¬²¢½«ºóÕß´Ó Git Ë÷ÒıÖĞÒÆ³ı¡£
+  - æ›´æ–° `configs/config.yaml`ï¼šè®¾ç½®æ ‡çš„æ± ä¸ `windows_days=[1,3,5]`ã€‚
+  - å®ç° `scripts/label_events.py`ï¼ˆCSV/DB â†’ labelsï¼Œä¸­æ–‡æ—¥æœŸè§£æï¼‰ã€‚
+  - æ•´ç† `scripts/fetch_prices.py` ä¸ `scripts/fetch_news.py` çš„ PEP8ã€‚
+  - å¢åŠ æœ¬æ–‡ä»¶ `Project_Status.md` ä¸ `.gitignore`ï¼ˆåˆç‰ˆï¼‰ã€‚
+  - åˆ›å»ºæœ¬åœ° Conda `.venv` ç¯å¢ƒå¹¶å®‰è£…ä¾èµ–ã€‚
+  - å®Œæˆå¹¶è§„èŒƒåŒ– `scripts/train_baseline.py`ï¼ˆTF-IDF+LinearSVCï¼Œæ—¶é—´åˆ‡åˆ†ï¼›æ”¯æŒ DB/CSVï¼›ç”ŸæˆæŠ¥å‘Šä¸é¢„æµ‹ï¼›flake8 é€šè¿‡ï¼‰ã€‚
+  - `.gitignore` æ–°å¢ `.windsurf/` ä¸ `æ–‡å­—ææ–™æ–‡æ¡£/`ï¼Œå¹¶å°†åè€…ä» Git ç´¢å¼•ä¸­ç§»é™¤ã€‚
 - 2025-11-15
 
-  - ´´½¨ `PLAN.md`£¨Ê×°æ¿ª·¢¼Æ»®£©¡£
+  - åˆ›å»º `PLAN.md`ï¼ˆé¦–ç‰ˆå¼€å‘è®¡åˆ’ï¼‰ã€‚
 
-## 6) ¿ìËÙÖ¸Òı£¨Quick Start£©
+## 6) å¿«é€ŸæŒ‡å¼•ï¼ˆQuick Startï¼‰
 
-- ´´½¨ÓëÌîĞ´ `.env`£¨¸´ÖÆ `.env.example`£©£º
+- åˆ›å»ºä¸å¡«å†™ `.env`ï¼ˆå¤åˆ¶ `.env.example`ï¼‰ï¼š
   - `TUSHARE_TOKEN=...`
-- ³õÊ¼»¯Êı¾İ¿â
+- åˆå§‹åŒ–æ•°æ®åº“
   ```powershell
   python scripts/init_db.py
   ```
-- ×¥È¡ĞĞÇé£¨Ê¹ÓÃ config ÖĞµÄÊ±¼äÓë±êµÄ£©
+- æŠ“å–è¡Œæƒ…ï¼ˆä½¿ç”¨ config ä¸­çš„æ—¶é—´ä¸æ ‡çš„ï¼‰
   ```powershell
   python scripts/fetch_prices.py
   ```
-- °²×° Playwright£¨Ê×´Î£©
+- å®‰è£… Playwrightï¼ˆé¦–æ¬¡ï¼‰
   ```powershell
   pip install playwright
   python -m playwright install chromium
   ```
-- ½ğÊ®¿ìÑ¶£¨API Ä£Ê½£¬ÍÆ¼ö£¬Èë¿â£©
+- é‡‘åå¿«è®¯ï¼ˆAPI æ¨¡å¼ï¼Œæ¨èï¼Œå…¥åº“ï¼‰
   ```powershell
-  # ÒÑÖª½Ó¿ÚÖ±Á¬£¨Ê¾Àı£ºÇëÌæ»»ÎªÄãµÄÕæÊµ API »ùÖ·£©
+  # å·²çŸ¥æ¥å£ç›´è¿ï¼ˆç¤ºä¾‹ï¼šè¯·æ›¿æ¢ä¸ºä½ çš„çœŸå® API åŸºå€ï¼‰
   python -m scripts.crawlers.jin10_flash_api \
     --months 12 \
     --output data/raw/flash_last_12m.csv \
@@ -221,7 +258,7 @@
     --db finance.db \
     --source flash_api
 
-  # ½Ó¿Ú·¢ÏÖ£¨Ê×´ÎÊ¹ÓÃ/Î´Öª½Ó¿ÚÊ±£©£º
+  # æ¥å£å‘ç°ï¼ˆé¦–æ¬¡ä½¿ç”¨/æœªçŸ¥æ¥å£æ—¶ï¼‰ï¼š
   python -m scripts.crawlers.jin10_flash_api \
     --months 12 \
     --output data/raw/flash_last_12m.csv \
@@ -232,16 +269,16 @@
     --db finance.db \
     --source flash_api
   ```
-- ½ğÊ®ÈÕÀú/Êı¾İ£¨ÖğÈÕ»ØÌî£©
+- é‡‘åæ—¥å†/æ•°æ®ï¼ˆé€æ—¥å›å¡«ï¼‰
   ```powershell
-  # ×î½ü 3 ¸öÔÂ£¨½ö CSV£©
+  # æœ€è¿‘ 3 ä¸ªæœˆï¼ˆä»… CSVï¼‰
   python -m scripts.crawlers.jin10_dynamic \
     --months 3 \
     --output data/raw/jin10_calendar_last3m.csv \
     --important-only \
     --user-data-dir .pw_jin10
 
-  # Ö¸¶¨Çø¼ä + Èë¿â£¨ÍÆ¼ö£©
+  # æŒ‡å®šåŒºé—´ + å…¥åº“ï¼ˆæ¨èï¼‰
   python -m scripts.crawlers.jin10_dynamic \
     --start 2024-01-01 \
     --end 2026-01-21 \
@@ -251,7 +288,7 @@
     --important-only \
     --user-data-dir .pw_jin10
 
-  # µ¥ÈÕÑéÖ¤£¨start=end£©
+  # å•æ—¥éªŒè¯ï¼ˆstart=endï¼‰
   python -m scripts.crawlers.jin10_dynamic \
     --start 2024-12-07 \
     --end 2024-12-07 \
@@ -261,17 +298,17 @@
     --important-only \
     --user-data-dir .pw_jin10
   ```
-- ´Ó CSV Èë¿âĞÂÎÅ
+- ä» CSV å…¥åº“æ–°é—»
   ```powershell
   python scripts/fetch_news.py --csv path\to\news.csv
   ```
-- Éú³É¡°ÈÕ¼¶´°¡±´úÀí±ê×¢
+- ç”Ÿæˆâ€œæ—¥çº§çª—â€ä»£ç†æ ‡æ³¨
   ```powershell
   python scripts/label_events.py --csv path\to\news.csv --out-csv data\processed\labels.csv
   ```
 
-- ·ÖÖÓ¼¶³å»÷·ÖÎö£¨MT5 + ½ğÊ®£©
-  - ×¥È¡·ÖÖÓ¼Û£¨Ê¾Àı£º2024¨C2025 È«Á¿£©
+- åˆ†é’Ÿçº§å†²å‡»åˆ†æï¼ˆMT5 + é‡‘åï¼‰
+  - æŠ“å–åˆ†é’Ÿä»·ï¼ˆç¤ºä¾‹ï¼š2024â€“2025 å…¨é‡ï¼‰
     ```powershell
     python scripts\fetch_intraday_xauusd_mt5.py `
       --timeframe M1 `
@@ -283,7 +320,7 @@
       --symbol "XAUUSD" `
       --out "data\processed\xauusd_m1_mt5_2024_2025.csv"
     ```
-  - Êı¾İ QA Ğ£ÑéÓë¹éµµ½¨Òé£¨Êä³ö JSON ±¨¸æ£©
+  - æ•°æ® QA æ ¡éªŒä¸å½’æ¡£å»ºè®®ï¼ˆè¾“å‡º JSON æŠ¥å‘Šï¼‰
     ```powershell
     python scripts/qa/validate_datasets.py `
       --processed_dir data/processed `
@@ -291,25 +328,126 @@
       --db finance_analysis.db `
       --ticker XAUUSD
     ```
-    - ±¨¸æÂ·¾¶£º`data/processed/qa_dataset_report.json`¡£Çë¼ì²é£º
-      - Èı¸ö¶àÀà¼¯ºÏµÄÊ±¼ä·¶Î§ÊÇ·ñ¸²¸Ç 2024-01-01 ÖÁ 2026-02-01£¨»òÄãÆÚÍûµÄÇø¼ä£©¡£
-      - `cross_split_event_id_intersections.any_overlap` Ó¦Îª false£¨ÎŞÊÂ¼ş¿ç¼¯ºÏ£©¡£
-      - `dups_event_id.dups` Ó¦Îª 0£¨`event_id` ÎŞÖØ¸´£©¡£
-      - ±êÇ©·Ö²¼ÊÇ·ñºÏÀí£¨ÉÙÊıÀà±ÈÀı£©¡£
-      - Êı¾İ¿â `events/event_impacts/prices_m1` µÄÊ±¼ä¸²¸ÇÊÇ·ñÓëÔ¤ÆÚÒ»ÖÂ¡£
+    - æŠ¥å‘Šè·¯å¾„ï¼š`data/processed/qa_dataset_report.json`ã€‚è¯·æ£€æŸ¥ï¼š
+      - ä¸‰ä¸ªå¤šç±»é›†åˆçš„æ—¶é—´èŒƒå›´æ˜¯å¦è¦†ç›– 2024-01-01 è‡³ 2026-02-01ï¼ˆæˆ–ä½ æœŸæœ›çš„åŒºé—´ï¼‰ã€‚
+      - `cross_split_event_id_intersections.any_overlap` åº”ä¸º falseï¼ˆæ— äº‹ä»¶è·¨é›†åˆï¼‰ã€‚
+      - `dups_event_id.dups` åº”ä¸º 0ï¼ˆ`event_id` æ— é‡å¤ï¼‰ã€‚
+      - æ ‡ç­¾åˆ†å¸ƒæ˜¯å¦åˆç†ï¼ˆå°‘æ•°ç±»æ¯”ä¾‹ï¼‰ã€‚
+      - æ•°æ®åº“ `events/event_impacts/prices_m1` çš„æ—¶é—´è¦†ç›–æ˜¯å¦ä¸é¢„æœŸä¸€è‡´ã€‚
 
-  - Colab ÑµÁ·£¨ÍÆ¼ö£¬GPU£©£º
-    1) ´ò¿ª https://colab.research.google.com ²¢Ñ¡Ôñ GPU£¨Runtime ¡ú Change runtime type ¡ú GPU£©¡£
-    2) ´ò¿ª±¾²Ö¿âÖĞµÄ±Ê¼Ç±¾£º`notebooks/bert_multilabel_colab.ipynb`£¨Colab ÎÄ¼ş ¡ú GitHub Ñ¡Ïî¿¨ËÑË÷²Ö¿âÃû£©¡£
-    3) ÒÀ´ÎÖ´ĞĞµ¥Ôª£º°²×°ÒÀÀµ ¡ú ¿ËÂ¡²Ö¿â ¡ú ÉÏ´«Èı·İ CSV ¡ú Æô¶¯ÑµÁ· ¡ú ²é¿´Ö¸±ê ¡ú ´ò°üÏÂÔØÄ£ĞÍÊä³ö¡£
-  - Colab ÑµÁ·£¨¶à±êÇ© 6 Àà + Drive£¬FinBERT/ÖĞÎÄ BERT£©
-    - ¹ÒÔØ Drive ²¢ÉèÖÃÄ¿Â¼£º`DATA_DIR=/content/drive/MyDrive/datasets/xauusd_multilabel`£¬`MODEL_DIR=/content/drive/MyDrive/models/bert_xauusd_multilabel_6cls`¡£
-    - È·ÈÏ Drive ÏÂ´æÔÚÈı·İ CSV£º`train_multi_labeled.csv`¡¢`val_multi_labeled.csv`¡¢`test_multi_labeled.csv`¡£ÈôÈ±Ê§£¬¿ÉÔËĞĞ±Ê¼Ç±¾ÖĞµÄ¡°´Ó²Ö¿â¸´ÖÆµ½ Drive¡±»òÊÖ¶¯ÉÏ´«¡£
-    - ÉèÖÃÔ¤ÑµÁ·Ä£ĞÍ `MODEL_NAME`£º
-      - ÖĞÎÄÊı¾İ£ºÓÅÏÈÊ¹ÓÃÖĞÎÄÔ¤ÑµÁ·Ä£ĞÍ£¨ÍÆ¼ö `hfl/chinese-roberta-wwm-ext` ×÷ÎªÇ¿»ùÏß£©¡£
-      - Ó¢ÎÄÎÄ±¾£º¿ÉÓÃ `ProsusAI/finbert`£¨Ó¢ÎÄ½ğÈÚÁìÓò£©¡£
-      - ËµÃ÷£ºÈôÊı¾İÎªÖĞÎÄ£¬²»½¨ÒéÊ¹ÓÃÓ¢ÎÄ FinBERT£»Æä·Ö´Ê´Ê±í¶ÔÖĞÎÄÖ§³ÖÓĞÏŞ£¬Ğ§¹ûÍ¨³£ÏÔÖøÁÓÓÚÖĞÎÄÄ£ĞÍ¡£
-    - ÔËĞĞ¡°6 ·ÖÀàÑµÁ·£¨Ê¹ÓÃÔ­Ê¼ CSV Óë `label_multi_cls`£©¡±µ¥Ôª¡£ÆäµÈ¼Û CLI Ê¾Àı£¨PowerShell£©£º
+  - Colab è®­ç»ƒï¼ˆæ¨èï¼ŒGPUï¼‰ï¼š
+    1) æ‰“å¼€ https://colab.research.google.com å¹¶é€‰æ‹© GPUï¼ˆRuntime â†’ Change runtime type â†’ GPUï¼‰ã€‚
+    2) æ‰“å¼€æœ¬ä»“åº“ä¸­çš„ç¬”è®°æœ¬ï¼š`notebooks/bert_multilabel_colab.ipynb`ï¼ˆColab æ–‡ä»¶ â†’ GitHub é€‰é¡¹å¡æœç´¢ä»“åº“åï¼‰ã€‚
+    3) ä¾æ¬¡æ‰§è¡Œå•å…ƒï¼šå®‰è£…ä¾èµ– â†’ å…‹éš†ä»“åº“ â†’ ä¸Šä¼ ä¸‰ä»½ CSV â†’ å¯åŠ¨è®­ç»ƒ â†’ æŸ¥çœ‹æŒ‡æ ‡ â†’ æ‰“åŒ…ä¸‹è½½æ¨¡å‹è¾“å‡ºã€‚
+  
+  - **Colab Phase 1 è®­ç»ƒï¼ˆå¢å¼ºæ•°æ® + ç±»æƒé‡ï¼Œå½“å‰æ¨èï¼‰**
+    - å‡†å¤‡ï¼šç¡®ä¿æœ¬åœ°å·² `git push` æœ€æ–°ä»£ç ï¼ˆåŒ…å« `bert_finetune_cls.py` ä¿®å¤ï¼‰ã€‚
+    - å•å…ƒæ ¼ 1ï¼šç¯å¢ƒå‡†å¤‡
+      ```python
+      from google.colab import drive
+      drive.mount('/content/drive')
+      !pip install -U transformers datasets evaluate accelerate -q
+      import os
+      if not os.path.exists('/content/Graduation_Project'):
+          !git clone https://github.com/Caria-Tarnished/Graduation_Project.git
+      else:
+          !cd /content/Graduation_Project && git pull  # ç¡®ä¿æ‹‰å–æœ€æ–°ä¿®å¤
+      %cd /content/Graduation_Project
+      ```
+    - å•å…ƒæ ¼ 2ï¼šéªŒè¯/ç”Ÿæˆå¢å¼ºæ•°æ®
+      ```python
+      import os, pandas as pd
+      files = {
+          'train': '/content/Graduation_Project/data/processed/train_enhanced.csv',
+          'val': '/content/Graduation_Project/data/processed/val_enhanced.csv',
+          'test': '/content/Graduation_Project/data/processed/test_enhanced.csv'
+      }
+      print("æ•°æ®æ–‡ä»¶æ£€æŸ¥:")
+      all_exist = True
+      for name, path in files.items():
+          if os.path.exists(path):
+              df = pd.read_csv(path)
+              print(f"âœ“ {name}: {len(df)} æ ·æœ¬")
+          else:
+              print(f"âœ— {name}: æ–‡ä»¶ä¸å­˜åœ¨")
+              all_exist = False
+      if not all_exist:
+          print("\nâš ï¸ æ•°æ®æ–‡ä»¶ç¼ºå¤±ï¼Œæ­£åœ¨ç”Ÿæˆ...")
+          !python scripts/modeling/build_enhanced_dataset.py \
+            --input_dir /content/Graduation_Project/data/processed \
+            --output_dir /content/Graduation_Project/data/processed
+          print("\nâœ… æ•°æ®ç”Ÿæˆå®Œæˆï¼")
+      ```
+    - å•å…ƒæ ¼ 3ï¼šPhase 1 è®­ç»ƒï¼ˆå…³é”®ï¼‰
+      ```python
+      !python scripts/modeling/bert_finetune_cls.py \
+        --train_csv /content/Graduation_Project/data/processed/train_enhanced.csv \
+        --val_csv /content/Graduation_Project/data/processed/val_enhanced.csv \
+        --test_csv /content/Graduation_Project/data/processed/test_enhanced.csv \
+        --output_dir /content/drive/MyDrive/Graduation_Project/experiments/bert_enhanced_v1 \
+        --label_col label_multi_cls \
+        --model_name hfl/chinese-roberta-wwm-ext \
+        --class_weight auto \
+        --epochs 5 \
+        --lr 1e-5 \
+        --max_length 384 \
+        --train_bs 16 \
+        --eval_bs 32 \
+        --gradient_accumulation_steps 2 \
+        --warmup_ratio 0.06 \
+        --weight_decay 0.01 \
+        --eval_steps 100 \
+        --save_steps 100 \
+        --early_stopping_patience 0
+      ```
+    - å•å…ƒæ ¼ 4ï¼šæŸ¥çœ‹ç»“æœ
+      ```python
+      import json, pandas as pd
+      OUTPUT_DIR = '/content/drive/MyDrive/Graduation_Project/experiments/bert_enhanced_v1'
+      with open(f'{OUTPUT_DIR}/metrics_test.json', 'r') as f:
+          test_metrics = json.load(f)
+      print("="*80)
+      print("Phase 1 è®­ç»ƒç»“æœ")
+      print("="*80)
+      print(f"Test Accuracy: {test_metrics['eval_accuracy']:.4f}")
+      print(f"Test Macro F1: {test_metrics['eval_macro_f1']:.4f}")
+      baseline_f1 = 0.163
+      improvement = (test_metrics['eval_macro_f1'] - baseline_f1) / baseline_f1 * 100
+      print(f"\nä¸åŸºçº¿å¯¹æ¯”:")
+      print(f"  åŸºçº¿: {baseline_f1:.4f}")
+      print(f"  å¢å¼º: {test_metrics['eval_macro_f1']:.4f}")
+      print(f"  æå‡: {improvement:+.1f}%")
+      # æŸ¥çœ‹åˆ†ç±»æŠ¥å‘Š
+      with open(f'{OUTPUT_DIR}/report_test.txt', 'r') as f:
+          print("\n" + "="*80)
+          print("åˆ†ç±»æŠ¥å‘Š")
+          print("="*80)
+          print(f.read())
+      # ç¨€æœ‰ç±»åˆ«é¢„æµ‹åˆ†æ
+      pred_df = pd.read_csv(f'{OUTPUT_DIR}/pred_test.csv')
+      print("\né¢„æµ‹åˆ†å¸ƒ:")
+      print(pred_df['pred'].value_counts().sort_index())
+      rare_classes = [3, 4, 5]
+      print("\nç¨€æœ‰ç±»åˆ«é¢„æµ‹:")
+      for cls in rare_classes:
+          pred_count = (pred_df['pred'] == cls).sum()
+          true_count = (pred_df['label'] == cls).sum()
+          print(f"  Class {cls}: çœŸå®={true_count}, é¢„æµ‹={pred_count}")
+          if pred_count > 0:
+              print(f"    âœ… æ¨¡å‹å¼€å§‹é¢„æµ‹è¿™ä¸ªç±»åˆ«äº†ï¼")
+      ```
+    - é¢„æœŸç»“æœï¼šTest Macro F1 > 0.35ï¼ˆåŸºçº¿ 0.163ï¼Œæå‡ >100%ï¼‰ï¼›ç¨€æœ‰ç±»åˆ« F1 > 0ã€‚
+    - è®­ç»ƒæ—¶é—´ï¼šçº¦ 1-1.5 å°æ—¶ï¼ˆT4 GPUï¼Œ~2355 stepsï¼‰ã€‚
+    - å®Œæ•´å•å…ƒæ ¼å‚è€ƒï¼š`colab_phase1_cells.txt`ã€‚
+  
+  - Colab è®­ç»ƒï¼ˆå¤šæ ‡ç­¾ 6 ç±» + Driveï¼ŒFinBERT/ä¸­æ–‡ BERTï¼‰
+    - æŒ‚è½½ Drive å¹¶è®¾ç½®ç›®å½•ï¼š`DATA_DIR=/content/drive/MyDrive/datasets/xauusd_multilabel`ï¼Œ`MODEL_DIR=/content/drive/MyDrive/models/bert_xauusd_multilabel_6cls`ã€‚
+    - ç¡®è®¤ Drive ä¸‹å­˜åœ¨ä¸‰ä»½ CSVï¼š`train_multi_labeled.csv`ã€`val_multi_labeled.csv`ã€`test_multi_labeled.csv`ã€‚è‹¥ç¼ºå¤±ï¼Œå¯è¿è¡Œç¬”è®°æœ¬ä¸­çš„â€œä»ä»“åº“å¤åˆ¶åˆ° Driveâ€æˆ–æ‰‹åŠ¨ä¸Šä¼ ã€‚
+    - è®¾ç½®é¢„è®­ç»ƒæ¨¡å‹ `MODEL_NAME`ï¼š
+      - ä¸­æ–‡æ•°æ®ï¼šä¼˜å…ˆä½¿ç”¨ä¸­æ–‡é¢„è®­ç»ƒæ¨¡å‹ï¼ˆæ¨è `hfl/chinese-roberta-wwm-ext` ä½œä¸ºå¼ºåŸºçº¿ï¼‰ã€‚
+      - è‹±æ–‡æ–‡æœ¬ï¼šå¯ç”¨ `ProsusAI/finbert`ï¼ˆè‹±æ–‡é‡‘èé¢†åŸŸï¼‰ã€‚
+      - è¯´æ˜ï¼šè‹¥æ•°æ®ä¸ºä¸­æ–‡ï¼Œä¸å»ºè®®ä½¿ç”¨è‹±æ–‡ FinBERTï¼›å…¶åˆ†è¯è¯è¡¨å¯¹ä¸­æ–‡æ”¯æŒæœ‰é™ï¼Œæ•ˆæœé€šå¸¸æ˜¾è‘—åŠ£äºä¸­æ–‡æ¨¡å‹ã€‚
+    - è¿è¡Œâ€œ6 åˆ†ç±»è®­ç»ƒï¼ˆä½¿ç”¨åŸå§‹ CSV ä¸ `label_multi_cls`ï¼‰â€å•å…ƒã€‚å…¶ç­‰ä»· CLI ç¤ºä¾‹ï¼ˆPowerShellï¼‰ï¼š
       ```powershell
       python scripts/modeling/bert_finetune_cls.py `
         --train_csv data/processed/train_multi_labeled.csv `
@@ -320,17 +458,17 @@
         --model_name hfl/chinese-roberta-wwm-ext `
         --train_bs 16 --eval_bs 32 --epochs 2 --lr 2e-5 --max_length 256
       ```
-    - ²ú³ö£º`metrics_val.json`¡¢`metrics_test.json`¡¢`report_test.txt`¡¢`pred_test.csv` Óë `best/`£¨×îÓÅÄ£ĞÍ£©¡£
-  - 6 Àà BERT Ê×´ÎÆÀ¹À£¨ÖĞÎÄ RoBERTa-wwm-ext£©
-    - val£ºaccuracy=0.4321£¬macro_f1=0.1822¡£
-    - test£ºaccuracy=0.4251£¬macro_f1=0.1631¡£
-    - °´Àà¼òÊö£¨test Ö§³ÖÊı£º0/1/2/3/4/5 = 4030/1654/1417/15/5/868£©£º
-      - 0£¨ÖĞĞÔ£©£ºF1=0.6013£¨Ö÷µ¼Àà£©¡£
-      - 1/2£¨·½Ïò£©£ºF1 Æ«µÍ¡£
-      - 3/4£¨¶ÒÏÖ£©£ºÑù±¾¼«ÉÙ£¬F1=0¡£
-      - 5£¨¹ÛÍû£©£ºF1=0¡£
-    - ¸Ä½ø·½Ïò£º¸ü¾ÃÑµÁ·£¨epochs¡ü£©¡¢¸ü³¤ĞòÁĞ£¨max_length¡ü£©¡¢ÀàÈ¨ÖØ£¨¼ÓÈ¨½»²æìØ£©¡¢ÔçÍ££¨EarlyStopping£©¡¢warmup Óë weight_decay¡¢°´ steps ÑéÖ¤Óë±£´æ¡£
-  - ¸´ºÏ±êÇ©ÑµÁ·¼¯µ¼³ö£¨15 ·ÖÖÓ»ù´¡ + Ç° 120 ·ÖÖÓÇ÷ÊÆ¶ÔÕÕ£©
+    - äº§å‡ºï¼š`metrics_val.json`ã€`metrics_test.json`ã€`report_test.txt`ã€`pred_test.csv` ä¸ `best/`ï¼ˆæœ€ä¼˜æ¨¡å‹ï¼‰ã€‚
+  - 6 ç±» BERT é¦–æ¬¡è¯„ä¼°ï¼ˆä¸­æ–‡ RoBERTa-wwm-extï¼‰
+    - valï¼šaccuracy=0.4321ï¼Œmacro_f1=0.1822ã€‚
+    - testï¼šaccuracy=0.4251ï¼Œmacro_f1=0.1631ã€‚
+    - æŒ‰ç±»ç®€è¿°ï¼ˆtest æ”¯æŒæ•°ï¼š0/1/2/3/4/5 = 4030/1654/1417/15/5/868ï¼‰ï¼š
+      - 0ï¼ˆä¸­æ€§ï¼‰ï¼šF1=0.6013ï¼ˆä¸»å¯¼ç±»ï¼‰ã€‚
+      - 1/2ï¼ˆæ–¹å‘ï¼‰ï¼šF1 åä½ã€‚
+      - 3/4ï¼ˆå…‘ç°ï¼‰ï¼šæ ·æœ¬æå°‘ï¼ŒF1=0ã€‚
+      - 5ï¼ˆè§‚æœ›ï¼‰ï¼šF1=0ã€‚
+    - æ”¹è¿›æ–¹å‘ï¼šæ›´ä¹…è®­ç»ƒï¼ˆepochsâ†‘ï¼‰ã€æ›´é•¿åºåˆ—ï¼ˆmax_lengthâ†‘ï¼‰ã€ç±»æƒé‡ï¼ˆåŠ æƒäº¤å‰ç†µï¼‰ã€æ—©åœï¼ˆEarlyStoppingï¼‰ã€warmup ä¸ weight_decayã€æŒ‰ steps éªŒè¯ä¸ä¿å­˜ã€‚
+  - å¤åˆæ ‡ç­¾è®­ç»ƒé›†å¯¼å‡ºï¼ˆ15 åˆ†é’ŸåŸºç¡€ + å‰ 120 åˆ†é’Ÿè¶‹åŠ¿å¯¹ç…§ï¼‰
     ```powershell
     python scripts/modeling/prepare_multilabel_dataset.py `
       --db finance_analysis.db `
@@ -339,7 +477,7 @@
       --pre_minutes 120 `
       --out_dir data\processed
     ```
-  - ¹¹½¨Óë¼ÆËã³å»÷£¨UPSERT ÃİµÈ£©
+  - æ„å»ºä¸è®¡ç®—å†²å‡»ï¼ˆUPSERT å¹‚ç­‰ï¼‰
     ```powershell
     python scripts\build_finance_analysis.py `
       --prices_csv "data\processed\xauusd_m1_mt5_2024_2025.csv" `
@@ -350,7 +488,7 @@
       --ticker "XAUUSD" `
       --windows 5 10 15 30
     ```
-  - ¸²¸ÇÂÊ¸´¼ì£¨PowerShell here-string ¡ú Python ±ê×¼ÊäÈë£¬ÎÈ¶¨Ãâ×ªÒå£©
+  - è¦†ç›–ç‡å¤æ£€ï¼ˆPowerShell here-string â†’ Python æ ‡å‡†è¾“å…¥ï¼Œç¨³å®šå…è½¬ä¹‰ï¼‰
     ```powershell
     $code = @'
     import sqlite3, pandas as pd
@@ -362,9 +500,9 @@
     $code | python -
     ```
 
-  - ½¨Ä£½Å±¾£¨Baseline / BERT£©
+  - å»ºæ¨¡è„šæœ¬ï¼ˆBaseline / BERTï¼‰
     ```powershell
-    # »ùÏß£ºTF-IDF + LinearSVC£¨CPU ¼´¿É£©
+    # åŸºçº¿ï¼šTF-IDF + LinearSVCï¼ˆCPU å³å¯ï¼‰
     python scripts/modeling/baseline_tfidf_svm.py \
       --train_csv data/processed/train_30m_labeled.csv \
       --val_csv   data/processed/val_30m_labeled.csv \
@@ -372,8 +510,8 @@
       --output_dir models/baseline_tfidf_svm \
       --sublinear_tf --norm l2 --dual auto
 
-    # BERT ÖĞÎÄÎ¢µ÷£¨RoBERTa-wwm-ext£©
-    # ÒÀÀµ£ºpip install -U transformers datasets accelerate evaluate; ÈçÎŞ GPU£¬¿É°²×° CPU °æ torch
+    # BERT ä¸­æ–‡å¾®è°ƒï¼ˆRoBERTa-wwm-extï¼‰
+    # ä¾èµ–ï¼špip install -U transformers datasets accelerate evaluate; å¦‚æ—  GPUï¼Œå¯å®‰è£… CPU ç‰ˆ torch
     python scripts/modeling/bert_finetune_cls.py \
       --train_csv data/processed/train_30m_labeled.csv \
       --val_csv   data/processed/val_30m_labeled.csv \
@@ -381,7 +519,7 @@
       --output_dir models/bert_xauusd_cls \
       --epochs 2 --lr 2e-5 --max_length 256
     ```
-  - µ¼³öÑµÁ·¼¯£¨È«Á¿ CSV + Parquet£©
+  - å¯¼å‡ºè®­ç»ƒé›†ï¼ˆå…¨é‡ CSV + Parquetï¼‰
     ```powershell
     $code = @'
     import sqlite3, pandas as pd, os
@@ -417,7 +555,7 @@
     '@
     $code | python -
     ```
-  - 30 ·ÖÖÓ´°¿Ú´ò±êÓëÇĞ·Ö£¨Ê±¼äÇĞ·Ö±ÜÃâĞ¹Â©£©
+  - 30 åˆ†é’Ÿçª—å£æ‰“æ ‡ä¸åˆ‡åˆ†ï¼ˆæ—¶é—´åˆ‡åˆ†é¿å…æ³„æ¼ï¼‰
     ```powershell
     $code = @'
     import sqlite3, pandas as pd, os, json
@@ -462,15 +600,15 @@
     $code | python -
     ```
 
-## 7) ¹Ø¼üÎÄ¼ş
+## 7) å…³é”®æ–‡ä»¶
 
-- ¼Æ»®£º`PLAN.md`
-- ×´Ì¬£º`Project_Status.md`
-- ÅäÖÃ£º`configs/config.yaml`
-- »·¾³£º`.env.example`
-- Êı¾İ¿â£º`finance.db`
-- ·ÖÖÓ¼¶³å»÷Êı¾İ¿â£º`finance_analysis.db`
-- ½Å±¾£º`scripts/`
+- è®¡åˆ’ï¼š`PLAN.md`
+- çŠ¶æ€ï¼š`Project_Status.md`
+- é…ç½®ï¼š`configs/config.yaml`
+- ç¯å¢ƒï¼š`.env.example`
+- æ•°æ®åº“ï¼š`finance.db`
+- åˆ†é’Ÿçº§å†²å‡»æ•°æ®åº“ï¼š`finance_analysis.db`
+- è„šæœ¬ï¼š`scripts/`
   - `scripts/crawlers/jin10_dynamic.py`
   - `scripts/crawlers/jin10_flash_api.py`
   - `scripts/crawlers/storage.py`
@@ -479,33 +617,33 @@
   - `scripts/modeling/baseline_tfidf_svm.py`
   - `scripts/modeling/bert_finetune_cls.py`
 
-## 8) ³£ÓÃÖ¸Áî£¨Êı¾İ¿â£©
+## 8) å¸¸ç”¨æŒ‡ä»¤ï¼ˆæ•°æ®åº“ï¼‰
 
-- Ö»¶Á£ºÁĞ³öËùÓĞ±í
+- åªè¯»ï¼šåˆ—å‡ºæ‰€æœ‰è¡¨
   ```powershell
   python -c "import sqlite3; conn=sqlite3.connect('finance.db'); c=conn.cursor(); c.execute('SELECT name FROM sqlite_master WHERE type=? ORDER BY name', ('table',)); print([r[0] for r in c.fetchall()]); conn.close()"
   ```
-- Ö»¶Á£ºÍ³¼Æ `articles` ×ÜÊıÓëÄ³ÈÕ£¨ÈÕÀúÀ´Ô´£©ÌõÊı
+- åªè¯»ï¼šç»Ÿè®¡ `articles` æ€»æ•°ä¸æŸæ—¥ï¼ˆæ—¥å†æ¥æºï¼‰æ¡æ•°
   ```powershell
   python -c "import sqlite3; conn=sqlite3.connect('finance.db'); c=conn.cursor(); tbl='articles'; c.execute('SELECT COUNT(*) FROM '+tbl); total=c.fetchone()[0]; c.execute('SELECT COUNT(*) FROM '+tbl+' WHERE site=? AND source=? AND substr(published_at,1,10)=?', ('rili.jin10.com','listing_data','2024-12-07')); day=c.fetchone()[0]; print('total:', total, ' 2024-12-07:', day); conn.close()"
   ```
-- Ö»¶Á£º²é¿´µ±ÈÕÏêÏ¸£¨Ê±¼ä+±êÌâ£©
+- åªè¯»ï¼šæŸ¥çœ‹å½“æ—¥è¯¦ç»†ï¼ˆæ—¶é—´+æ ‡é¢˜ï¼‰
   ```powershell
   python -c "import sqlite3, json; conn=sqlite3.connect('finance.db'); c=conn.cursor(); q='SELECT published_at, title FROM articles WHERE site=? AND source=? AND substr(published_at,1,10)=? ORDER BY published_at ASC, id ASC'; rows=c.execute(q, ('rili.jin10.com','listing_data','2024-12-07')).fetchall(); print(json.dumps({'rows': len(rows), 'items': rows}, ensure_ascii=False, indent=2)); conn.close()"
   ```
-- É¾³ı£º°´ÈÕÉ¾³ı¡°ÈÕÀú/Ö»¿´ÖØÒª¡±µ±ÌìÊı¾İ£¨Î£ÏÕ²Ù×÷£¬½÷É÷Ö´ĞĞ£©
+- åˆ é™¤ï¼šæŒ‰æ—¥åˆ é™¤â€œæ—¥å†/åªçœ‹é‡è¦â€å½“å¤©æ•°æ®ï¼ˆå±é™©æ“ä½œï¼Œè°¨æ…æ‰§è¡Œï¼‰
   ```powershell
   python -c "import sqlite3; conn=sqlite3.connect('finance.db'); c=conn.cursor(); c.execute('DELETE FROM articles WHERE site=? AND source=? AND substr(published_at,1,10)=?', ('rili.jin10.com','listing_data','2024-12-07')); conn.commit(); conn.close()"
   ```
-- É¾³ı£ºÇå¿ÕËùÓĞ¡°ÈÕÀú/listing_data¡±Êı¾İ£¨Î£ÏÕ£©
+- åˆ é™¤ï¼šæ¸…ç©ºæ‰€æœ‰â€œæ—¥å†/listing_dataâ€æ•°æ®ï¼ˆå±é™©ï¼‰
   ```powershell
   python -c "import sqlite3; conn=sqlite3.connect('finance.db'); c=conn.cursor(); c.execute('DELETE FROM articles WHERE site=? AND source=?', ('rili.jin10.com','listing_data')); conn.commit(); conn.close()"
   ```
-- É¾³ı£ºÇå¿ÕËùÓĞ¡°¿ìÑ¶/flash_api¡±Êı¾İ£¨Î£ÏÕ£©
+- åˆ é™¤ï¼šæ¸…ç©ºæ‰€æœ‰â€œå¿«è®¯/flash_apiâ€æ•°æ®ï¼ˆå±é™©ï¼‰
   ```powershell
   python -c "import sqlite3; conn=sqlite3.connect('finance.db'); c=conn.cursor(); c.execute('DELETE FROM articles WHERE site=? AND source=?', ('www.jin10.com','flash_api')); conn.commit(); conn.close()"
   ```
-- Î¬»¤£º»ØÊÕ¿Õ¼ä£¨VACUUM£©
+- ç»´æŠ¤ï¼šå›æ”¶ç©ºé—´ï¼ˆVACUUMï¼‰
   ```powershell
   python -c "import sqlite3; conn=sqlite3.connect('finance.db'); conn.execute('VACUUM'); conn.close()"
   ```
