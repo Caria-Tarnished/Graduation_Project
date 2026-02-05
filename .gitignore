@@ -48,6 +48,9 @@ data/interim/**
 
 data/processed/**
 !data/processed/.gitkeep
+!data/processed/train_enhanced.csv
+!data/processed/val_enhanced.csv
+!data/processed/test_enhanced.csv
 
 # Models (keep directory, ignore contents)
 models/**
