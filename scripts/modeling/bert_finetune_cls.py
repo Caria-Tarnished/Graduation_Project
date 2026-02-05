@@ -51,19 +51,28 @@ def _read_csv(path: str) -> pd.DataFrame:
     """以 UTF-8 读取 CSV，统一列名为小写；缺列时补空字符串。"""
     df = pd.read_csv(path, encoding="utf-8")
     df.columns = [str(c).strip().lower() for c in df.columns]
-    for col in ["text", "label", "source", "star", "important", "country", "event_id"]:
+    for col in [
+        "text",
+        "text_enhanced",
+        "label",
+        "source",
+        "star",
+        "important",
+        "country",
+        "event_id",
+    ]:
         if col not in df.columns:
             df[col] = ""
     return df
 
 
-def _build_text(df: pd.DataFrame, use_prefix: bool) -> pd.Series:
+def _build_text(df: pd.DataFrame, use_prefix: bool, text_col: str = "text") -> pd.Series:
     """构造文本：可选加入前缀特征，降低信息丢失。
 
     参数：
     - use_prefix: 是否在文本前拼接形如 [SRC=flash] 的特征 token。
     """
-    base = df["text"].fillna("").astype(str)
+    base = df[text_col].fillna("").astype(str)
     if not use_prefix:
         return base
     src = df["source"].fillna("").astype(str)
@@ -176,6 +185,12 @@ def main() -> None:
     parser.add_argument("--no_prefix", action="store_true", help="不使用前缀特征")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--label_col", type=str, default="label")
+    parser.add_argument(
+        "--text_col",
+        type=str,
+        default="text",
+        help="用于训练的文本列名（例如 text_enhanced）",
+    )
     # 训练增强参数（默认与旧版兼容）
     parser.add_argument("--warmup_ratio", type=float, default=0.06)
     parser.add_argument("--weight_decay", type=float, default=0.01)
@@ -191,6 +206,7 @@ def main() -> None:
 
     args = parser.parse_args()
     use_prefix = not args.no_prefix
+    text_col = str(args.text_col).strip().lower() if args.text_col else "text"
 
     _ensure_dir(args.output_dir)
 
@@ -201,7 +217,9 @@ def main() -> None:
 
     # 文本
     for df in (train, val, test):
-        df["text2"] = _build_text(df, use_prefix)
+        if text_col not in df.columns:
+            df[text_col] = ""
+        df["text2"] = _build_text(df, use_prefix, text_col=text_col)
 
     # 标签列与映射
     lbl_col = args.label_col

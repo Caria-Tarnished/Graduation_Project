@@ -1,6 +1,6 @@
 # Project Status
 
-更新时间：2026-02-04
+更新时间：2026-02-05
 负责人：Caria-Tarnished
 
 ---
@@ -386,6 +386,7 @@
         --test_csv /content/Graduation_Project/data/processed/test_enhanced.csv \
         --output_dir /content/drive/MyDrive/Graduation_Project/experiments/bert_enhanced_v1 \
         --label_col label_multi_cls \
+        --text_col text_enhanced \
         --model_name hfl/chinese-roberta-wwm-ext \
         --class_weight auto \
         --epochs 5 \

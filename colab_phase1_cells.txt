@@ -1,5 +1,5 @@
 # ============================================================
-# ��Ԫ�� 1: ����׼��
+# 单元格 1: 环境准备
 # ============================================================
 from google.colab import drive
 drive.mount('/content/drive')
@@ -16,7 +16,7 @@ else:
 
 
 # ============================================================
-# ��Ԫ�� 2: ��֤/������ǿ����
+# 单元格 2: 验证/生成增强数据
 # ============================================================
 import os
 import pandas as pd
@@ -27,47 +27,47 @@ files = {
     'test': '/content/Graduation_Project/data/processed/test_enhanced.csv'
 }
 
-print("�����ļ����:")
+print("数据文件检查:")
 all_exist = True
 for name, path in files.items():
     if os.path.exists(path):
         df = pd.read_csv(path)
-        print(f"? {name}: {len(df)} ����")
+        print(f"? {name}: {len(df)} 样本")
     else:
-        print(f"? {name}: �ļ�������")
+        print(f"? {name}: 文件不存在")
         all_exist = False
 
 if not all_exist:
-    print("\n?? �����ļ�ȱʧ����������...")
+    print("\n?? 数据文件缺失，正在生成...")
     !python scripts/modeling/build_enhanced_dataset.py \
       --input_dir /content/Graduation_Project/data/processed \
       --output_dir /content/Graduation_Project/data/processed
-    print("\n? ����������ɣ�")
+    print("\n? 数据生成完成！")
 
 
 # ============================================================
-# ��Ԫ�� 3: Ԥ����ǿ���ݣ���ѡ��
+# 单元格 3: 预览增强数据（可选）
 # ============================================================
 import pandas as pd
 
 train_df = pd.read_csv('/content/Graduation_Project/data/processed/train_enhanced.csv')
 
-print(f"ѵ����������: {len(train_df)}")
-print(f"\n��ǩ�ֲ�:")
+print(f"训练集样本数: {len(train_df)}")
+print(f"\n标签分布:")
 print(train_df['label_multi_cls'].value_counts().sort_index())
 
 print(f"\n{'='*80}")
-print("��ǿ�ı�ʾ��:")
+print("增强文本示例:")
 print(f"{'='*80}")
 for i in range(3):
     print(f"\n{i+1}. Label: {train_df.iloc[i]['label_multi_cls']}")
-    print(f"   ԭ��: {train_df.iloc[i]['text'][:60]}...")
-    print(f"   ��ǿ: {train_df.iloc[i]['text_enhanced'][:100]}...")
+    print(f"   原文: {train_df.iloc[i]['text'][:60]}...")
+    print(f"   增强: {train_df.iloc[i]['text_enhanced'][:100]}...")
 
 
 # ============================================================
-# ��Ԫ�� 4: Phase 1 ѵ�����ؼ�����
-# ע�⣺ȷ���� git push ���µ�ѵ���ű���Ȼ���ڵ�Ԫ��1�� git pull
+# 单元格 4: Phase 1 训练（关键！）
+# 注意：确保先 git push 最新的训练脚本，然后在单元格1中 git pull
 # ============================================================
 !python scripts/modeling/bert_finetune_cls.py \
   --train_csv /content/Graduation_Project/data/processed/train_enhanced.csv \
@@ -75,6 +75,7 @@ for i in range(3):
   --test_csv /content/Graduation_Project/data/processed/test_enhanced.csv \
   --output_dir /content/drive/MyDrive/Graduation_Project/experiments/bert_enhanced_v1 \
   --label_col label_multi_cls \
+  --text_col text_enhanced \
   --model_name hfl/chinese-roberta-wwm-ext \
   --class_weight auto \
   --epochs 5 \
@@ -91,49 +92,49 @@ for i in range(3):
 
 
 # ============================================================
-# ��Ԫ�� 5: �鿴���
+# 单元格 5: 查看结果
 # ============================================================
 import json
 import pandas as pd
 
 OUTPUT_DIR = '/content/drive/MyDrive/Graduation_Project/experiments/bert_enhanced_v1'
 
-# ���Լ�ָ��
+# 测试集指标
 with open(f'{OUTPUT_DIR}/metrics_test.json', 'r') as f:
     test_metrics = json.load(f)
 
 print("="*80)
-print("Phase 1 ѵ�����")
+print("Phase 1 训练结果")
 print("="*80)
 print(f"Test Accuracy: {test_metrics['eval_accuracy']:.4f}")
 print(f"Test Macro F1: {test_metrics['eval_macro_f1']:.4f}")
 
-# ����߶Ա�
+# 与基线对比
 baseline_f1 = 0.163
 improvement = (test_metrics['eval_macro_f1'] - baseline_f1) / baseline_f1 * 100
-print(f"\n����߶Ա�:")
-print(f"  ����: {baseline_f1:.4f}")
-print(f"  ��ǿ: {test_metrics['eval_macro_f1']:.4f}")
-print(f"  ����: {improvement:+.1f}%")
+print(f"\n与基线对比:")
+print(f"  基线: {baseline_f1:.4f}")
+print(f"  增强: {test_metrics['eval_macro_f1']:.4f}")
+print(f"  提升: {improvement:+.1f}%")
 
-# ���౨��
+# 分类报告
 print("\n" + "="*80)
-print("���౨��")
+print("分类报告")
 print("="*80)
 with open(f'{OUTPUT_DIR}/report_test.txt', 'r') as f:
     print(f.read())
 
-# Ԥ�����
+# 预测分析
 pred_df = pd.read_csv(f'{OUTPUT_DIR}/pred_test.csv')
-print("\nԤ��ֲ�:")
+print("\n预测分布:")
 print(pred_df['pred'].value_counts().sort_index())
 
-# ϡ�����
+# 稀有类别
 rare_classes = [3, 4, 5]
-print("\nϡ�����Ԥ��:")
+print("\n稀有类别预测:")
 for cls in rare_classes:
     pred_count = (pred_df['pred'] == cls).sum()
     true_count = (pred_df['label'] == cls).sum()
-    print(f"  Class {cls}: ��ʵ={true_count}, Ԥ��={pred_count}")
+    print(f"  Class {cls}: 真实={true_count}, 预测={pred_count}")
     if pred_count > 0:
-        print(f"    ? ģ�Ϳ�ʼԤ���������ˣ�")
+        print(f"    ? 模型开始预测这个类别了！")
