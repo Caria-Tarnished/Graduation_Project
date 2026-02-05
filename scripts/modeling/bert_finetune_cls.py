@@ -140,8 +140,9 @@ class WeightedTrainer(Trainer):
                 super().__init__(*args, **kwargs)
         self.class_weights = class_weights
 
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
         # 使用自定义的带权重交叉熵计算损失（中文数据需确保 labels 为整型索引）
+        # 兼容新版 transformers 的 num_items_in_batch 参数
         labels = inputs.get("labels")
         outputs = model(**{k: v for k, v in inputs.items() if k != "labels"})
         logits = outputs.get("logits")
@@ -344,12 +345,13 @@ def main() -> None:
     callbacks = []
     try:
         # 仅当具备 metric_for_best_model 且启用了 load_best_model_at_end 且有 evaluation_strategy 时再启用早停
+        # 明确检查 patience > 0，避免 0 值被误判
         has_eval_strategy = (
             getattr(training_args, "evaluation_strategy", None) == "steps" or
             getattr(training_args, "eval_strategy", None) == "steps"
         )
         if (
-            args.early_stopping_patience
+            args.early_stopping_patience is not None
             and args.early_stopping_patience > 0
             and getattr(training_args, "metric_for_best_model", None)
             and getattr(training_args, "load_best_model_at_end", False)
