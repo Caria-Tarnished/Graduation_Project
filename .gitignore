@@ -48,9 +48,6 @@ data/interim/**
 
 data/processed/**
 !data/processed/.gitkeep
-!data/processed/train_enhanced.csv
-!data/processed/val_enhanced.csv
-!data/processed/test_enhanced.csv
 !data/processed/qa_dataset_report.json
 
 data/processed_stale*/**

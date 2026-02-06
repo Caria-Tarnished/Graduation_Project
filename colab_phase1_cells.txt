@@ -21,10 +21,12 @@ else:
 import os
 import pandas as pd
 
+DATA_DIR = "/content/drive/MyDrive/Graduation_Project/datasets/processed_stale300/latest"
+
 files = {
-    'train': '/content/Graduation_Project/data/processed/train_enhanced.csv',
-    'val': '/content/Graduation_Project/data/processed/val_enhanced.csv',
-    'test': '/content/Graduation_Project/data/processed/test_enhanced.csv'
+    'train': f'{DATA_DIR}/train_enhanced.csv',
+    'val': f'{DATA_DIR}/val_enhanced.csv',
+    'test': f'{DATA_DIR}/test_enhanced.csv'
 }
 
 print("数据文件检查:")
@@ -38,11 +40,10 @@ for name, path in files.items():
         all_exist = False
 
 if not all_exist:
-    print("\n?? 数据文件缺失，正在生成...")
-    !python scripts/modeling/build_enhanced_dataset.py \
-      --input_dir /content/Graduation_Project/data/processed \
-      --output_dir /content/Graduation_Project/data/processed
-    print("\n? 数据生成完成！")
+    raise FileNotFoundError(
+        "Drive 上的数据文件缺失。请先在本地运行数据构建脚本，"
+        "并使用 scripts/tools/sync_dataset_to_drive.py 同步到 Drive 的 latest 目录。"
+    )
 
 
 # ============================================================
@@ -50,7 +51,7 @@ if not all_exist:
 # ============================================================
 import pandas as pd
 
-train_df = pd.read_csv('/content/Graduation_Project/data/processed/train_enhanced.csv', encoding="utf-8")
+train_df = pd.read_csv(f'{DATA_DIR}/train_enhanced.csv', encoding="utf-8")
 
 print(f"训练集样本数: {len(train_df)}")
 print(f"\n标签分布:")
@@ -79,22 +80,28 @@ import torch
 use_gpu = bool(torch.cuda.is_available())
 disable_tqdm = True
 
-train_csv = "/content/Graduation_Project/data/processed/train_enhanced.csv"
-val_csv = "/content/Graduation_Project/data/processed/val_enhanced.csv"
-test_csv = "/content/Graduation_Project/data/processed/test_enhanced.csv"
+DATA_DIR = globals().get(
+    "DATA_DIR",
+    "/content/drive/MyDrive/Graduation_Project/datasets/processed_stale300/latest",
+)
 
-output_dir = "/content/drive/MyDrive/Graduation_Project/experiments/bert_enhanced_v1"
+train_csv = f"{DATA_DIR}/train_enhanced.csv"
+val_csv = f"{DATA_DIR}/val_enhanced.csv"
+test_csv = f"{DATA_DIR}/test_enhanced.csv"
+
+output_dir = "/content/drive/MyDrive/Graduation_Project/experiments/bert_stale300_6cls_baseline_v1"
 if not use_gpu:
-    output_dir = "/content/drive/MyDrive/Graduation_Project/experiments/bert_enhanced_v1_cpu_smoke"
+    output_dir = "/content/drive/MyDrive/Graduation_Project/experiments/bert_stale300_6cls_baseline_v1_cpu_smoke"
     os.makedirs(os.path.dirname(output_dir), exist_ok=True)
 
     train_df = pd.read_csv(train_csv, encoding="utf-8")
     val_df = pd.read_csv(val_csv, encoding="utf-8")
     test_df = pd.read_csv(test_csv, encoding="utf-8")
 
-    train_csv = "/content/Graduation_Project/data/processed/train_enhanced_cpu_smoke.csv"
-    val_csv = "/content/Graduation_Project/data/processed/val_enhanced_cpu_smoke.csv"
-    test_csv = "/content/Graduation_Project/data/processed/test_enhanced_cpu_smoke.csv"
+    train_csv = "/content/Graduation_Project/tmp/train_enhanced_cpu_smoke.csv"
+    val_csv = "/content/Graduation_Project/tmp/val_enhanced_cpu_smoke.csv"
+    test_csv = "/content/Graduation_Project/tmp/test_enhanced_cpu_smoke.csv"
+    os.makedirs("/content/Graduation_Project/tmp", exist_ok=True)
 
     train_df.head(800).to_csv(train_csv, index=False, encoding="utf-8")
     val_df.head(200).to_csv(val_csv, index=False, encoding="utf-8")
@@ -203,10 +210,14 @@ if ret != 0:
 import json
 import pandas as pd
 
-OUTPUT_DIR = output_dir if "output_dir" in globals() else "/content/drive/MyDrive/Graduation_Project/experiments/bert_enhanced_v1"
+OUTPUT_DIR = (
+    output_dir
+    if "output_dir" in globals()
+    else "/content/drive/MyDrive/Graduation_Project/experiments/bert_stale300_6cls_baseline_v1"
+)
 
 # 测试集指标
-with open(f'{OUTPUT_DIR}/metrics_test.json', 'r') as f:
+with open(f'{OUTPUT_DIR}/metrics_test.json', 'r', encoding='utf-8') as f:
     test_metrics = json.load(f)
 
 print("="*80)
@@ -227,11 +238,11 @@ print(f"提升: {improvement:+.1f}%")
 print("\n" + "="*80)
 print("分类报告")
 print("="*80)
-with open(f'{OUTPUT_DIR}/report_test.txt', 'r') as f:
+with open(f'{OUTPUT_DIR}/report_test.txt', 'r', encoding='utf-8') as f:
     print(f.read())
 
 # 预测分析
-pred_df = pd.read_csv(f'{OUTPUT_DIR}/pred_test.csv')
+pred_df = pd.read_csv(f'{OUTPUT_DIR}/pred_test.csv', encoding='utf-8')
 print("\n预测分布:")
 print(pred_df['pred'].value_counts().sort_index())
 

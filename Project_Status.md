@@ -130,10 +130,13 @@
 - 2026-02-06
   - **打通“本地开发 + Colab 训练 + Drive 存储 + 本地回传报告”工作流**（已可稳定复现）。
   - 数据同步与版本控制
-    - `.gitignore`：继续忽略 `data/processed/**`，但放行并提交以下三份增强数据集（避免 Colab 每次手动上传）：
-      - `data/processed/train_enhanced.csv`
-      - `data/processed/val_enhanced.csv`
-      - `data/processed/test_enhanced.csv`
+    - `.gitignore`：新增忽略 `data/processed_stale*/**`（大 CSV 不进 Git），放行小文件用于口径复现：
+      - `data/processed_stale*/qa_dataset_report.json`
+      - `data/processed_stale*/labeling_thresholds_multilabel.json`
+    - Drive 数据集版本化（推荐工作流，避免手动上传/避免仓库膨胀）
+      - 新增：`scripts/tools/sync_dataset_to_drive.py`
+      - Drive 目录结构：`datasets/<dataset_name>/{versions/<version>/,latest/,latest_version.txt}`
+      - 本地生成后同步：将 `data/processed_stale300` 同步到 Drive 的 `processed_stale300/latest`，Colab 永远读取 latest。
     - `reports/`：本次实验回传后可直接在本地读取与分析（建议仅提交小文件，避免误入大权重文件）。
   - 训练脚本增强（Phase 1 训练更稳健/更适配 Colab 输出）
     - `scripts/modeling/bert_finetune_cls.py`
@@ -142,19 +145,20 @@
       - 增强：训练前标签合法性校验与 `labels.long()` 兜底，降低 `CUDA illegal memory access` 类错误的排查成本。
   - Runner 更新
     - `colab_phase1_cells.txt`
-      - 默认开启 `disable_tqdm=True` 并透传 `--disable_tqdm`。
+      - 默认开启 `disable_tqdm=True` 并透传 `--disable_tqdm`.
       - 保留 CPU smoke 路径与 GPU 全量路径，便于快速验证脚本可跑通。
+      - 更新：stale300 baseline 读取 Drive 数据集（`/content/drive/MyDrive/Graduation_Project/datasets/processed_stale300/latest`），避免上传 CSV。
   - 本地回传脚本
     - `scripts/tools/sync_results.py`
-      - 支持：从 Google Drive for Desktop 的本地映射目录同步 `experiments/<run_name>/` 下的小文件到仓库 `reports/`。
-      - 默认 include：`eval_results.json`、`metrics*.json`、`report*.txt`、`pred*.csv`、`best/config.json`。
+      - 支持：从 Google Drive for Desktop 的本地映射目录同步 `experiments/<run_name>/` 下的小文件到仓库 `reports/`.
+      - 默认 include：`eval_results.json`、`metrics*.json`、`report*.txt`、`pred*.csv`、`best/config.json`.
       - 默认 exclude：大权重（`*.safetensors/*.bin`）、checkpoint、optimizer 等。
-      - 增强：Windows 下自动探测常见 Drive 路径；当 `src_root` 不存在时显式报错，避免“复制 0 文件”的静默失败。
-  - 本次实验结果（已同步至 `reports/`）
-    - `bert_enhanced_v1`（T4 GPU，5 epochs，6 类）：val macro_f1=0.2118；test macro_f1=0.1317；test acc=0.2485。
-      - 测试集分类报告显示类别 3/4/5 的 F1=0；预测分布仅覆盖 0/1/2。
-      - 数据分布提示：训练集 `label_multi_cls` 极度不平衡（3/4/5 分别仅 7/5/19），但测试集中类 5 支持数为 868，存在明显分布差异，需优先处理少数类数据策略。
-    - `bert_enhanced_v1_cpu_smoke`（CPU 小样本，3 类）：用于冒烟验证流程，指标仅供参考。
+  - 训练结果（已同步至 `reports/`）
+    - `bert_enhanced_v1`（T4 GPU，5 epochs，6 类）：val macro_f1=0.2118；test macro_f1=0.1317；test acc=0.2485.
+      - 测试集分类报告显示类别 3/4/5 的 F1=0；预测分布仅覆盖 0/1/2.
+      - 数据分布提示：训练集 `label_multi_cls` 极度不平衡（3/4/5 分别仅 7/5/19），但测试集中类 5 支持数为 868，存在明显分布差异，需优先处理少数类数据策略.
+    - `bert_enhanced_v1_cpu_smoke`（CPU 小样本，3 类）：用于冒烟验证流程，指标仅供参考.
+      - 增强：Windows 下自动探测常见 Drive 路径；当 `src_root` 不存在时显式报错，避免“复制 0 文件”的静默失败.
   - 常用指令（Windows/PowerShell）
     - 同步 Drive 训练产物 → 本地 `reports/`（先预演再执行）：
       ```powershell
@@ -168,46 +172,57 @@
         --dst_root "E:\Projects\Graduation_Project\reports" `
         --verbose
       ```
-
-- 2026-02-05
-  - **Phase 1 优化准备完成**：基于 `Project_optimization_plan.md` 的改进方案，完成输入增强与类权重训练准备。
-  - 新增：`scripts/modeling/build_enhanced_dataset.py`
-    - 功能：为训练集添加市场上下文前缀（基于 `pre_ret` 120 分钟回看与 `range_ratio` 波动率）。
-    - 前缀类型：`[Strong Rally]`、`[Sharp Decline]`、`[Sideways]`、`[Mild Rally]`、`[Weak Decline]`、`[High Volatility]`。
-    - 宏观数据前缀：`[Economic Data] [Actual X Exp Y] [Beat/Miss]`（基于 `actual/consensus` 差异）。
-    - 输出：`train/val/test_enhanced.csv`（新增 `text_enhanced` 列，保留原始 `text`）。
-    - 前缀分布（训练集）：Sideways 65.8%、Mild Rally 13.5%、Weak Decline 11.1%、其他 <10%。
-  - 修复：`scripts/modeling/bert_finetune_cls.py` Colab 兼容性问题
-    - **EarlyStoppingCallback 条件判断**：明确检查 `patience > 0`，确保 `--early_stopping_patience 0` 时不添加早停回调（避免 `AssertionError: EarlyStoppingCallback requires IntervalStrategy`）。
-    - **compute_loss 参数兼容**：已支持 `num_items_in_batch=None` 参数（兼容新版 transformers）。
-    - 数据路径统一：Colab 训练使用 `/content/Graduation_Project/data/processed/`（从 GitHub 拉取），输出到 `/content/drive/MyDrive/Graduation_Project/experiments/`。
-  - 更新：`colab_phase1_cells.txt`
-    - 完整的 Colab 训练单元格（5 个单元格）：环境准备 → 数据验证/生成 → 预览（可选）→ 训练 → 结果分析。
-    - 训练命令：使用 `label_multi_cls`（6 类）、`--class_weight auto`（自动类权重）、`--early_stopping_patience 0`（禁用早停）。
-    - 超参数：5 epochs、lr=1e-5、max_length=384、train_bs=16、gradient_accumulation_steps=2。
   - Colab 训练流程（Phase 1）
     1. 本地提交代码：`git push`（确保最新修复已推送）。
     2. Colab 拉取代码：`!cd /content/Graduation_Project && git pull`。
-    3. 生成增强数据：运行 `build_enhanced_dataset.py`（如果 `*_enhanced.csv` 不存在）。
-    4. 开始训练：运行 `bert_finetune_cls.py`（预计 1-1.5 小时，T4 GPU）。
-    5. 查看结果：`metrics_test.json`（目标：macro_f1 > 0.35，基线 0.163）。
+    3. 开始训练：运行 `bert_finetune_cls.py`（预计 1-1.5 小时，T4 GPU）。
+    4. 查看结果：`metrics_test.json`（目标：macro_f1 > 0.35，基线 0.163）。
   - 可忽略的警告
     - HuggingFace 403 Forbidden：讨论功能被禁用，不影响模型加载。
-    - UNEXPECTED/MISSING weights：分类头重新初始化，正常现象。
+    - UNEXPECTED/MISSING weights：分类头重新初始化，正常现象.
   - 用户偏好记录
-    - **避免创建冗余 .md 文档**，保持仓库整洁。
-    - **将更新记录写入 `Project_Status.md`**。
-    - **始终使用中文**回答、写文档和注释。
+    - **避免创建冗余 .md 文档**，保持仓库整洁.
+    - **将更新记录写入 `Project_Status.md`**.
+    - **始终使用中文**回答、写文档和注释.
+
+- 2026-02-05
+  - **Phase 1 优化准备完成**：基于 `Project_optimization_plan.md` 的改进方案，完成输入增强与类权重训练准备.
+  - 新增：`scripts/modeling/build_enhanced_dataset.py`
+    - 功能：为训练集添加市场上下文前缀（基于 `pre_ret` 120 分钟回看与 `range_ratio` 波动率）。
+    - 前缀类型：`[Strong Rally]`、`[Sharp Decline]`、`[Sideways]`、`[Mild Rally]`、`[Weak Decline]`、`[High Volatility]`.
+    - 宏观数据前缀：`[Economic Data] [Actual X Exp Y] [Beat/Miss]`（基于 `actual/consensus` 差异）。
+    - 输出：`train/val/test_enhanced.csv`（新增 `text_enhanced` 列，保留原始 `text`）。
+    - 前缀分布（训练集）：Sideways 65.8%、Mild Rally 13.5%、Weak Decline 11.1%、其他 <10%.
+  - 修复：`scripts/modeling/bert_finetune_cls.py` Colab 兼容性问题
+    - **EarlyStoppingCallback 条件判断**：明确检查 `patience > 0`，确保 `--early_stopping_patience 0` 时不添加早停回调（避免 `AssertionError: EarlyStoppingCallback requires IntervalStrategy`）。
+    - **compute_loss 参数兼容**：已支持 `num_items_in_batch=None` 参数（兼容新版 transformers）。
+    - 数据路径统一：Colab 训练使用 `/content/Graduation_Project/data/processed/`（从 GitHub 拉取），输出到 `/content/drive/MyDrive/Graduation_Project/experiments/`.
+  - 更新：`colab_phase1_cells.txt`
+    - 完整的 Colab 训练单元格（5 个单元格）：环境准备 → 数据验证/生成 → 预览（可选）→ 训练 → 结果分析.
+    - 训练命令：使用 `label_multi_cls`（6 类）、`--class_weight auto`（自动类权重）、`--early_stopping_patience 0`（禁用早停）。
+    - 超参数：5 epochs、lr=1e-5、max_length=384、train_bs=16、gradient_accumulation_steps=2.
+  - Colab 训练流程（Phase 1）
+    1. 本地提交代码：`git push`（确保最新修复已推送）。
+    2. Colab 拉取代码：`!cd /content/Graduation_Project && git pull`.
+    3. 开始训练：运行 `bert_finetune_cls.py`（预计 1-1.5 小时，T4 GPU）。
+    4. 查看结果：`metrics_test.json`（目标：macro_f1 > 0.35，基线 0.163）。
+  - 可忽略的警告
+    - HuggingFace 403 Forbidden：讨论功能被禁用，不影响模型加载.
+    - UNEXPECTED/MISSING weights：分类头重新初始化，正常现象.
+  - 用户偏好记录
+    - **避免创建冗余 .md 文档**，保持仓库整洁.
+    - **将更新记录写入 `Project_Status.md`**.
+    - **始终使用中文**回答、写文档和注释.
 
 - 2026-02-04
 
-  - 新增：训练工作流文档 `Model_Training_Workflow.md`，采用“本地开发 + 云端训练（GitHub 代码 + Drive 数据）”的存算分离方案；提供 Colab 最小 Runner 与本地结果同步脚本说明。
-  - 新增：`scripts/tools/sync_results.py`，将 Drive 下 `experiments/...` 小型产物（`eval_results.json/metrics*.json/report*.txt/pred*.csv/best/config.json`）同步至本地 `reports/...`，默认跳过大权重，支持 `--dry_run/--include/--exclude`。
+  - 新增：训练工作流文档 `Model_Training_Workflow.md`，采用“本地开发 + 云端训练（GitHub 代码 + Drive 数据）”的存算分离方案；提供 Colab 最小 Runner 与本地结果同步脚本说明.
+  - 新增：`scripts/tools/sync_results.py`，将 Drive 下 `experiments/...` 小型产物（`eval_results.json/metrics*.json/report*.txt/pred*.csv/best/config.json`）同步至本地 `reports/...`，默认跳过大权重，支持 `--dry_run/--include/--exclude`.
   - 增强：`scripts/modeling/bert_finetune_cls.py`
     - 兼容旧版 transformers：`Trainer(tokenizer/callbacks)` 参数的 `TypeError` 自动回退；修复 `EarlyStopping` 断言（无论版本均设置 `metric_for_best_model/greater_is_better/load_best_model_at_end`，并按条件注册回调）。
-    - 新增 `eval_results.json` 汇总（val/test 指标与输出目录），便于本地脚本/Agent 读取。
-    - 稳健性：pandas→HF Dataset 在旧版 datasets 下自动回退；显式保存 tokenizer 以便下游加载。
-  - 可选：`train_logic.py` 作为统一入口（Colab 可 `!python train_logic.py ...`）。基于当前工作流，此文件“可选”，可保留也可删除；直接调用底层脚本同样可行。
+    - 新增 `eval_results.json` 汇总（val/test 指标与输出目录），便于本地脚本/Agent 读取.
+    - 稳健性：pandas→HF Dataset 在旧版 datasets 下自动回退；显式保存 tokenizer 以便下游加载.
+  - 可选：`train_logic.py` 作为统一入口（Colab 可 `!python train_logic.py ...`）。基于当前工作流，此文件“可选”，可保留也可删除；直接调用底层脚本同样可行.
 
 - 2026-02-01
 
@@ -215,18 +230,18 @@
     - `scripts/fetch_intraday_xauusd_mt5.py`（分钟价抓取）。
     - `scripts/build_finance_analysis.py`（构建 finance_analysis.db，计算事件冲击）。
   - 回填与重建：抓取 2024–2025 M1 并重建 `finance_analysis.db`；`prices_m1` 共 736,304 行（2024-01-02 09:00 至 2026-01-31 07:59）。
-  - 验证：自 2026-01-27 起，事件覆盖率 100%，四窗口统计各 1475。
-  - 导出：全量与区间训练集（CSV/Parquet），并生成 30 分钟窗口打标与时间切分数据集与阈值 JSON。
-  - 基线：`scripts/modeling/baseline_tfidf_svm.py` 现支持 `--class_weight/--C/--sublinear_tf/--norm/--dual`；完成 char 1-3/2-4 与加权对比，锁定推荐基线配置。
-  - 新增：`scripts/modeling/prepare_multilabel_dataset.py`，输出 `train/val/test_multi_labeled.csv` 与 `labeling_thresholds_multilabel.json`，实现“基础方向/预期兑现/建议观望”的复合标签。
+  - 验证：自 2026-01-27 起，事件覆盖率 100%，四窗口统计各 1475.
+  - 导出：全量与区间训练集（CSV/Parquet），并生成 30 分钟窗口打标与时间切分数据集与阈值 JSON.
+  - 基线：`scripts/modeling/baseline_tfidf_svm.py` 现支持 `--class_weight/--C/--sublinear_tf/--norm/--dual`；完成 char 1-3/2-4 与加权对比，锁定推荐基线配置.
+  - 新增：`scripts/modeling/prepare_multilabel_dataset.py`，输出 `train/val/test_multi_labeled.csv` 与 `labeling_thresholds_multilabel.json`，实现“基础方向/预期兑现/建议观望”的复合标签.
 
 - 2026-01-29
 
   - 调整：`scripts/crawlers/jin10_dynamic.py` 与参考脚本对齐，采用统一 CLI：
-    - 新增参数：`--months/--start/--end/--output/--db/--source/--headed/--debug/--important-only/--user-data-dir/--recheck-important-every/--use-slider/--setup-seconds`。
-    - 支持边爬边入库（`Article`），并按参考列顺序增量写 CSV；长行（flake8 E501）分行处理。
-    - 保留请求拦截（禁 image/media/font）提速，确保“只看重要”开关与星级兜底过滤。
-  - 文档：更新本页“金十日历/数据（逐日回填）”使用指令为新 CLI。
+    - 新增参数：`--months/--start/--end/--output/--db/--source/--headed/--debug/--important-only/--user-data-dir/--recheck-important-every/--use-slider/--setup-seconds`.
+    - 支持边爬边入库（`Article`），并按参考列顺序增量写 CSV；长行（flake8 E501）分行处理.
+    - 保留请求拦截（禁 image/media/font）提速，确保“只看重要”开关与星级兜底过滤.
+  - 文档：更新本页“金十日历/数据（逐日回填）”使用指令为新 CLI.
 - 2026-01-27
 
   - 新增：`scripts/crawlers/jin10_flash_api.py`（快讯 API 爬虫，支持接口发现、筛选与 CSV 流式写入、SQLite 入库 `--db`）。
@@ -238,20 +253,21 @@
     - 尝试确保“经济数据”页签与“只看重要”开关；
     - 预览阶段 `storage_state` 导出、正式阶段导入，避免 Windows 上 `user_data_dir` 锁导致卡顿；
     - 边爬边入库（`upsert_many`），输出每日提取与累计入库计数；
-    - 修复 0 条/卡住问题的若干鲁棒性细节与调试日志。
+    - 修复 0 条/卡住问题的若干鲁棒性细节与调试日志.
   - 增强：`scripts/crawlers/jin10_flash_api.py` 接口发现与入库：
     - 同时监听 request/response，仅在 JSON 响应与包含 `params=` 的 URL 时确认；
     - 收紧主机/路径匹配（排除主站/日历/热榜等非列表接口）；
     - 时间字段规范化、最后一条时间调试输出、完整请求头透传；
     - 支持 `--stream` 边抓边写 CSV 与 `--db` 入库（URL/内容哈希去重）。
-  - 文档：补充“快讯 API 模式”和“数据库常用指令（只读/删除）”。
+  - 文档：补充“快讯 API 模式”和“数据库常用指令（只读/删除）”.
   - 清理：归档未使用爬虫脚本至 `archive/unused_crawlers_20260127/`：
     - `scripts/crawlers/providers/` 全部
     - `scripts/crawlers/list_crawl.py`
     - `scripts/crawlers/parse_listing.py`
     - `scripts/crawlers/fetch_from_urls.py`
-  - 代码风格：补充 flake8 清理（E501 行宽、空白行 W293/E306）于 `jin10_dynamic.py` / `jin10_flash_api.py`，不改动业务逻辑。
-  - Git：`.gitignore` 新增忽略 `archive/` 与 `参考代码和文档/`。
+  - 代码风格：补充 flake8 清理（E501 行宽、空白行 W293/E306）于 `jin10_dynamic.py` / `jin10_flash_api.py`，不改动业务逻辑.
+  - Git：`.gitignore` 新增忽略 `archive/` 与 `参考代码和文档/`.
+
 - 2026-01-23
 
   - 新增：`scripts/crawlers/jin10_dynamic.py`（Playwright 动态抓取：快讯倒序回溯与日历模式；登录持久化、跨 frame、滚动/加载更多、调试快照、入库）。
@@ -263,13 +279,13 @@
   - 修复：`scripts/crawlers/storage.py` 长行与稳健性（upsert/去重）。
 - 2026-01-20
 
-  - 更新 `configs/config.yaml`：设置标的池与 `windows_days=[1,3,5]`。
+  - 更新 `configs/config.yaml`：设置标的池与 `windows_days=[1,3,5]`.
   - 实现 `scripts/label_events.py`（CSV/DB → labels，中文日期解析）。
-  - 整理 `scripts/fetch_prices.py` 与 `scripts/fetch_news.py` 的 PEP8。
+  - 整理 `scripts/fetch_prices.py` 与 `scripts/fetch_news.py` 的 PEP8.
   - 增加本文件 `Project_Status.md` 与 `.gitignore`（初版）。
-  - 创建本地 Conda `.venv` 环境并安装依赖。
+  - 创建本地 Conda `.venv` 环境并安装依赖.
   - 完成并规范化 `scripts/train_baseline.py`（TF-IDF+LinearSVC，时间切分；支持 DB/CSV；生成报告与预测；flake8 通过）。
-  - `.gitignore` 新增 `.windsurf/` 与 `文字材料文档/`，并将后者从 Git 索引中移除。
+  - `.gitignore` 新增 `.windsurf/` 与 `文字材料文档/`，并将后者从 Git 索引中移除.
 - 2025-11-15
 
   - 创建 `PLAN.md`（首版开发计划）。
@@ -383,7 +399,7 @@
   - Colab 训练（推荐，GPU）：
     1) 打开 https://colab.research.google.com 并选择 GPU（Runtime → Change runtime type → GPU）。
     2) 打开本仓库中的笔记本：`notebooks/bert_multilabel_colab.ipynb`（Colab 文件 → GitHub 选项卡搜索仓库名）。
-    3) 依次执行单元：安装依赖 → 克隆仓库 → 上传三份 CSV → 启动训练 → 查看指标 → 打包下载模型输出。
+    3) 依次执行单元：安装依赖 → 克隆仓库 → 从 Drive 读取数据集（latest）→ 启动训练 → 查看指标 → 打包下载模型输出.
   
   - **Colab Phase 1 训练（增强数据 + 类权重，当前推荐）**
     - 准备：确保本地已 `git push` 最新代码（包含 `bert_finetune_cls.py` 修复）。
@@ -399,37 +415,34 @@
           !cd /content/Graduation_Project && git pull  # 确保拉取最新修复
       %cd /content/Graduation_Project
       ```
-    - 单元格 2：验证/生成增强数据
+    - 单元格 2：验证数据集
       ```python
       import os, pandas as pd
+      DATA_DIR = '/content/drive/MyDrive/Graduation_Project/datasets/processed_stale300/latest'
       files = {
-          'train': '/content/Graduation_Project/data/processed/train_enhanced.csv',
-          'val': '/content/Graduation_Project/data/processed/val_enhanced.csv',
-          'test': '/content/Graduation_Project/data/processed/test_enhanced.csv'
+          'train': f'{DATA_DIR}/train_enhanced.csv',
+          'val': f'{DATA_DIR}/val_enhanced.csv',
+          'test': f'{DATA_DIR}/test_enhanced.csv'
       }
       print("数据文件检查:")
       all_exist = True
       for name, path in files.items():
           if os.path.exists(path):
-              df = pd.read_csv(path)
+              df = pd.read_csv(path, encoding='utf-8')
               print(f"✓ {name}: {len(df)} 样本")
           else:
               print(f"✗ {name}: 文件不存在")
               all_exist = False
       if not all_exist:
-          print("\n⚠️ 数据文件缺失，正在生成...")
-          !python scripts/modeling/build_enhanced_dataset.py \
-            --input_dir /content/Graduation_Project/data/processed \
-            --output_dir /content/Graduation_Project/data/processed
-          print("\n✅ 数据生成完成！")
+          raise FileNotFoundError('Drive 上数据集缺失，请先在本地构建并同步到 latest。')
       ```
     - 单元格 3：Phase 1 训练（关键）
       ```python
       !python scripts/modeling/bert_finetune_cls.py \
-        --train_csv /content/Graduation_Project/data/processed/train_enhanced.csv \
-        --val_csv /content/Graduation_Project/data/processed/val_enhanced.csv \
-        --test_csv /content/Graduation_Project/data/processed/test_enhanced.csv \
-        --output_dir /content/drive/MyDrive/Graduation_Project/experiments/bert_enhanced_v1 \
+        --train_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_stale300/latest/train_enhanced.csv \
+        --val_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_stale300/latest/val_enhanced.csv \
+        --test_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_stale300/latest/test_enhanced.csv \
+        --output_dir /content/drive/MyDrive/Graduation_Project/experiments/bert_stale300_6cls_baseline_v1 \
         --label_col label_multi_cls \
         --text_col text_enhanced \
         --model_name hfl/chinese-roberta-wwm-ext \
@@ -449,8 +462,8 @@
     - 单元格 4：查看结果
       ```python
       import json, pandas as pd
-      OUTPUT_DIR = '/content/drive/MyDrive/Graduation_Project/experiments/bert_enhanced_v1'
-      with open(f'{OUTPUT_DIR}/metrics_test.json', 'r') as f:
+      OUTPUT_DIR = '/content/drive/MyDrive/Graduation_Project/experiments/bert_stale300_6cls_baseline_v1'
+      with open(f'{OUTPUT_DIR}/metrics_test.json', 'r', encoding='utf-8') as f:
           test_metrics = json.load(f)
       print("="*80)
       print("Phase 1 训练结果")
@@ -464,13 +477,13 @@
       print(f"  增强: {test_metrics['eval_macro_f1']:.4f}")
       print(f"  提升: {improvement:+.1f}%")
       # 查看分类报告
-      with open(f'{OUTPUT_DIR}/report_test.txt', 'r') as f:
+      with open(f'{OUTPUT_DIR}/report_test.txt', 'r', encoding='utf-8') as f:
           print("\n" + "="*80)
           print("分类报告")
           print("="*80)
           print(f.read())
       # 稀有类别预测分析
-      pred_df = pd.read_csv(f'{OUTPUT_DIR}/pred_test.csv')
+      pred_df = pd.read_csv(f'{OUTPUT_DIR}/pred_test.csv', encoding='utf-8')
       print("\n预测分布:")
       print(pred_df['pred'].value_counts().sort_index())
       rare_classes = [3, 4, 5]
