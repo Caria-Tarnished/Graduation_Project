@@ -37,7 +37,17 @@ def _repo_root_default() -> str:
 def _default_src_root() -> str:
     """根据操作系统给出一个合理的 Drive 默认路径。"""
     if os.name == "nt":
-        return r"G:\\我的云端硬盘\\Graduation_Project\\experiments"
+        home = os.path.expanduser("~")
+        candidates = [
+            r"G:\\我的云端硬盘\\Graduation_Project\\experiments",
+            r"G:\\My Drive\\Graduation_Project\\experiments",
+            os.path.join(home, "Google Drive", "我的云端硬盘", "Graduation_Project", "experiments"),
+            os.path.join(home, "Google Drive", "My Drive", "Graduation_Project", "experiments"),
+        ]
+        for p in candidates:
+            if os.path.isdir(p):
+                return p
+        return candidates[0]
     # 非 Windows，优先 MyDrive 路径
     return "/content/drive/MyDrive/Graduation_Project/experiments"
 
@@ -131,6 +141,12 @@ def main() -> int:
     parser.add_argument("--dry_run", action="store_true", help="仅预览，将不实际复制")
     parser.add_argument("--verbose", action="store_true", help="输出详细日志")
     args = parser.parse_args()
+
+    if not os.path.isdir(args.src_root):
+        raise FileNotFoundError(
+            f"src_root not found: {args.src_root}. "
+            "请确认你已在本机安装并登录 Google Drive for Desktop，且 experiments 目录已同步到本地。"
+        )
 
     # 默认包含与排除模式
     default_includes = [

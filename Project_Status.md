@@ -1,6 +1,6 @@
 # Project Status
 
-更新时间：2026-02-05
+更新时间：2026-02-06
 负责人：Caria-Tarnished
 
 ---
@@ -51,9 +51,12 @@
 - **Phase 1 优化训练（进行中）**
   - [X] 数据增强：添加市场上下文前缀（`build_enhanced_dataset.py`）。
   - [X] 修复 Colab 兼容性：EarlyStoppingCallback 与 compute_loss 参数。
-  - [ ] **Colab 训练执行**：运行 Phase 1 训练（增强数据 + 自动类权重）。
-  - [ ] **结果评估**：对比基线（macro_f1=0.163），目标 >0.35；检查稀有类别（3/4/5）F1 是否 >0。
-  - [ ] 如果效果不佳：考虑 Phase 2（合成数据生成、手动类权重调整）。
+  - [X] **Colab 训练执行**：运行 Phase 1 训练（增强数据 + 自动类权重）。
+  - [X] **结果评估（初版）**：已同步 `reports/` 并读取指标。
+    - `bert_enhanced_v1`（T4 GPU，5 epochs）：val macro_f1=0.2118；test macro_f1=0.1317；test acc=0.2485。
+    - `bert_enhanced_v1_cpu_smoke`（CPU 小样本，1 epoch）：val macro_f1=0.3065；test macro_f1=0.2854；test acc=0.3500。
+    - 现象：`bert_enhanced_v1` 在测试集未预测出类别 3/4/5（对应类 F1=0）。
+  - [ ] 如果效果不佳：考虑 Phase 2（重采样/合成少数类、Focal Loss、或重新定义/平滑标签体系）。
 
 - 金十（优先）：
   - [X] 使用 `jin10_flash_api.py`（API 模式，支持 `--db` 入库）作为快讯主抓取；未知接口时使用“接口发现”。
@@ -123,6 +126,48 @@
   - [ ] 测试与样例：为日历解析与 API 解析准备最小样例（页面快照/接口 JSON 片段）和断言，确保升级后解析/入库不回退。
 
 ## 5) 变更记录（Changelog）
+
+- 2026-02-06
+  - **打通“本地开发 + Colab 训练 + Drive 存储 + 本地回传报告”工作流**（已可稳定复现）。
+  - 数据同步与版本控制
+    - `.gitignore`：继续忽略 `data/processed/**`，但放行并提交以下三份增强数据集（避免 Colab 每次手动上传）：
+      - `data/processed/train_enhanced.csv`
+      - `data/processed/val_enhanced.csv`
+      - `data/processed/test_enhanced.csv`
+    - `reports/`：本次实验回传后可直接在本地读取与分析（建议仅提交小文件，避免误入大权重文件）。
+  - 训练脚本增强（Phase 1 训练更稳健/更适配 Colab 输出）
+    - `scripts/modeling/bert_finetune_cls.py`
+      - 新增：`--disable_tqdm`，可禁用 transformers/datasets 的进度条输出，减少 Colab 输出与浏览器缓存压力。
+      - 修复：显式导入 `datasets`（用于 `datasets.disable_progress_bars()`）。
+      - 增强：训练前标签合法性校验与 `labels.long()` 兜底，降低 `CUDA illegal memory access` 类错误的排查成本。
+  - Runner 更新
+    - `colab_phase1_cells.txt`
+      - 默认开启 `disable_tqdm=True` 并透传 `--disable_tqdm`。
+      - 保留 CPU smoke 路径与 GPU 全量路径，便于快速验证脚本可跑通。
+  - 本地回传脚本
+    - `scripts/tools/sync_results.py`
+      - 支持：从 Google Drive for Desktop 的本地映射目录同步 `experiments/<run_name>/` 下的小文件到仓库 `reports/`。
+      - 默认 include：`eval_results.json`、`metrics*.json`、`report*.txt`、`pred*.csv`、`best/config.json`。
+      - 默认 exclude：大权重（`*.safetensors/*.bin`）、checkpoint、optimizer 等。
+      - 增强：Windows 下自动探测常见 Drive 路径；当 `src_root` 不存在时显式报错，避免“复制 0 文件”的静默失败。
+  - 本次实验结果（已同步至 `reports/`）
+    - `bert_enhanced_v1`（T4 GPU，5 epochs，6 类）：val macro_f1=0.2118；test macro_f1=0.1317；test acc=0.2485。
+      - 测试集分类报告显示类别 3/4/5 的 F1=0；预测分布仅覆盖 0/1/2。
+      - 数据分布提示：训练集 `label_multi_cls` 极度不平衡（3/4/5 分别仅 7/5/19），但测试集中类 5 支持数为 868，存在明显分布差异，需优先处理少数类数据策略。
+    - `bert_enhanced_v1_cpu_smoke`（CPU 小样本，3 类）：用于冒烟验证流程，指标仅供参考。
+  - 常用指令（Windows/PowerShell）
+    - 同步 Drive 训练产物 → 本地 `reports/`（先预演再执行）：
+      ```powershell
+      python scripts/tools/sync_results.py `
+        --src_root "G:\我的云端硬盘\Graduation_Project\experiments" `
+        --dst_root "E:\Projects\Graduation_Project\reports" `
+        --dry_run --verbose
+
+      python scripts/tools/sync_results.py `
+        --src_root "G:\我的云端硬盘\Graduation_Project\experiments" `
+        --dst_root "E:\Projects\Graduation_Project\reports" `
+        --verbose
+      ```
 
 - 2026-02-05
   - **Phase 1 优化准备完成**：基于 `Project_optimization_plan.md` 的改进方案，完成输入增强与类权重训练准备。

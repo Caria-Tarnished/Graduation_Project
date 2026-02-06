@@ -63,6 +63,11 @@ models/rag/chroma/**
 # Reports (keep directory, ignore contents)
 reports/**
 !reports/.gitkeep
+!reports/**/eval_results.json
+!reports/**/metrics*.json
+!reports/**/report*.txt
+!reports/**/pred*.csv
+!reports/**/best/config.json
 
 # Database files
 finance.db

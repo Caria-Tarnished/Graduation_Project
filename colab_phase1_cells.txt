@@ -61,8 +61,8 @@ print("增强文本示例:")
 print(f"{'='*80}")
 for i in range(3):
     print(f"\n{i+1}. Label: {train_df.iloc[i]['label_multi_cls']}")
-    print(f"   原文: {train_df.iloc[i]['text'][:60]}...")
-    print(f"   增强: {train_df.iloc[i]['text_enhanced'][:100]}...")
+    print(f"原文: {train_df.iloc[i]['text'][:60]}...")
+    print(f"增强: {train_df.iloc[i]['text_enhanced'][:100]}...")
 
 
 # ============================================================
@@ -219,9 +219,9 @@ print(f"Test Macro F1: {test_metrics['eval_macro_f1']:.4f}")
 baseline_f1 = 0.163
 improvement = (test_metrics['eval_macro_f1'] - baseline_f1) / baseline_f1 * 100
 print(f"\n与基线对比:")
-print(f"  基线: {baseline_f1:.4f}")
-print(f"  增强: {test_metrics['eval_macro_f1']:.4f}")
-print(f"  提升: {improvement:+.1f}%")
+print(f"基线: {baseline_f1:.4f}")
+print(f"增强: {test_metrics['eval_macro_f1']:.4f}")
+print(f"提升: {improvement:+.1f}%")
 
 # 分类报告
 print("\n" + "="*80)
@@ -243,4 +243,4 @@ for cls in rare_classes:
     true_count = (pred_df['label'] == cls).sum()
     print(f"  Class {cls}: 真实={true_count}, 预测={pred_count}")
     if pred_count > 0:
-        print(f"    ? 模型开始预测这个类别了！")
+        print(f"模型开始预测这个类别了！")
