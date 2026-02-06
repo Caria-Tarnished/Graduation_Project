@@ -1,0 +1,186 @@
+{
+  "processed_dir": "E:\\Projects\\Graduation_Project\\data\\processed",
+  "raw_dir": "E:\\Projects\\Graduation_Project\\data\\raw",
+  "db": "E:\\Projects\\Graduation_Project\\finance_analysis.db",
+  "ticker": "XAUUSD",
+  "processed_multi_labeled": {
+    "train": {
+      "span": {
+        "min_ts": "2024-12-03 09:52:00",
+        "max_ts": "2025-07-31 23:17:00",
+        "rows": 15071
+      },
+      "rows": 15071,
+      "dups_event_id": {
+        "dups": 0,
+        "unique_rows": 15071
+      },
+      "label_multi_dist": {
+        "0": 6008,
+        "1": 4517,
+        "2": 4515,
+        "3": 7,
+        "4": 5,
+        "5": 19
+      }
+    },
+    "val": {
+      "span": {
+        "min_ts": "2025-08-01 00:00:00",
+        "max_ts": "2025-10-31 22:58:00",
+        "rows": 3122
+      },
+      "rows": 3122,
+      "dups_event_id": {
+        "dups": 0,
+        "unique_rows": 3122
+      },
+      "label_multi_dist": {
+        "0": 1317,
+        "1": 951,
+        "2": 844,
+        "3": 1,
+        "4": 2,
+        "5": 7
+      }
+    },
+    "test": {
+      "span": {
+        "min_ts": "2025-11-01 00:08:00",
+        "max_ts": "2026-01-31 13:00:00",
+        "rows": 7989
+      },
+      "rows": 7989,
+      "dups_event_id": {
+        "dups": 0,
+        "unique_rows": 7989
+      },
+      "label_multi_dist": {
+        "0": 4030,
+        "1": 1654,
+        "2": 1417,
+        "3": 15,
+        "4": 5,
+        "5": 868
+      }
+    },
+    "cross_split_event_id_intersections": {
+      "train_val_first10": [],
+      "train_test_first10": [],
+      "val_test_first10": [],
+      "any_overlap": false
+    }
+  },
+  "database": {
+    "events": {
+      "rows": 26182,
+      "span": {
+        "min_ts": "2024-12-03 09:52:00",
+        "max_ts": "2026-01-31 13:00:00"
+      }
+    },
+    "event_impacts_w15": {
+      "rows": 26182
+    },
+    "prices_m1": {
+      "rows": 736304,
+      "span": {
+        "min_ts": "2024-01-02 01:00:00",
+        "max_ts": "2026-01-30 23:59:00"
+      }
+    }
+  },
+  "raw_files": [
+    {
+      "path": ".gitkeep",
+      "size_bytes": 0,
+      "mtime": "2026-01-20 03:04:28.920670509"
+    }
+  ],
+  "processed_files": [
+    {
+      "path": "xauusd_m1_mt5_2024_2025.csv",
+      "size_bytes": 43552903,
+      "mtime": "2026-01-31 14:16:11.215147495"
+    },
+    {
+      "path": "train_enhanced.csv",
+      "size_bytes": 26530344,
+      "mtime": "2026-02-05 06:37:58.134368896"
+    },
+    {
+      "path": "xauusd_m1_mt5_20241202_to_now.csv",
+      "size_bytes": 25177505,
+      "mtime": "2026-01-30 12:52:34.887822151"
+    },
+    {
+      "path": "train_multi_labeled.csv",
+      "size_bytes": 18728570,
+      "mtime": "2026-02-01 06:27:22.966537237"
+    },
+    {
+      "path": "training_event_impacts_xauusd_all.parquet",
+      "size_bytes": 14499938,
+      "mtime": "2026-02-01 02:30:48.765366793"
+    },
+    {
+      "path": "test_enhanced.csv",
+      "size_bytes": 11219022,
+      "mtime": "2026-02-05 06:37:58.655438185"
+    },
+    {
+      "path": "test_multi_labeled.csv",
+      "size_bytes": 7943342,
+      "mtime": "2026-02-01 06:27:23.554704189"
+    },
+    {
+      "path": "event_impacts_join.csv",
+      "size_bytes": 7215202,
+      "mtime": "2026-01-31 03:22:59.834182024"
+    },
+    {
+      "path": "val_enhanced.csv",
+      "size_bytes": 6350264,
+      "mtime": "2026-02-05 06:37:58.297210693"
+    },
+    {
+      "path": "val_multi_labeled.csv",
+      "size_bytes": 4452357,
+      "mtime": "2026-02-01 06:27:23.158586740"
+    },
+    {
+      "path": "xauusd_m1_mt5_20260127_0131.csv",
+      "size_bytes": 369447,
+      "mtime": "2026-01-31 12:55:37.434410095"
+    },
+    {
+      "path": "xauusd_m1_mt5_increment.csv",
+      "size_bytes": 26102,
+      "mtime": "2026-01-31 11:57:26.600455046"
+    },
+    {
+      "path": "qa_dataset_report.json",
+      "size_bytes": 5216,
+      "mtime": "2026-02-01 13:01:53.230650425"
+    },
+    {
+      "path": "labeling_thresholds_multilabel.json",
+      "size_bytes": 908,
+      "mtime": "2026-02-01 06:27:23.556234360"
+    },
+    {
+      "path": "labeling_thresholds.json",
+      "size_bytes": 315,
+      "mtime": "2026-02-01 02:30:58.755126715"
+    },
+    {
+      "path": ".gitkeep",
+      "size_bytes": 0,
+      "mtime": "2026-01-20 03:04:28.919664621"
+    }
+  ],
+  "archive_suggestions": {
+    "raw_candidates": [],
+    "processed_candidates": []
+  }
+}

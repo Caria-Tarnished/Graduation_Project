@@ -25,7 +25,9 @@ import pandas as pd  # type: ignore
 
 
 def _ensure_dir(path: str) -> None:
-    d = os.path.dirname(os.path.abspath(path))
+    p = os.path.abspath(path)
+    _, ext = os.path.splitext(p)
+    d = os.path.dirname(p) if ext else p
     if d and not os.path.exists(d):
         os.makedirs(d, exist_ok=True)
 
@@ -120,6 +122,12 @@ def main() -> None:
     parser.add_argument("--ticker", type=str, default="XAUUSD")
     parser.add_argument("--window_post", type=int, default=15)
     parser.add_argument("--pre_minutes", type=int, default=120)
+    parser.add_argument(
+        "--max_stale_sec",
+        type=float,
+        default=300.0,
+        help="过滤 impacts 的时间戳回退样本：impact_ts 与事件 ts 偏差超过该秒数则丢弃（默认 300 秒）",
+    )
     # 时间切分（北京时间字符串，与入库保持一致）
     parser.add_argument("--train_end", type=str, default="2025-08-01 00:00:00")
     parser.add_argument("--val_end", type=str, default="2025-11-01 00:00:00")
@@ -157,7 +165,8 @@ def main() -> None:
         )
         events = pd.read_sql_query(q_evt, conn)
         q_imp = (
-            "select event_id, price_event, price_future, delta, ret as ret_post "
+            "select event_id, price_event, price_future, delta, ret as ret_post, "
+            "price_event_ts_utc, price_future_ts_utc "
             "from event_impacts where ticker=? and window_min=?"
         )
         impacts = pd.read_sql_query(q_imp, conn, params=(args.ticker, args.window_post))
@@ -170,6 +179,26 @@ def main() -> None:
         # 时间解析（本地与 UTC）
         df["event_ts_local"] = pd.to_datetime(df["event_ts_local"], errors="coerce")
         df["event_ts_utc"] = pd.to_datetime(df["event_ts_utc"], errors="coerce")
+
+        # stale 样本过滤：避免 prices_m1 缺口导致的 asof 回退过远，污染 ret_post/pre_ret 等特征
+        df["impact_event_ts_utc"] = pd.to_datetime(df.get("price_event_ts_utc"), errors="coerce")
+        df["impact_future_ts_utc"] = pd.to_datetime(df.get("price_future_ts_utc"), errors="coerce")
+        expected_future = df["event_ts_utc"] + pd.Timedelta(minutes=int(args.window_post))
+        df["delta_event_sec"] = (
+            (df["impact_event_ts_utc"] - df["event_ts_utc"]).dt.total_seconds().abs()
+        )
+        df["delta_future_sec"] = (
+            (df["impact_future_ts_utc"] - expected_future).dt.total_seconds().abs()
+        )
+        thr = float(args.max_stale_sec)
+        before = int(len(df))
+        mask = (df["delta_event_sec"] <= thr) & (df["delta_future_sec"] <= thr)
+        mask = mask.fillna(False)
+        df = df.loc[mask].copy()
+        after = int(len(df))
+        print(
+            f"stale_filter applied: before={before}, after={after}, dropped={before - after}, max_stale_sec={thr}"
+        )
 
         # 2) 读分钟价索引，计算 pre 返回与 Range（post 窗）
         prices = _read_prices(conn, args.ticker)
@@ -358,8 +387,12 @@ def main() -> None:
         "important",
         "hot",
         "price_event",
+        "price_event_ts_utc",
         "price_future",
+        "price_future_ts_utc",
         "delta",
+        "delta_event_sec",
+        "delta_future_sec",
         "ret_post",
         "pre_ret",
         "range_ratio",

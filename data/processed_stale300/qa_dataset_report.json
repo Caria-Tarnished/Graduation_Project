@@ -1,0 +1,140 @@
+{
+  "processed_dir": "E:\\Projects\\Graduation_Project\\data\\processed_stale300",
+  "raw_dir": "E:\\Projects\\Graduation_Project\\data\\raw",
+  "db": "E:\\Projects\\Graduation_Project\\finance_analysis.db",
+  "ticker": "XAUUSD",
+  "processed_multi_labeled": {
+    "train": {
+      "span": {
+        "min_ts": "2024-12-03 09:52:00",
+        "max_ts": "2025-07-31 23:17:00",
+        "rows": 12841
+      },
+      "rows": 12841,
+      "dups_event_id": {
+        "dups": 0,
+        "unique_rows": 12841
+      },
+      "label_multi_dist": {
+        "0": 5075,
+        "1": 3849,
+        "2": 3847,
+        "3": 6,
+        "4": 4,
+        "5": 60
+      }
+    },
+    "val": {
+      "span": {
+        "min_ts": "2025-08-01 00:00:00",
+        "max_ts": "2025-10-31 22:58:00",
+        "rows": 2692
+      },
+      "rows": 2692,
+      "dups_event_id": {
+        "dups": 0,
+        "unique_rows": 2692
+      },
+      "label_multi_dist": {
+        "0": 1155,
+        "1": 806,
+        "2": 715,
+        "4": 1,
+        "5": 15
+      }
+    },
+    "test": {
+      "span": {
+        "min_ts": "2025-11-01 00:08:00",
+        "max_ts": "2026-01-31 00:36:00",
+        "rows": 3823
+      },
+      "rows": 3823,
+      "dups_event_id": {
+        "dups": 0,
+        "unique_rows": 3823
+      },
+      "label_multi_dist": {
+        "0": 983,
+        "1": 1496,
+        "2": 1276,
+        "3": 14,
+        "4": 5,
+        "5": 49
+      }
+    },
+    "cross_split_event_id_intersections": {
+      "train_val_first10": [],
+      "train_test_first10": [],
+      "val_test_first10": [],
+      "any_overlap": false
+    }
+  },
+  "database": {
+    "events": {
+      "rows": 26182,
+      "span": {
+        "min_ts": "2024-12-03 09:52:00",
+        "max_ts": "2026-01-31 13:00:00"
+      }
+    },
+    "event_impacts_w15": {
+      "rows": 26182
+    },
+    "prices_m1": {
+      "rows": 736304,
+      "span": {
+        "min_ts": "2024-01-02 01:00:00",
+        "max_ts": "2026-01-30 23:59:00"
+      }
+    }
+  },
+  "raw_files": [
+    {
+      "path": ".gitkeep",
+      "size_bytes": 0,
+      "mtime": "2026-01-20 03:04:28.920670509"
+    }
+  ],
+  "processed_files": [
+    {
+      "path": "train_enhanced.csv",
+      "size_bytes": 22086103,
+      "mtime": "2026-02-06 02:02:58.942103386"
+    },
+    {
+      "path": "train_multi_labeled.csv",
+      "size_bytes": 15879429,
+      "mtime": "2026-02-06 02:02:31.495450974"
+    },
+    {
+      "path": "test_enhanced.csv",
+      "size_bytes": 6482004,
+      "mtime": "2026-02-06 02:02:59.398907185"
+    },
+    {
+      "path": "val_enhanced.csv",
+      "size_bytes": 5148126,
+      "mtime": "2026-02-06 02:02:59.137099981"
+    },
+    {
+      "path": "test_multi_labeled.csv",
+      "size_bytes": 4661900,
+      "mtime": "2026-02-06 02:02:31.702399015"
+    },
+    {
+      "path": "val_multi_labeled.csv",
+      "size_bytes": 3675745,
+      "mtime": "2026-02-06 02:02:31.582432032"
+    },
+    {
+      "path": "labeling_thresholds_multilabel.json",
+      "size_bytes": 909,
+      "mtime": "2026-02-06 02:02:31.703909874"
+    }
+  ],
+  "archive_suggestions": {
+    "raw_candidates": [],
+    "processed_candidates": []
+  }
+}
