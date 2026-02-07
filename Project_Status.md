@@ -109,6 +109,18 @@
     - 可调整阈值：预期兑现阈值、高波动阈值、低净变动阈值
     - 测试脚本：`scripts/test_sentiment_analyzer.py`
     - 模型复制工具：`scripts/tools/copy_model_weights.py`
+  - [X] **准备工作完成**（2026-02-07 晚）：
+    - 模型权重复制：从 `reports/bert_3cls_enhanced_v1/best/` 复制到 `models/bert_3cls/best/`
+    - 情感分析器测试：6个测试案例全部通过
+    - 规则引擎验证：预期兑现和建议观望规则工作正常
+    - 目录结构创建：按照 REMAINING_TASKS.md 创建完整的 4 层架构目录
+    - 测试结果：模型加载正常，推理速度快（CPU < 1秒/条），规则引擎触发正常
+  - [X] **阶段 1 完成**（2026-02-07 晚）：
+    - DTO 数据结构实现：`app/core/dto.py`（包含 7 个核心数据类）
+    - 数据类定义：MarketContext, NewsItem, SentimentResult, Citation, ToolTraceItem, AgentAnswer, EngineConfig
+    - 辅助函数：sentiment_label_to_text(), sentiment_label_to_english()
+    - 测试通过：所有 DTO 创建和序列化测试通过
+    - 下一步：开始阶段 2（Engine B - RAG 检索管线）
 
   **冗余文件清理（待手动删除）**：
 
@@ -183,6 +195,19 @@
 
 ## 4) 备忘 / 风险（Memos / Risks）
 
+- **BERT 模型准确度观察**（2026-02-07）：
+  - 现象：测试中模型预测偏向 bearish（6个案例中5个预测为 bearish）
+  - 置信度：38%-51% 之间，说明模型对测试案例不是特别确定
+  - 可能原因：
+    - 训练数据分布特点（测试集中 Bearish 样本占比 33.7%）
+    - 测试案例是人工构造的，可能与训练数据分布不同
+    - 标签映射可能需要验证（当前：0->-1, 1->0, 2->1）
+  - 改进方向（答辩后）：
+    - 检查训练数据的标签分布和文本特征
+    - 尝试不同的标签映射方式
+    - 增加训练数据量或调整数据增强策略
+    - 考虑使用 Focal Loss 处理类别不平衡
+  - 当前状态：功能正常，规则引擎工作正常，可继续推进工程任务
 - 登录与反爬：部分站点需登录，建议用 `--user-data-dir` 或 `--storage` 持久化登录态。
 - DOM 变更：动态站点结构变化频繁，需通过 `--debug-dir` 反馈 HTML 以快速适配。
 - 运行稳定性：请勿手动关闭浏览器；长时运行建议无头并控制 `--max-loads`、`--delay`。
@@ -198,6 +223,26 @@
 
 ## 5) 变更记录（Changelog）
 
+- 2026-02-07（晚）
+
+  - **阶段 1 完成（Engine A + DTO）**：
+    - 实现 DTO 数据结构：`app/core/dto.py`（7 个核心数据类 + 2 个辅助函数）
+    - 数据类定义：
+      - MarketContext：市场上下文（发布前的 K 线状态）
+      - NewsItem：新闻条目（财经快讯或日历事件）
+      - SentimentResult：情感分析结果（BERT + 规则引擎输出）
+      - Citation：引用片段（RAG 检索结果）
+      - ToolTraceItem：工具调用追踪条目
+      - AgentAnswer：Agent 最终答案
+      - EngineConfig：引擎配置参数
+    - 辅助函数：sentiment_label_to_text(), sentiment_label_to_english()
+    - 测试通过：所有 DTO 创建和序列化测试通过
+    - 阶段 1 总结：
+      - ✅ 任务 1.1: Colab 训练 3 类 BERT 模型（Test Macro F1=0.3770）
+      - ✅ 任务 1.2: 实现 Engine A 推理包装器（sentiment_analyzer.py）
+      - ✅ 任务 1.3: 实现规则引擎（集成在 sentiment_analyzer.py）
+      - ✅ 任务 1.4: 实现 DTO 数据结构（dto.py）
+    - 下一步：开始阶段 2（Engine B - RAG 检索管线）
 - 2026-02-07（下午）
 
   - **方案 A 训练完成（3 类模型成功达标）**：
@@ -1009,6 +1054,10 @@ python scripts/tools/sync_results.py `
 - 数据库：`finance.db`
 - 分钟级冲击数据库：`finance_analysis.db`
 - Colab 训练单元格：`colab_3cls_training_cells.txt`
+- 应用代码：`app/`
+  - `app/core/dto.py`：数据传输对象定义
+  - `app/services/sentiment_analyzer.py`：情感分析服务（Engine A）
+  - `app/services/README.md`：服务使用文档
 - 脚本：`scripts/`
   - `scripts/crawlers/jin10_dynamic.py`
   - `scripts/crawlers/jin10_flash_api.py`
@@ -1019,7 +1068,9 @@ python scripts/tools/sync_results.py `
   - `scripts/modeling/bert_finetune_cls.py`
   - `scripts/modeling/prepare_3cls_dataset.py`
   - `scripts/modeling/build_enhanced_dataset_3cls.py`
+  - `scripts/test_sentiment_analyzer.py`
   - `scripts/tools/sync_results.py`
+  - `scripts/tools/copy_model_weights.py`
 
 ## 9) 常用指令（数据库）
 

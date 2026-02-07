@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-²âÊÔÇé¸Ğ·ÖÎöÆ÷£¨Engine A£©
+æµ‹è¯•æƒ…æ„Ÿåˆ†æå™¨ Engine A
 
-ÓÃÍ¾£º
-1. ÑéÖ¤ BERT Ä£ĞÍ¼ÓÔØÊÇ·ñÕı³£
-2. ²âÊÔ¹æÔòÒıÇæÂß¼­ÊÇ·ñÕıÈ·
-3. ÆÀ¹À²»Í¬³¡¾°ÏÂµÄ·ÖÎö½á¹û
+ç”¨é€”:
+1. éªŒè¯ BERT æ¨¡å‹åŠ è½½æ˜¯å¦æ­£å¸¸
+2. æµ‹è¯•è§„åˆ™å¼•æ“é€»è¾‘æ˜¯å¦æ­£ç¡®
+3. è¯„ä¼°ä¸åŒåœºæ™¯ä¸‹çš„åˆ†æç»“æœ
 
-Ê¹ÓÃ·½·¨£º
+ä½¿ç”¨æ–¹æ³•:
     python scripts/test_sentiment_analyzer.py
 """
 import sys
 from pathlib import Path
 
-# Ìí¼ÓÏîÄ¿¸ùÄ¿Â¼µ½Â·¾¶
+# æ·»åŠ é¡¹ç›®æ ¹ç›®å½•åˆ°è·¯å¾„
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -21,106 +21,114 @@ from app.services.sentiment_analyzer import SentimentAnalyzer
 
 
 def print_result(title: str, result: dict):
-    """´òÓ¡·ÖÎö½á¹û"""
+    """æ‰“å°åˆ†æç»“æœ"""
     print(f"\n{'=' * 80}")
     print(f"{title}")
     print(f"{'=' * 80}")
-    print(f"»ù´¡Çé¸Ğ: {result['base_sentiment']} (ÖÃĞÅ¶È: {result['base_confidence']:.2%})")
-    print(f"×îÖÕÇé¸Ğ: {result['final_sentiment']}")
-    print(f"½âÊÍ: {result['explanation']}")
+    print(f"åŸºç¡€æƒ…æ„Ÿ: {result['base_sentiment']} (ç½®ä¿¡åº¦: {result['base_confidence']:.2%})")
+    print(f"æœ€ç»ˆæƒ…æ„Ÿ: {result['final_sentiment']}")
+    print(f"è§£é‡Š: {result['explanation']}")
     if result['recommendation']:
-        print(f"½¨Òé: {result['recommendation']}")
-    print(f"\nÊĞ³¡ÉÏÏÂÎÄ:")
-    print(f"  Ç°ÆÚÊÕÒæÂÊ: {result['market_context']['pre_ret']:.2%}")
-    print(f"  ²¨¶¯ÂÊ: {result['market_context']['range_ratio']:.2%}")
-    print(f"  ÔöÇ¿ÎÄ±¾: {result['market_context']['enhanced_text'][:100]}...")
+        print(f"å»ºè®®: {result['recommendation']}")
+    print(f"\nå¸‚åœºä¸Šä¸‹æ–‡:")
+    print(f"  å‰æœŸæ”¶ç›Šç‡: {result['market_context']['pre_ret']:.2%}")
+    print(f"  æ³¢åŠ¨ç‡: {result['market_context']['range_ratio']:.2%}")
+    print(f"  å¢å¼ºæ–‡æœ¬: {result['market_context']['enhanced_text'][:100]}...")
 
 
 def main():
-    """Ö÷²âÊÔº¯Êı"""
+    """ä¸»æµ‹è¯•å‡½æ•°"""
     print("=" * 80)
-    print("Çé¸Ğ·ÖÎöÆ÷²âÊÔ")
+    print("æƒ…æ„Ÿåˆ†æå™¨æµ‹è¯•")
     print("=" * 80)
     
-    # ¼ì²éÄ£ĞÍÂ·¾¶
+    # æ£€æŸ¥æ¨¡å‹è·¯å¾„
     model_path = "models/bert_3cls/best"
     if not Path(model_path).exists():
-        print(f"\n´íÎó: Ä£ĞÍÂ·¾¶²»´æÔÚ: {model_path}")
-        print("\nÇëÏÈÍê³ÉÒÔÏÂ²½Öè£º")
-        print("1. È·±£ÒÑÔÚ Colab ÉÏÍê³É BERT 3ÀàÄ£ĞÍÑµÁ·")
-        print("2. Ê¹ÓÃ sync_results.py Í¬²½ÑµÁ·½á¹ûµ½±¾µØ reports/")
-        print("3. ½« reports/bert_3cls_enhanced_v1/best/ ¸´ÖÆµ½ models/bert_3cls/best/")
-        print("\n¸´ÖÆÃüÁîÊ¾Àı£¨PowerShell£©£º")
-        print("  Copy-Item -Recurse -Force reports/bert_3cls_enhanced_v1/best models/bert_3cls/")
+        print(f"\né”™è¯¯: æ¨¡å‹è·¯å¾„ä¸å­˜åœ¨: {model_path}")
+        print("\nè¯·å…ˆå®Œæˆä»¥ä¸‹æ­¥éª¤:")
+        print("1. ç¡®ä¿å·²åœ¨ Colab ä¸Šå®Œæˆ BERT 3ç±»æ¨¡å‹è®­ç»ƒ")
+        print("2. ä½¿ç”¨ sync_results.py åŒæ­¥è®­ç»ƒç»“æœåˆ°æœ¬åœ° reports/")
+        print("3. å°† reports/bert_3cls_enhanced_v1/best/ å¤åˆ¶åˆ° models/bert_3cls/best/")
+        print("\nå¤åˆ¶å‘½ä»¤ç¤ºä¾‹ PowerShell:")
+        print("  python scripts/tools/copy_model_weights.py --src reports/bert_3cls_enhanced_v1/best --dst models/bert_3cls/best --verbose")
         return 1
     
-    # ´´½¨·ÖÎöÆ÷
+    # åˆ›å»ºåˆ†æå™¨
     try:
-        print(f"\nÕıÔÚ¼ÓÔØÄ£ĞÍ: {model_path}")
+        print(f"\næ­£åœ¨åŠ è½½æ¨¡å‹: {model_path}")
         analyzer = SentimentAnalyzer(model_path=model_path)
-        print("Ä£ĞÍ¼ÓÔØ³É¹¦£¡\n")
+        print("æ¨¡å‹åŠ è½½æˆåŠŸ!\n")
     except Exception as e:
-        print(f"\nÄ£ĞÍ¼ÓÔØÊ§°Ü: {e}")
+        print(f"\næ¨¡å‹åŠ è½½å¤±è´¥: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
     
-    # ²âÊÔ°¸Àı
+    # æµ‹è¯•æ¡ˆä¾‹
     test_cases = [
         {
-            "title": "°¸Àı1£ºÆÕÍ¨ÀûºÃÏûÏ¢£¨ºáÅÌºó½µÏ¢£©",
-            "text": "ÃÀÁª´¢Ğû²¼½µÏ¢25¸ö»ùµã£¬·ûºÏÊĞ³¡Ô¤ÆÚ",
-            "pre_ret": 0.002,  # Ç°ÆÚĞ¡ÕÇ0.2%
-            "range_ratio": 0.005  # ²¨¶¯ÂÊ0.5%
+            "title": "æ¡ˆä¾‹1: æ™®é€šåˆ©å¥½æ¶ˆæ¯ æ¨ªç›˜åé™æ¯",
+            "text": "ç¾è”å‚¨å®£å¸ƒé™æ¯25ä¸ªåŸºç‚¹ ç¬¦åˆå¸‚åœºé¢„æœŸ",
+            "pre_ret": 0.002,
+            "range_ratio": 0.005
         },
         {
-            "title": "°¸Àı2£ºÀûºÃÔ¤ÆÚ¶ÒÏÖ£¨´óÕÇºó½µÏ¢£©",
-            "text": "ÃÀÁª´¢Ğû²¼½µÏ¢25¸ö»ùµã£¬·ûºÏÊĞ³¡Ô¤ÆÚ",
-            "pre_ret": 0.015,  # Ç°ÆÚ´óÕÇ1.5%
-            "range_ratio": 0.008  # ²¨¶¯ÂÊ0.8%
+            "title": "æ¡ˆä¾‹2: åˆ©å¥½é¢„æœŸå…‘ç° å¤§æ¶¨åé™æ¯",
+            "text": "ç¾è”å‚¨å®£å¸ƒé™æ¯25ä¸ªåŸºç‚¹ ç¬¦åˆå¸‚åœºé¢„æœŸ",
+            "pre_ret": 0.015,
+            "range_ratio": 0.008
         },
         {
-            "title": "°¸Àı3£ºÀû¿ÕÔ¤ÆÚ¶ÒÏÖ£¨´óµøºó¼ÓÏ¢£©",
-            "text": "ÃÀÁª´¢Ğû²¼¼ÓÏ¢50¸ö»ùµã£¬³¬³öÊĞ³¡Ô¤ÆÚ",
-            "pre_ret": -0.018,  # Ç°ÆÚ´óµø1.8%
-            "range_ratio": 0.012  # ²¨¶¯ÂÊ1.2%
+            "title": "æ¡ˆä¾‹3: åˆ©ç©ºé¢„æœŸå…‘ç° å¤§è·ŒååŠ æ¯",
+            "text": "ç¾è”å‚¨å®£å¸ƒåŠ æ¯50ä¸ªåŸºç‚¹ è¶…å‡ºå¸‚åœºé¢„æœŸ",
+            "pre_ret": -0.018,
+            "range_ratio": 0.012
         },
         {
-            "title": "°¸Àı4£º½¨Òé¹ÛÍû£¨¸ß²¨¶¯µÍ¾»±ä¶¯£©",
-            "text": "ÃÀ¹úCPIÊı¾İ¹«²¼£¬Í¬±ÈÔö³¤2.8%£¬·ûºÏÔ¤ÆÚ",
-            "pre_ret": 0.001,  # Ç°ÆÚ¼¸ºõÎŞ±ä¶¯
-            "range_ratio": 0.020  # ¸ß²¨¶¯2.0%
+            "title": "æ¡ˆä¾‹4: å»ºè®®è§‚æœ› é«˜æ³¢åŠ¨ä½å‡€å˜åŠ¨",
+            "text": "ç¾å›½CPIæ•°æ®å…¬å¸ƒ åŒæ¯”å¢é•¿2.8% ç¬¦åˆé¢„æœŸ",
+            "pre_ret": 0.001,
+            "range_ratio": 0.020
         },
         {
-            "title": "°¸Àı5£ºÆÕÍ¨Àû¿ÕÏûÏ¢£¨ºáÅÌºó¸ºÃæÊı¾İ£©",
-            "text": "ÃÀ¹úÊ§ÒµÂÊÉÏÉıÖÁ4.5%£¬¸ßÓÚÔ¤ÆÚµÄ4.2%",
-            "pre_ret": -0.001,  # Ç°ÆÚĞ¡µø0.1%
-            "range_ratio": 0.006  # ²¨¶¯ÂÊ0.6%
+            "title": "æ¡ˆä¾‹5: æ™®é€šåˆ©ç©ºæ¶ˆæ¯ æ¨ªç›˜åè´Ÿé¢æ•°æ®",
+            "text": "ç¾å›½å¤±ä¸šç‡ä¸Šå‡è‡³4.5% é«˜äºé¢„æœŸçš„4.2%",
+            "pre_ret": -0.001,
+            "range_ratio": 0.006
         },
         {
-            "title": "°¸Àı6£ºÖĞĞÔÏûÏ¢£¨ºáÅÌºóÖĞĞÔÊı¾İ£©",
-            "text": "ÃÀ¹úGDPÔö³¤2.5%£¬·ûºÏÊĞ³¡Ô¤ÆÚ",
-            "pre_ret": 0.0005,  # Ç°ÆÚ¼¸ºõÎŞ±ä¶¯
-            "range_ratio": 0.004  # µÍ²¨¶¯0.4%
+            "title": "æ¡ˆä¾‹6: ä¸­æ€§æ¶ˆæ¯ æ¨ªç›˜åä¸­æ€§æ•°æ®",
+            "text": "ç¾å›½GDPå¢é•¿2.5% ç¬¦åˆå¸‚åœºé¢„æœŸ",
+            "pre_ret": 0.0005,
+            "range_ratio": 0.004
         }
     ]
     
-    # Ö´ĞĞ²âÊÔ
+    # æ‰§è¡Œæµ‹è¯•
     for case in test_cases:
-        result = analyzer.analyze(
-            text=case["text"],
-            pre_ret=case["pre_ret"],
-            range_ratio=case["range_ratio"]
-        )
-        print_result(case["title"], result)
+        try:
+            result = analyzer.analyze(
+                text=case["text"],
+                pre_ret=case["pre_ret"],
+                range_ratio=case["range_ratio"]
+            )
+            print_result(case["title"], result)
+        except Exception as e:
+            print(f"\næµ‹è¯•å¤±è´¥: {case['title']}")
+            print(f"é”™è¯¯: {e}")
+            import traceback
+            traceback.print_exc()
     
-    # ×Ü½á
+    # æ€»ç»“
     print(f"\n{'=' * 80}")
-    print("²âÊÔÍê³É")
+    print("æµ‹è¯•å®Œæˆ")
     print(f"{'=' * 80}")
-    print("\n¹æÔòÒıÇæãĞÖµÉèÖÃ£º")
-    print(f"  Ô¤ÆÚ¶ÒÏÖãĞÖµ: {analyzer.PRICED_IN_THRESHOLD:.2%}")
-    print(f"  ¸ß²¨¶¯ãĞÖµ: {analyzer.HIGH_VOLATILITY_THRESHOLD:.2%}")
-    print(f"  µÍ¾»±ä¶¯ãĞÖµ: {analyzer.LOW_NET_CHANGE_THRESHOLD:.2%}")
-    print("\nÈçĞèµ÷ÕûãĞÖµ£¬ÇëĞŞ¸Ä app/services/sentiment_analyzer.py ÖĞµÄÀà³£Á¿")
+    print("\nè§„åˆ™å¼•æ“é˜ˆå€¼è®¾ç½®:")
+    print(f"  é¢„æœŸå…‘ç°é˜ˆå€¼: {analyzer.PRICED_IN_THRESHOLD:.2%}")
+    print(f"  é«˜æ³¢åŠ¨é˜ˆå€¼: {analyzer.HIGH_VOLATILITY_THRESHOLD:.2%}")
+    print(f"  ä½å‡€å˜åŠ¨é˜ˆå€¼: {analyzer.LOW_NET_CHANGE_THRESHOLD:.2%}")
+    print("\nå¦‚éœ€è°ƒæ•´é˜ˆå€¼ è¯·ä¿®æ”¹ app/services/sentiment_analyzer.py ä¸­çš„ç±»å¸¸é‡")
     
     return 0
 
