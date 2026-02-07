@@ -179,6 +179,22 @@
       - `COLAB_TRAINING_COMMAND.md`：Phase 1 Colab 命令，已被 `colab_3cls_training_cells.txt` 替代。
     - 文档整合：将上述文件的关键信息整合到 `Project_Status.md` 和 `colab_3cls_training_cells.txt` 中。
   
+  - **训练脚本优化（消除警告和错误）**：
+    - **修复 warmup_ratio 弃用警告**：
+      - 将 `--warmup_ratio` 改为 `--warmup_steps`（transformers 5.x 推荐）
+      - 保留 `--warmup_ratio` 参数以兼容旧命令，但默认值改为 0
+      - 自动计算：如果 `warmup_steps=0` 且 `warmup_ratio>0`，则自动计算 warmup_steps
+    - **禁用 HuggingFace 警告**：
+      - 设置 `hf_logging.set_verbosity_error()` 减少输出噪音
+      - 设置环境变量 `HF_HUB_DISABLE_IMPLICIT_TOKEN=1` 避免 403 错误
+      - 过滤 UNEXPECTED/MISSING weights 警告（分类头重新初始化是正常现象）
+    - **修复 pin_memory 警告**：
+      - 在 TrainingArguments 中添加 `dataloader_pin_memory=False`
+      - CPU 模式下禁用内存固定，避免无意义的警告
+    - **更新 Colab 训练命令**：
+      - 将 `--warmup_ratio 0.06` 改为 `--warmup_steps 100`
+      - 保持其他参数不变
+  
   - **.gitignore 优化与工作流改进**：
     - **3 类数据集反选**：在 `data/processed/**` 规则下添加反选，允许提交 3 类数据集到 GitHub：
       - `train_3cls.csv`, `val_3cls.csv`, `test_3cls.csv`

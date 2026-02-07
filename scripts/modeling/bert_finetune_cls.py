@@ -199,7 +199,18 @@ def main() -> None:
         help="用于训练的文本列名（例如 text_enhanced）",
     )
     # 训练增强参数（默认与旧版兼容）
-    parser.add_argument("--warmup_ratio", type=float, default=0.06)
+    parser.add_argument(
+        "--warmup_ratio",
+        type=float,
+        default=0.0,
+        help="Warmup ratio (deprecated, use warmup_steps instead)",
+    )
+    parser.add_argument(
+        "--warmup_steps",
+        type=int,
+        default=0,
+        help="Number of warmup steps (recommended over warmup_ratio)",
+    )
     parser.add_argument("--weight_decay", type=float, default=0.01)
     parser.add_argument("--eval_steps", type=int, default=100)
     parser.add_argument("--save_steps", type=int, default=100)
@@ -218,6 +229,21 @@ def main() -> None:
 
     args = parser.parse_args()
     use_prefix = not args.no_prefix
+
+    # 计算 warmup_steps（如果用户提供了 warmup_ratio）
+    # 优先使用 warmup_steps，如果为 0 则从 warmup_ratio 计算
+    if args.warmup_steps == 0 and args.warmup_ratio > 0:
+        # 稍后在知道总步数后计算
+        use_warmup_ratio = True
+    else:
+        use_warmup_ratio = False
+
+    # 禁用 HuggingFace 的警告日志（减少输出噪音）
+    hf_logging.set_verbosity_error()
+    
+    # 禁用 transformers 的自动转换线程（避免 403 错误）
+    os.environ["TRANSFORMERS_OFFLINE"] = "0"  # 允许在线，但不强制转换
+    os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"  # 禁用隐式 token
     text_col = str(args.text_col).strip().lower() if args.text_col else "text"
 
     if bool(getattr(args, "disable_tqdm", False)):
@@ -309,6 +335,11 @@ def main() -> None:
         class_weights = torch.tensor(w, dtype=torch.float)
 
     # 模型与训练器（允许分类头尺寸不匹配，如从 3 类迁移到 5 类）
+    # 禁用模型加载时的警告
+    import warnings
+    warnings.filterwarnings("ignore", message=".*UNEXPECTED.*")
+    warnings.filterwarnings("ignore", message=".*MISSING.*")
+    
     try:
         model = AutoModelForSequenceClassification.from_pretrained(
             args.model_name,
@@ -322,6 +353,14 @@ def main() -> None:
             args.model_name,
             num_labels=len(mp),
         )
+
+    # 计算总训练步数（用于 warmup_steps）
+    total_steps = (len(train_df) // args.train_bs) * args.epochs
+    if use_warmup_ratio:
+        calculated_warmup_steps = int(total_steps * args.warmup_ratio)
+        print(f"计算 warmup_steps: {calculated_warmup_steps} (total_steps={total_steps}, warmup_ratio={args.warmup_ratio})")
+    else:
+        calculated_warmup_steps = args.warmup_steps
 
     # 兼容老版本 transformers：若不支持部分参数，则退化为最小参数集
     try:
@@ -342,9 +381,10 @@ def main() -> None:
             logging_steps=50,
             report_to=[],  # 关闭 wandb 等外部上报，避免无意联网
             seed=args.seed,
-            warmup_ratio=args.warmup_ratio,
+            warmup_steps=calculated_warmup_steps,  # 使用 warmup_steps 而非 warmup_ratio
             weight_decay=args.weight_decay,
             gradient_accumulation_steps=args.gradient_accumulation_steps,
+            dataloader_pin_memory=False,  # CPU 模式下禁用 pin_memory
         )
     except TypeError:
         # 如果 eval_strategy 不支持，尝试旧版本的 evaluation_strategy
@@ -366,9 +406,10 @@ def main() -> None:
                 logging_steps=50,
                 report_to=[],
                 seed=args.seed,
-                warmup_ratio=args.warmup_ratio,
+                warmup_steps=calculated_warmup_steps,  # 使用 warmup_steps 而非 warmup_ratio
                 weight_decay=args.weight_decay,
                 gradient_accumulation_steps=args.gradient_accumulation_steps,
+                dataloader_pin_memory=False,  # CPU 模式下禁用 pin_memory
             )
         except TypeError:
             # 最小参数集

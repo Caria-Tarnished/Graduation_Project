@@ -136,7 +136,7 @@ cmd = f"""python scripts/modeling/bert_finetune_cls.py \\
   --train_bs {train_bs} \\
   --eval_bs {eval_bs} \\
   --gradient_accumulation_steps {gradient_accumulation_steps} \\
-  --warmup_ratio 0.06 \\
+  --warmup_steps 100 \\
   --weight_decay 0.01 \\
   --eval_steps 100 \\
   --save_steps 100 \\
