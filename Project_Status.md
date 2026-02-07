@@ -48,15 +48,53 @@
 
 ## 3) 进行中 / 下一步（Next）
 
-- **Phase 1 优化训练（进行中）**
+- **Phase 1 优化训练（已完成）**
   - [X] 数据增强：添加市场上下文前缀（`build_enhanced_dataset.py`）。
   - [X] 修复 Colab 兼容性：EarlyStoppingCallback 与 compute_loss 参数。
   - [X] **Colab 训练执行**：运行 Phase 1 训练（增强数据 + 自动类权重）。
   - [X] **结果评估（初版）**：已同步 `reports/` 并读取指标。
-    - `bert_enhanced_v1`（T4 GPU，5 epochs）：val macro_f1=0.2118；test macro_f1=0.1317；test acc=0.2485。
+    - `bert_enhanced_v1`（T4 GPU，5 epochs，6 类）：val macro_f1=0.2118；test macro_f1=0.1317；test acc=0.2485。
     - `bert_enhanced_v1_cpu_smoke`（CPU 小样本，1 epoch）：val macro_f1=0.3065；test macro_f1=0.2854；test acc=0.3500。
     - 现象：`bert_enhanced_v1` 在测试集未预测出类别 3/4/5（对应类 F1=0）。
-  - [ ] 如果效果不佳：考虑 Phase 2（重采样/合成少数类、Focal Loss、或重新定义/平滑标签体系）。
+    - 根本原因：训练集 Class 3/4/5 样本极度稀缺（7/5/19），但测试集 Class 5 有 868 样本，分布严重不一致。
+  - [X] **决策：采用方案 A（重新设计标签体系）**，放弃 Phase 2（数据增强/Focal Loss）。
+
+- **方案 A：3 类标签体系 + 规则引擎（进行中）**
+  - [X] **标签体系简化**：移除"预期兑现"（Class 3/4）和"观望"（Class 5），仅保留基础方向（Bearish/Neutral/Bullish）。
+  - [X] **数据集生成**：
+    - 新增脚本：`scripts/modeling/prepare_3cls_dataset.py`（生成 3 类标签数据集）。
+    - 输出文件：`train/val/test_3cls.csv` + `labeling_thresholds_3cls.json`。
+    - 标签分布（均衡）：
+      - 训练集（12,841）：Bearish=3,853 (30.0%), Neutral=5,135 (40.0%), Bullish=3,853 (30.0%)
+      - 验证集（2,692）：Bearish=715 (26.6%), Neutral=1,170 (43.5%), Bullish=807 (30.0%)
+      - 测试集（3,823）：Bearish=1,290 (33.7%), Neutral=1,032 (27.0%), Bullish=1,501 (39.3%)
+  - [X] **输入增强（保留）**：
+    - 新增脚本：`scripts/modeling/build_enhanced_dataset_3cls.py`（添加市场上下文前缀）。
+    - 输出文件：`train/val/test_enhanced_3cls.csv`（新增 `text_enhanced` 列）。
+    - 前缀分布（训练集）：Sideways 60.6%, Mild Rally 15.3%, Weak Decline 12.8%, Sharp Decline 5.7%, Strong Rally 5.4%, High Volatility 0.1%。
+  - [X] **Colab 训练准备**：
+    - 新增文件：`colab_3cls_training_cells.txt`（完整训练单元格，包含数据生成、验证、训练、结果分析）。
+    - 训练配置：GPU 自适应（GPU: 5 epochs/384 max_length；CPU: 3 epochs/256 max_length）。
+    - 路径修复：修正 Colab 单元格 2 中的脚本路径（使用相对路径，依赖 %cd 切换到仓库根目录）。
+  - [X] **本地数据集生成**：在本地运行数据集生成脚本，确保 Colab 可以直接从 GitHub 拉取数据集。
+  - [ ] **Colab 训练执行**：运行 3 类训练（预计 GPU 1-1.5 小时，CPU 3-4 小时）。
+  - [ ] **结果评估**：目标 Test Macro F1 > 0.35（相比 6 类基线 0.163 提升 >100%）。
+  - [ ] **后处理规则引擎**（系统集成阶段）：
+    - 在 `app/services/` 创建 `sentiment_analyzer.py`。
+    - 实现规则：`If BERT输出="利好" AND 前120分钟涨幅>1%: 显示="利好预期兑现"`。
+    - 实现规则：`If 高波动 AND 低净变动: 显示="建议观望"`。
+  
+  **冗余文件清理（待手动删除）**：
+  - `test_training_quick.py`：Phase 1 快速测试脚本，已被 Colab 训练流程替代。
+  - `TRAINING_GUIDE_PHASE1.md`：Phase 1 (6 类) 训练指南，已被方案 A (3 类) 替代。
+  - `COLAB_TRAINING_COMMAND.md`：Phase 1 Colab 命令，已被 `colab_3cls_training_cells.txt` 替代。
+  - 说明：这些文件的关键信息已整合到 `Project_Status.md` 和 `colab_3cls_training_cells.txt` 中。
+  
+  **方案 A 核心思路**：
+  - ML 模型专注于可学习的 3 类基础方向（Bearish/Neutral/Bullish）
+  - "预期兑现"等复杂逻辑改为后处理规则引擎（更可解释、可维护、可调试）
+  - 规则引擎可根据实际情况灵活调整阈值（如前期涨幅阈值、波动率阈值等）
+  - 符合金融系统的混合架构设计模式（ML + 规则引擎）
 
 - 金十（优先）：
   - [X] 使用 `jin10_flash_api.py`（API 模式，支持 `--db` 入库）作为快讯主抓取；未知接口时使用“接口发现”。
@@ -127,7 +165,69 @@
 
 ## 5) 变更记录（Changelog）
 
-- 2026-02-06
+- 2026-02-07
+  - **Colab 路径修复与冗余文件清理**：
+    - 修复问题：Colab 单元格 2 中的脚本路径错误（从绝对路径改为相对路径）。
+    - 原因：单元格 1 已使用 `%cd /content/Graduation_Project` 切换到仓库根目录，后续命令应使用相对路径。
+    - 修复内容：
+      - `prepare_3cls_dataset.py`：从 `/content/Graduation_Project/scripts/...` 改为 `scripts/...`
+      - `build_enhanced_dataset_3cls.py`：同上
+      - 数据库和输出路径：从 `/content/Graduation_Project/...` 改为相对路径
+    - 冗余文件标记（待手动删除）：
+      - `test_training_quick.py`：Phase 1 快速测试脚本，已被 Colab 训练流程替代。
+      - `TRAINING_GUIDE_PHASE1.md`：Phase 1 (6 类) 训练指南，已被方案 A (3 类) 替代。
+      - `COLAB_TRAINING_COMMAND.md`：Phase 1 Colab 命令，已被 `colab_3cls_training_cells.txt` 替代。
+    - 文档整合：将上述文件的关键信息整合到 `Project_Status.md` 和 `colab_3cls_training_cells.txt` 中。
+  - **本地数据集生成说明**：
+    - 用户需要在本地运行以下命令生成 3 类数据集：
+      ```powershell
+      # 生成 3 类标签数据集
+      python scripts/modeling/prepare_3cls_dataset.py `
+        --db finance_analysis.db `
+        --ticker XAUUSD `
+        --window_post 15 `
+        --pre_minutes 120 `
+        --out_dir data/processed
+      
+      # 添加输入增强
+      python scripts/modeling/build_enhanced_dataset_3cls.py `
+        --input_dir data/processed `
+        --output_dir data/processed
+      ```
+    - 生成后将文件提交到 GitHub，Colab 可以直接从仓库拉取。
+    - 或者在 Colab 单元格 2 中自动生成（如果 Drive 上不存在）。
+
+- 2026-02-06（下午）
+  - **方案 A 实施完成**：基于 Phase 1 失败分析，重新设计标签体系。
+  - 问题诊断
+    - Phase 1 (6 类) 失败原因：训练集 Class 3/4/5 样本极度稀缺（7/5/19），但测试集 Class 5 有 868 样本，导致模型完全无法预测这些类别（F1=0）。
+    - 输入增强（市场上下文前缀）本身有效，但无法解决极端类别不平衡问题。
+  - 方案 A：标签体系简化 + 规则引擎
+    - 核心思路：ML 模型专注于可学习的 3 类基础方向（Bearish/Neutral/Bullish），"预期兑现"等复杂逻辑改为后处理规则引擎。
+    - 工程优势：更可解释、可维护、可调试；规则引擎可根据实际情况灵活调整阈值。
+  - 新增脚本
+    - `scripts/modeling/prepare_3cls_dataset.py`：生成简化的 3 类标签数据集（基于 15 分钟窗口 ret_post）。
+    - `scripts/modeling/build_enhanced_dataset_3cls.py`：为 3 类数据集添加市场上下文前缀（保留输入增强）。
+  - 数据集生成
+    - 输出：`train/val/test_3cls.csv` + `train/val/test_enhanced_3cls.csv` + `labeling_thresholds_3cls.json`。
+    - 标签分布（均衡）：训练集 Bearish=3,853 (30.0%), Neutral=5,135 (40.0%), Bullish=3,853 (30.0%)。
+    - 前缀分布（训练集）：Sideways 60.6%, Mild Rally 15.3%, Weak Decline 12.8%, 其他 <6%。
+  - Colab 训练准备
+    - 更新：`colab_3cls_training_cells.txt`（完整训练流程，包含数据生成、验证、训练、结果分析）。
+    - 新增：GPU/CPU 自适应训练配置（GPU: 5 epochs/384 max_length；CPU: 3 epochs/256 max_length）。
+    - 配置：class_weight=auto, label_col=label, text_col=text_enhanced。
+  - 下一步
+    - 在 Colab 上运行 3 类训练（预计 GPU 1-1.5 小时，CPU 3-4 小时）。
+    - 目标：Test Macro F1 > 0.35（相比 6 类基线 0.163 提升 >100%）。
+    - 后续：实现后处理规则引擎（`app/services/sentiment_analyzer.py`）。
+  - 开发规范记录
+    - 避免使用 emoji 符号（可能显示为"?"）。
+    - 代码中添加中文注释。
+    - 文件编码统一为 UTF-8（避免 GBK/GB2312 编码问题）。
+    - 避免生成冗余文档，优先更新 `Project_Status.md`。
+    - 遵循项目初始文档（PLAN.md、README.md 等）。
+
+- 2026-02-06（上午）
   - **打通“本地开发 + Colab 训练 + Drive 存储 + 本地回传报告”工作流**（已可稳定复现）。
   - 数据同步与版本控制
     - `.gitignore`：新增忽略 `data/processed_stale*/**`（大 CSV 不进 Git），放行小文件用于口径复现：
@@ -400,6 +500,17 @@
     1) 打开 https://colab.research.google.com 并选择 GPU（Runtime → Change runtime type → GPU）。
     2) 打开本仓库中的笔记本：`notebooks/bert_multilabel_colab.ipynb`（Colab 文件 → GitHub 选项卡搜索仓库名）。
     3) 依次执行单元：安装依赖 → 克隆仓库 → 从 Drive 读取数据集（latest）→ 启动训练 → 查看指标 → 打包下载模型输出.
+  
+  - **Colab 3 类训练（方案 A，当前推荐）**
+    - 准备：确保本地已 `git push` 最新代码（包含 3 类数据集生成脚本）。
+    - 训练单元格：参考 `colab_3cls_training_cells.txt`（6 个单元格，包含完整流程）。
+    - 关键特性：
+      - GPU/CPU 自适应配置（GPU: 5 epochs/384 max_length；CPU: 3 epochs/256 max_length）
+      - 自动检测 Drive 上是否已有数据集，若无则自动生成
+      - 训练完成后自动分析结果并与基线对比
+    - 配置：class_weight=auto, label_col=label, text_col=text_enhanced, early_stopping_patience=0
+    - 预期结果：Test Macro F1 > 0.35（相比 6 类基线 0.163 提升 >100%）
+    - 训练时间：GPU 约 1-1.5 小时，CPU 约 3-4 小时
   
   - **Colab Phase 1 训练（增强数据 + 类权重，当前推荐）**
     - 准备：确保本地已 `git push` 最新代码（包含 `bert_finetune_cls.py` 修复）。

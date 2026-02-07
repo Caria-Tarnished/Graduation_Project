@@ -1,0 +1,284 @@
+# ============================================================
+# Colab 训练单元格：3 类标签 + 输入增强（方案 A）
+# ============================================================
+# 使用说明：
+# 1. 在 Colab 中创建新笔记本
+# 2. 依次复制以下单元格内容并执行
+# 3. 确保选择 GPU 运行时（Runtime → Change runtime type → GPU）
+# ============================================================
+
+# ============================================================
+# 单元格 1：环境准备
+# ============================================================
+from google.colab import drive
+drive.mount('/content/drive')
+
+!pip install -U transformers datasets evaluate accelerate -q
+
+import os
+if not os.path.exists('/content/Graduation_Project'):
+    !git clone https://github.com/Caria-Tarnished/Graduation_Project.git
+else:
+    !cd /content/Graduation_Project && git pull
+
+%cd /content/Graduation_Project
+
+# ============================================================
+# 单元格 2：生成 3 类数据集（如果 Drive 上没有）
+# ============================================================
+import os
+
+# 检查 Drive 上是否已有数据集
+DATA_DIR = '/content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest'
+files_needed = ['train_enhanced_3cls.csv', 'val_enhanced_3cls.csv', 'test_enhanced_3cls.csv']
+all_exist = all(os.path.exists(os.path.join(DATA_DIR, f)) for f in files_needed)
+
+if not all_exist:
+    print("数据集不存在，开始生成...")
+    
+    # 步骤 1：生成 3 类标签数据集
+    !python scripts/modeling/prepare_3cls_dataset.py \
+        --db finance_analysis.db \
+        --ticker XAUUSD \
+        --window_post 15 \
+        --pre_minutes 120 \
+        --out_dir data/processed
+    
+    # 步骤 2：添加输入增强（市场上下文前缀）
+    !python scripts/modeling/build_enhanced_dataset_3cls.py \
+        --input_dir data/processed \
+        --output_dir data/processed
+    
+    # 步骤 3：同步到 Drive
+    !mkdir -p /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest
+    !cp data/processed/train_enhanced_3cls.csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/
+    !cp data/processed/val_enhanced_3cls.csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/
+    !cp data/processed/test_enhanced_3cls.csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/
+    !cp data/processed/labeling_thresholds_3cls.json /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/
+    
+    print("数据集已生成并同步到 Drive")
+else:
+    print("数据集已存在，跳过生成步骤")
+
+# ============================================================
+# 单元格 3：验证数据集
+# ============================================================
+import pandas as pd
+
+DATA_DIR = '/content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest'
+files = {
+    'train': f'{DATA_DIR}/train_enhanced_3cls.csv',
+    'val': f'{DATA_DIR}/val_enhanced_3cls.csv',
+    'test': f'{DATA_DIR}/test_enhanced_3cls.csv'
+}
+
+print("数据文件检查:")
+all_exist = True
+for name, path in files.items():
+    if os.path.exists(path):
+        df = pd.read_csv(path, encoding='utf-8')
+        label_dist = df['label'].value_counts().sort_index()
+        print(f"? {name}: {len(df)} 样本")
+        print(f"  标签分布: Bearish={label_dist.get(-1, 0)}, Neutral={label_dist.get(0, 0)}, Bullish={label_dist.get(1, 0)}")
+    else:
+        print(f"? {name}: 文件不存在")
+        all_exist = False
+
+if not all_exist:
+    raise FileNotFoundError('Drive 上数据集缺失，请检查上一步是否成功。')
+
+# ============================================================
+# 单元格 4：3 类训练（GPU/CPU 自适应）
+# ============================================================
+import torch
+
+# 检测是否有 GPU 可用
+has_gpu = torch.cuda.is_available()
+device_name = torch.cuda.get_device_name(0) if has_gpu else "CPU"
+
+print("=" * 60)
+print(f"检测到设备: {device_name}")
+print("=" * 60)
+
+if has_gpu:
+    # GPU 配置：完整训练
+    print("使用 GPU 完整训练配置")
+    epochs = 5
+    max_length = 384
+    train_bs = 16
+    eval_bs = 32
+    gradient_accumulation_steps = 2
+    output_suffix = "v1"
+else:
+    # CPU 配置：降低参数以加快训练
+    print("使用 CPU 降配训练（Colab 免费版限制）")
+    print("注意：CPU 训练速度较慢，建议使用 GPU 运行时")
+    epochs = 3  # 减少 epoch
+    max_length = 256  # 减少序列长度
+    train_bs = 8  # 减少 batch size
+    eval_bs = 16
+    gradient_accumulation_steps = 4  # 增加梯度累积以补偿小 batch
+    output_suffix = "v1_cpu"
+
+# 构建训练命令
+cmd = f"""python scripts/modeling/bert_finetune_cls.py \\
+  --train_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/train_enhanced_3cls.csv \\
+  --val_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/val_enhanced_3cls.csv \\
+  --test_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/test_enhanced_3cls.csv \\
+  --output_dir /content/drive/MyDrive/Graduation_Project/experiments/bert_3cls_enhanced_{output_suffix} \\
+  --label_col label \\
+  --text_col text_enhanced \\
+  --model_name hfl/chinese-roberta-wwm-ext \\
+  --class_weight auto \\
+  --epochs {epochs} \\
+  --lr 1e-5 \\
+  --max_length {max_length} \\
+  --train_bs {train_bs} \\
+  --eval_bs {eval_bs} \\
+  --gradient_accumulation_steps {gradient_accumulation_steps} \\
+  --warmup_ratio 0.06 \\
+  --weight_decay 0.01 \\
+  --eval_steps 100 \\
+  --save_steps 100 \\
+  --early_stopping_patience 0 \\
+  --disable_tqdm"""
+
+print("\n训练参数:")
+print(f"  Epochs: {epochs}")
+print(f"  Max Length: {max_length}")
+print(f"  Train Batch Size: {train_bs}")
+print(f"  Eval Batch Size: {eval_bs}")
+print(f"  Gradient Accumulation Steps: {gradient_accumulation_steps}")
+print(f"  Output Dir: bert_3cls_enhanced_{output_suffix}")
+print("\n开始训练...")
+print("=" * 60)
+
+# 执行训练
+!{cmd}
+
+# ============================================================
+# 单元格 5：查看结果（自适应输出目录）
+# ============================================================
+import json
+import pandas as pd
+import torch
+
+# 检测训练时使用的设备
+has_gpu = torch.cuda.is_available()
+output_suffix = "v1" if has_gpu else "v1_cpu"
+OUTPUT_DIR = f'/content/drive/MyDrive/Graduation_Project/experiments/bert_3cls_enhanced_{output_suffix}'
+
+print(f"读取训练结果: {OUTPUT_DIR}")
+print("=" * 80)
+
+# 读取测试集指标
+with open(f'{OUTPUT_DIR}/metrics_test.json', 'r', encoding='utf-8') as f:
+    test_metrics = json.load(f)
+
+print("3 类训练结果（方案 A）")
+print("=" * 80)
+print(f"Test Accuracy: {test_metrics['eval_accuracy']:.4f}")
+print(f"Test Macro F1: {test_metrics['eval_macro_f1']:.4f}")
+
+# 与基线对比
+baseline_f1 = 0.163  # 6 类基线
+phase1_f1 = 0.132    # Phase 1 (6 类增强)
+current_f1 = test_metrics['eval_macro_f1']
+
+print(f"\n与历史对比:")
+print(f"  6 类基线: {baseline_f1:.4f}")
+print(f"  Phase 1 (6 类增强): {phase1_f1:.4f}")
+print(f"  方案 A (3 类增强): {current_f1:.4f}")
+
+if current_f1 > baseline_f1:
+    improvement = (current_f1 - baseline_f1) / baseline_f1 * 100
+    print(f"  相比基线提升: {improvement:+.1f}%")
+else:
+    decline = (baseline_f1 - current_f1) / baseline_f1 * 100
+    print(f"  相比基线下降: {decline:.1f}%")
+
+# 查看分类报告
+with open(f'{OUTPUT_DIR}/report_test.txt', 'r', encoding='utf-8') as f:
+    print("\n" + "=" * 80)
+    print("分类报告")
+    print("=" * 80)
+    print(f.read())
+
+# 预测分布分析
+pred_df = pd.read_csv(f'{OUTPUT_DIR}/pred_test.csv', encoding='utf-8')
+print("\n预测分布:")
+pred_counts = pred_df['pred'].value_counts().sort_index()
+label_names = {-1: "Bearish", 0: "Neutral", 1: "Bullish"}
+for label, count in pred_counts.items():
+    print(f"  {label_names.get(label, label)}: {count}")
+
+print("\n真实标签分布:")
+true_counts = pred_df['label'].value_counts().sort_index()
+for label, count in true_counts.items():
+    print(f"  {label_names.get(label, label)}: {count}")
+
+# 检查是否所有类别都被预测
+all_classes_predicted = set(pred_counts.index) == {-1, 0, 1}
+if all_classes_predicted:
+    print("\n模型成功预测了所有 3 个类别！")
+else:
+    missing = {-1, 0, 1} - set(pred_counts.index)
+    print(f"\n警告：模型未预测以下类别: {[label_names[l] for l in missing]}")
+
+# 预测分布分析
+pred_df = pd.read_csv(f'{OUTPUT_DIR}/pred_test.csv', encoding='utf-8')
+print("\n预测分布:")
+pred_counts = pred_df['pred'].value_counts().sort_index()
+label_names = {-1: "Bearish", 0: "Neutral", 1: "Bullish"}
+for label, count in pred_counts.items():
+    print(f"  {label_names.get(label, label)}: {count}")
+
+print("\n真实标签分布:")
+true_counts = pred_df['label'].value_counts().sort_index()
+for label, count in true_counts.items():
+    print(f"  {label_names.get(label, label)}: {count}")
+
+# 检查是否所有类别都被预测
+all_classes_predicted = set(pred_counts.index) == {-1, 0, 1}
+if all_classes_predicted:
+    print("\n? 模型成功预测了所有 3 个类别！")
+else:
+    missing = {-1, 0, 1} - set(pred_counts.index)
+    print(f"\n?? 模型未预测以下类别: {[label_names[l] for l in missing]}")
+
+# ============================================================
+# 单元格 6（可选）：CPU 冒烟测试（快速验证）
+# ============================================================
+# 如果需要快速验证脚本是否可运行，可以使用小样本 CPU 训练
+# 注意：这只是验证流程，指标不具参考价值
+
+!python scripts/modeling/bert_finetune_cls.py \
+  --train_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/train_enhanced_3cls.csv \
+  --val_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/val_enhanced_3cls.csv \
+  --test_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/test_enhanced_3cls.csv \
+  --output_dir /content/drive/MyDrive/Graduation_Project/experiments/bert_3cls_cpu_smoke \
+  --label_col label \
+  --text_col text_enhanced \
+  --model_name hfl/chinese-roberta-wwm-ext \
+  --class_weight auto \
+  --epochs 1 \
+  --lr 2e-5 \
+  --max_length 128 \
+  --train_bs 8 \
+  --eval_bs 16 \
+  --max_train_samples 500 \
+  --max_val_samples 100 \
+  --max_test_samples 100 \
+  --early_stopping_patience 0 \
+  --disable_tqdm
+
+# ============================================================
+# 预期结果
+# ============================================================
+# 目标：Test Macro F1 > 0.35（相比 6 类基线 0.163 提升 >100%）
+# 训练时间：约 1-1.5 小时（T4 GPU，~2400 steps）
+# 关键改进：
+# 1. 标签体系简化为 3 类（移除极度不平衡的 Class 3/4/5）
+# 2. 保留输入增强（市场上下文前缀）
+# 3. 自动类权重处理剩余不平衡
+# 4. "预期兑现"等复杂逻辑改为后处理规则引擎
