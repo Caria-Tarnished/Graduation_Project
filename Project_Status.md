@@ -24,11 +24,12 @@
 - 代理标注（“日级窗”）：`scripts/label_events.py`（CSV 或 DB → labels）。
 - 代码风格：已进行首次 PEP8 整理（长行/空行）。
 - 金十爬虫（当前在用）与入库：
+
   - `scripts/crawlers/jin10_dynamic.py`：日历模式已稳定可用，支持“只看重要”开关、DB 入库与 CSV 增量写入；接口与参考脚本保持一致（`--months/--start/--end/--output/--db/...`）。
   - `scripts/crawlers/jin10_flash_api.py`：快讯 API 模式（支持接口发现/过滤/CSV 流式/SQLite 入库）。
 - SQLite 存储：`scripts/crawlers/storage.py`（upsert、URL/内容哈希去重、索引）。
-
 - 分钟级冲击分析（MT5 + 金十，已联通）
+
   - MT5 分钟价抓取：`scripts/fetch_intraday_xauusd_mt5.py`（自动符号选择、分片抓取、时区标准化、UTF-8 CSV）。
   - 冲击计算与入库：`scripts/build_finance_analysis.py`（prices_m1 / events / event_impacts 三表，时间索引、asof 对齐、UPSERT）。
   - 数据库：`finance_analysis.db`（prices_m1=736,304 行；覆盖 2024-01-02 09:00 至 2026-01-31 07:59，Asia/Shanghai）。
@@ -49,6 +50,7 @@
 ## 3) 进行中 / 下一步（Next）
 
 - **Phase 1 优化训练（已完成）**
+
   - [X] 数据增强：添加市场上下文前缀（`build_enhanced_dataset.py`）。
   - [X] 修复 Colab 兼容性：EarlyStoppingCallback 与 compute_loss 参数。
   - [X] **Colab 训练执行**：运行 Phase 1 训练（增强数据 + 自动类权重）。
@@ -58,8 +60,8 @@
     - 现象：`bert_enhanced_v1` 在测试集未预测出类别 3/4/5（对应类 F1=0）。
     - 根本原因：训练集 Class 3/4/5 样本极度稀缺（7/5/19），但测试集 Class 5 有 868 样本，分布严重不一致。
   - [X] **决策：采用方案 A（重新设计标签体系）**，放弃 Phase 2（数据增强/Focal Loss）。
+- **方案 A：3 类标签体系 + 规则引擎（已完成训练）**
 
-- **方案 A：3 类标签体系 + 规则引擎（进行中）**
   - [X] **标签体系简化**：移除"预期兑现"（Class 3/4）和"观望"（Class 5），仅保留基础方向（Bearish/Neutral/Bullish）。
   - [X] **数据集生成**：
     - 新增脚本：`scripts/modeling/prepare_3cls_dataset.py`（生成 3 类标签数据集）。
@@ -77,34 +79,63 @@
     - 训练配置：GPU 自适应（GPU: 5 epochs/384 max_length；CPU: 3 epochs/256 max_length）。
     - 路径修复：修正 Colab 单元格 2 中的脚本路径（使用相对路径，依赖 %cd 切换到仓库根目录）。
   - [X] **本地数据集生成**：在本地运行数据集生成脚本，确保 Colab 可以直接从 GitHub 拉取数据集。
-  - [ ] **Colab 训练执行**：运行 3 类训练（预计 GPU 1-1.5 小时，CPU 3-4 小时）。
-  - [ ] **结果评估**：目标 Test Macro F1 > 0.35（相比 6 类基线 0.163 提升 >100%）。
-  - [ ] **后处理规则引擎**（系统集成阶段）：
-    - 在 `app/services/` 创建 `sentiment_analyzer.py`。
-    - 实现规则：`If BERT输出="利好" AND 前120分钟涨幅>1%: 显示="利好预期兑现"`。
-    - 实现规则：`If 高波动 AND 低净变动: 显示="建议观望"`。
-  
+  - [X] **Colab 训练执行**：已完成 3 类训练（T4 GPU，5 epochs，约 1.5 小时）。
+  - [X] **结果评估（成功达标）**：
+    - 实验名称：`bert_3cls_enhanced_v1`（T4 GPU，5 epochs，3 类）
+    - 测试集指标：
+      - Test Macro F1: 0.3770（目标 >0.35，达标！）
+      - Test Accuracy: 0.3819
+      - 相比 6 类基线（0.1317）提升：186%
+    - 验证集指标：
+      - Val Macro F1: 0.3803
+      - Val Accuracy: 0.3912
+    - 分类报告（测试集）：
+      - Bearish (-1): precision=0.39, recall=0.27, f1=0.32, support=1290
+      - Neutral (0): precision=0.34, recall=0.47, f1=0.40, support=1032
+      - Bullish (1): precision=0.41, recall=0.42, f1=0.42, support=1501
+    - 预测分布（测试集）：Bearish=892, Neutral=1407, Bullish=1524（与真实分布基本一致）
+    - 关键改进：
+      - 所有类别均有预测（无 F1=0 的类别）
+      - 预测分布与真实分布基本一致（无严重偏向）
+      - 相比 6 类模型，Macro F1 提升 186%（从 0.1317 到 0.3770）
+  - [X] **后处理规则引擎**（已实现）：
+    - 新增文件：`app/services/sentiment_analyzer.py`（情感分析服务）
+    - 架构设计：BERT 3类分类 + 后处理规则引擎
+    - 规则1（预期兑现）：
+      - 利好预期兑现：`BERT输出=利好 AND 前120分钟涨幅>1%`
+      - 利空预期兑现：`BERT输出=利空 AND 前120分钟跌幅>1%`
+    - 规则2（建议观望）：`高波动(>1.5%) AND 低净变动(<0.2%)`
+    - 规则优先级：观望 > 预期兑现 > 基础情感
+    - 可调整阈值：预期兑现阈值、高波动阈值、低净变动阈值
+    - 测试脚本：`scripts/test_sentiment_analyzer.py`
+    - 模型复制工具：`scripts/tools/copy_model_weights.py`
+
   **冗余文件清理（待手动删除）**：
+
   - `test_training_quick.py`：Phase 1 快速测试脚本，已被 Colab 训练流程替代。
   - `TRAINING_GUIDE_PHASE1.md`：Phase 1 (6 类) 训练指南，已被方案 A (3 类) 替代。
   - `COLAB_TRAINING_COMMAND.md`：Phase 1 Colab 命令，已被 `colab_3cls_training_cells.txt` 替代。
   - 说明：这些文件的关键信息已整合到 `Project_Status.md` 和 `colab_3cls_training_cells.txt` 中。
-  
+
   **方案 A 核心思路**：
+
   - ML 模型专注于可学习的 3 类基础方向（Bearish/Neutral/Bullish）
   - "预期兑现"等复杂逻辑改为后处理规则引擎（更可解释、可维护、可调试）
   - 规则引擎可根据实际情况灵活调整阈值（如前期涨幅阈值、波动率阈值等）
   - 符合金融系统的混合架构设计模式（ML + 规则引擎）
-
 - 金十（优先）：
+
   - [X] 使用 `jin10_flash_api.py`（API 模式，支持 `--db` 入库）作为快讯主抓取；未知接口时使用“接口发现”。
   - [X] 使用 `jin10_dynamic.py` 日历模式逐日抓取（直达 URL，支持“只看重要”），可直接入库 `finance.db` 并同步写 CSV（已完成初版联调）。
   - [X] 如需更多来源，后续再引入（现阶段聚焦金十）。
 - 东方财富：
+
   - [ ] 暂缓（清理阶段不保留相关爬虫与脚本）。
 - Yahoo Finance：
+
   - [ ] 暂缓。
 - 代理标注与基线：
+
   - [ ] 使用入库新闻运行 `scripts/label_events.py` 生成 labels（窗口 1/3/5 天、`neutral_band=±0.3%`）。
   - [ ] 训练 `train_baseline.py` 并产出报告与预测明细（reports/）。
 - 脚本整理：
@@ -112,8 +143,10 @@
 - [X] 非爬虫脚本（`scripts/fetch_news.py`、`scripts/fetch_prices.py`、`scripts/ingest_listing_csv.py`、`scripts/label_events.py`、`scripts/uplift_articles_to_news.py`）如近期不用，可归档至 `archive/unused_scripts_YYYYMMDD/`。
 
 - 分钟级冲击建模（新增）
-  - [ ] 文本清洗与特征工程脚本化（保留前缀特征，如 `[SRC=]`/`[STAR=]`/`[IMP=]`/`[CTRY=]`，正则去噪）。
+
+  - [X] 文本清洗与特征工程脚本化（保留前缀特征，如 `[SRC=]`/`[STAR=]`/`[IMP=]`/`[CTRY=]`，正则去噪）。
   - [X] 快速基线：TF-IDF + LinearSVC，输出指标与预测明细（完成多组对比）。
+
     - 实验组合与指标（macro_f1，val/test）：
       - 默认（char 2-4，含前缀，未加权）：0.3659 / 0.3458。
       - char 1-3 + balanced：0.3667 / 0.3376。
@@ -125,8 +158,8 @@
   - [ ] BERT 微调（中文 RoBERTa-wwm-ext，时间切分不泄漏），保存最优 checkpoint 与推理脚本。
   - [ ] 多窗口样本导出（5/10/15/30 作为样本，事件×4 行），统一标签或多任务设置。
   - [ ] 阈值与标签策略调参（如 25/75 或固定阈值），并固化至 JSON。
-
   - [X] 多维复合标签数据集（15 分钟基础 + 前 120 分钟趋势对照）
+
     - 生成脚本：`scripts/modeling/prepare_multilabel_dataset.py`
     - 标签体系：
       - 基础方向（label_base）：基于 15 分钟收益 `ret_post` 的训练集分位阈值，映射为 `-1/0/1`（bearish/neutral/bullish，固定阈值避免泄漏）。
@@ -134,17 +167,17 @@
       - 观望（label_watch）：发布后窗口内 Range 显著放大但 |ret_post| 极小（高波动低净变动）。
       - 组合多类（label_multi_cls）：优先级 观望(5) > 兑现(3/4) > 基础方向(1/2) > 中性(0)。
     - 指标输出：`ret_post/pre_ret/range_ratio/abs_ret_post/surprise` 等；包含异常值裁剪与分位阈值鲁棒化。
-
 - 数据 QA 与归档
+
   - [X] 新增脚本：`scripts/qa/validate_datasets.py`，输出 `data/processed/qa_dataset_report.json`。
   - [X] 运行 QA：确认多类数据集时间跨度、事件不跨集合（any_overlap=false）、`event_id` 去重无异常、标签分布合理，并校验 DB 的 `events/event_impacts/prices_m1` 覆盖范围。
   - [X] 基于报告的 `archive_suggestions` 归档：已将候选 raw/processed 大文件迁移至 `archive/20260201_211652/`，并打包为 `archive/archive_20260201_211652.zip`。
-
 - 数据扩展与校验
+
   - [ ] 如需：补齐其余时间段或其他 MT5 符号（如 XAUUSD.i、GOLD）并复检覆盖率。
   - [ ] 交易时段/夏令时敏感性检查与说明。
-
 - 交付与文档
+
   - [ ] 训练集字段字典与处理流程文档。
   - [ ] 训练/验证/测试集统计报告与可视化。
 
@@ -165,8 +198,35 @@
 
 ## 5) 变更记录（Changelog）
 
-- 2026-02-07
+- 2026-02-07（下午）
+
+  - **方案 A 训练完成（3 类模型成功达标）**：
+    - 实验名称：`bert_3cls_enhanced_v1`（T4 GPU，5 epochs，训练时长约 1.5 小时）
+    - 测试集指标：Test Macro F1=0.3770（目标 >0.35，达标！），Test Accuracy=0.3819
+    - 相比 6 类基线（Macro F1=0.1317）提升：186%
+    - 关键改进：
+      - 所有类别均有预测（无 F1=0 的类别，解决了 6 类模型的核心问题）
+      - 预测分布与真实分布基本一致（Bearish=892/1290, Neutral=1407/1032, Bullish=1524/1501）
+      - 各类别 F1 均衡：Bearish=0.32, Neutral=0.40, Bullish=0.42
+    - 分类报告（测试集）：
+      - Bearish (-1): precision=0.39, recall=0.27, f1=0.32, support=1290
+      - Neutral (0): precision=0.34, recall=0.47, f1=0.40, support=1032
+      - Bullish (1): precision=0.41, recall=0.42, f1=0.42, support=1501
+    - 验证集指标：Val Macro F1=0.3803, Val Accuracy=0.3912
+  - **同步训练结果**：使用 `scripts/tools/sync_results.py` 将 Drive 上的训练产物同步到本地 `reports/bert_3cls_enhanced_v1/`
+  - **后处理规则引擎实现完成**：
+    - 新增：`app/services/sentiment_analyzer.py`（情感分析服务，BERT + 规则引擎）
+    - 架构：ML 模型专注于 3 类基础方向，规则引擎处理"预期兑现"和"建议观望"
+    - 规则1（预期兑现）：利好+前期大涨 → 利好预期兑现；利空+前期大跌 → 利空预期兑现
+    - 规则2（建议观望）：高波动+低净变动 → 建议观望
+    - 新增：`scripts/test_sentiment_analyzer.py`（测试脚本，包含6个测试案例）
+    - 新增：`scripts/tools/copy_model_weights.py`（模型权重复制工具）
+  - **文档整合**：将 `Model_Training_Workflow.md` 和 `Project_optimization_plan.md` 的关键内容整合到 `Project_Status.md` 第 7 节"训练工作流"
+  - **下一步**：测试情感分析器，开始实现 Engine B（RAG）和 Agent 层
+- 2026-02-07（上午）
+
   - **Colab 路径修复与冗余文件清理**：
+
     - 修复问题：Colab 单元格 2 中的脚本路径错误（从绝对路径改为相对路径）。
     - 原因：单元格 1 已使用 `%cd /content/Graduation_Project` 切换到仓库根目录，后续命令应使用相对路径。
     - 修复内容：
@@ -178,8 +238,8 @@
       - `TRAINING_GUIDE_PHASE1.md`：Phase 1 (6 类) 训练指南，已被方案 A (3 类) 替代。
       - `COLAB_TRAINING_COMMAND.md`：Phase 1 Colab 命令，已被 `colab_3cls_training_cells.txt` 替代。
     - 文档整合：将上述文件的关键信息整合到 `Project_Status.md` 和 `colab_3cls_training_cells.txt` 中。
-  
   - **训练脚本优化（消除警告和错误）**：
+
     - **修复 warmup_ratio 弃用警告**：
       - 将 `--warmup_ratio` 改为 `--warmup_steps`（transformers 5.x 推荐）
       - 保留 `--warmup_ratio` 参数以兼容旧命令，但默认值改为 0
@@ -195,8 +255,8 @@
     - **更新 Colab 训练命令**：
       - 将 `--warmup_ratio 0.06` 改为 `--warmup_steps 100`
       - 保持其他参数不变
-  
   - **.gitignore 优化与工作流改进**：
+
     - **3 类数据集反选**：在 `data/processed/**` 规则下添加反选，允许提交 3 类数据集到 GitHub：
       - `train_3cls.csv`, `val_3cls.csv`, `test_3cls.csv`
       - `train_enhanced_3cls.csv`, `val_enhanced_3cls.csv`, `test_enhanced_3cls.csv`
@@ -211,8 +271,8 @@
       2. 需要 AI 分析 → 临时取消注释 `.gitignore` 中的 reports 反选规则
       3. AI 读取分析 → 完成后重新注释反选规则
       4. 提交代码 → `reports/` 内容不会被提交
-  
   - **本地数据集生成说明**：
+
     - 用户需要在本地运行以下命令生成 3 类数据集：
       ```powershell
       # 生成 3 类标签数据集
@@ -222,15 +282,15 @@
         --window_post 15 `
         --pre_minutes 120 `
         --out_dir data/processed
-      
+
       # 添加输入增强
       python scripts/modeling/build_enhanced_dataset_3cls.py `
         --input_dir data/processed `
         --output_dir data/processed
       ```
     - 生成后提交到 GitHub（已在 `.gitignore` 中反选），Colab 可以直接从仓库拉取。
-
 - 2026-02-06（下午）
+
   - **方案 A 实施完成**：基于 Phase 1 失败分析，重新设计标签体系。
   - 问题诊断
     - Phase 1 (6 类) 失败原因：训练集 Class 3/4/5 样本极度稀缺（7/5/19），但测试集 Class 5 有 868 样本，导致模型完全无法预测这些类别（F1=0）。
@@ -259,8 +319,8 @@
     - 文件编码统一为 UTF-8（避免 GBK/GB2312 编码问题）。
     - 避免生成冗余文档，优先更新 `Project_Status.md`。
     - 遵循项目初始文档（PLAN.md、README.md 等）。
-
 - 2026-02-06（上午）
+
   - **打通“本地开发 + Colab 训练 + Drive 存储 + 本地回传报告”工作流**（已可稳定复现）。
   - 数据同步与版本控制
     - `.gitignore`：新增忽略 `data/processed_stale*/**`（大 CSV 不进 Git），放行小文件用于口径复现：
@@ -317,8 +377,8 @@
     - **避免创建冗余 .md 文档**，保持仓库整洁.
     - **将更新记录写入 `Project_Status.md`**.
     - **始终使用中文**回答、写文档和注释.
-
 - 2026-02-05
+
   - **Phase 1 优化准备完成**：基于 `Project_optimization_plan.md` 的改进方案，完成输入增强与类权重训练准备.
   - 新增：`scripts/modeling/build_enhanced_dataset.py`
     - 功能：为训练集添加市场上下文前缀（基于 `pre_ret` 120 分钟回看与 `range_ratio` 波动率）。
@@ -346,7 +406,6 @@
     - **避免创建冗余 .md 文档**，保持仓库整洁.
     - **将更新记录写入 `Project_Status.md`**.
     - **始终使用中文**回答、写文档和注释.
-
 - 2026-02-04
 
   - 新增：训练工作流文档 `Model_Training_Workflow.md`，采用“本地开发 + 云端训练（GitHub 代码 + Drive 数据）”的存算分离方案；提供 Colab 最小 Runner 与本地结果同步脚本说明.
@@ -356,7 +415,6 @@
     - 新增 `eval_results.json` 汇总（val/test 指标与输出目录），便于本地脚本/Agent 读取.
     - 稳健性：pandas→HF Dataset 在旧版 datasets 下自动回退；显式保存 tokenizer 以便下游加载.
   - 可选：`train_logic.py` 作为统一入口（Colab 可 `!python train_logic.py ...`）。基于当前工作流，此文件“可选”，可保留也可删除；直接调用底层脚本同样可行.
-
 - 2026-02-01
 
   - 新增：分钟级冲击分析管线（MT5 + 金十）：
@@ -367,7 +425,6 @@
   - 导出：全量与区间训练集（CSV/Parquet），并生成 30 分钟窗口打标与时间切分数据集与阈值 JSON.
   - 基线：`scripts/modeling/baseline_tfidf_svm.py` 现支持 `--class_weight/--C/--sublinear_tf/--norm/--dual`；完成 char 1-3/2-4 与加权对比，锁定推荐基线配置.
   - 新增：`scripts/modeling/prepare_multilabel_dataset.py`，输出 `train/val/test_multi_labeled.csv` 与 `labeling_thresholds_multilabel.json`，实现“基础方向/预期兑现/建议观望”的复合标签.
-
 - 2026-01-29
 
   - 调整：`scripts/crawlers/jin10_dynamic.py` 与参考脚本对齐，采用统一 CLI：
@@ -400,7 +457,6 @@
     - `scripts/crawlers/fetch_from_urls.py`
   - 代码风格：补充 flake8 清理（E501 行宽、空白行 W293/E306）于 `jin10_dynamic.py` / `jin10_flash_api.py`，不改动业务逻辑.
   - Git：`.gitignore` 新增忽略 `archive/` 与 `参考代码和文档/`.
-
 - 2026-01-23
 
   - 新增：`scripts/crawlers/jin10_dynamic.py`（Playwright 动态抓取：快讯倒序回溯与日历模式；登录持久化、跨 frame、滚动/加载更多、调试快照、入库）。
@@ -426,21 +482,26 @@
 ## 6) 快速指引（Quick Start）
 
 - 创建与填写 `.env`（复制 `.env.example`）：
+
   - `TUSHARE_TOKEN=...`
 - 初始化数据库
+
   ```powershell
   python scripts/init_db.py
   ```
 - 抓取行情（使用 config 中的时间与标的）
+
   ```powershell
   python scripts/fetch_prices.py
   ```
 - 安装 Playwright（首次）
+
   ```powershell
   pip install playwright
   python -m playwright install chromium
   ```
 - 金十快讯（API 模式，推荐，入库）
+
   ```powershell
   # 已知接口直连（示例：请替换为你的真实 API 基址）
   python -m scripts.crawlers.jin10_flash_api \
@@ -464,6 +525,7 @@
     --source flash_api
   ```
 - 金十日历/数据（逐日回填）
+
   ```powershell
   # 最近 3 个月（仅 CSV）
   python -m scripts.crawlers.jin10_dynamic \
@@ -493,16 +555,19 @@
     --user-data-dir .pw_jin10
   ```
 - 从 CSV 入库新闻
+
   ```powershell
   python scripts/fetch_news.py --csv path\to\news.csv
   ```
 - 生成“日级窗”代理标注
+
   ```powershell
   python scripts/label_events.py --csv path\to\news.csv --out-csv data\processed\labels.csv
   ```
-
 - 分钟级冲击分析（MT5 + 金十）
+
   - 抓取分钟价（示例：2024–2025 全量）
+
     ```powershell
     python scripts\fetch_intraday_xauusd_mt5.py `
       --timeframe M1 `
@@ -515,6 +580,7 @@
       --out "data\processed\xauusd_m1_mt5_2024_2025.csv"
     ```
   - 数据 QA 校验与归档建议（输出 JSON 报告）
+
     ```powershell
     python scripts/qa/validate_datasets.py `
       --processed_dir data/processed `
@@ -522,19 +588,20 @@
       --db finance_analysis.db `
       --ticker XAUUSD
     ```
+
     - 报告路径：`data/processed/qa_dataset_report.json`。请检查：
       - 三个多类集合的时间范围是否覆盖 2024-01-01 至 2026-02-01（或你期望的区间）。
       - `cross_split_event_id_intersections.any_overlap` 应为 false（无事件跨集合）。
       - `dups_event_id.dups` 应为 0（`event_id` 无重复）。
       - 标签分布是否合理（少数类比例）。
       - 数据库 `events/event_impacts/prices_m1` 的时间覆盖是否与预期一致。
-
   - Colab 训练（推荐，GPU）：
+
     1) 打开 https://colab.research.google.com 并选择 GPU（Runtime → Change runtime type → GPU）。
     2) 打开本仓库中的笔记本：`notebooks/bert_multilabel_colab.ipynb`（Colab 文件 → GitHub 选项卡搜索仓库名）。
     3) 依次执行单元：安装依赖 → 克隆仓库 → 从 Drive 读取数据集（latest）→ 启动训练 → 查看指标 → 打包下载模型输出.
-  
   - **Colab 3 类训练（方案 A，当前推荐）**
+
     - 准备：确保本地已 `git push` 最新代码（包含 3 类数据集生成脚本）。
     - 训练单元格：参考 `colab_3cls_training_cells.txt`（6 个单元格，包含完整流程）。
     - 关键特性：
@@ -544,8 +611,8 @@
     - 配置：class_weight=auto, label_col=label, text_col=text_enhanced, early_stopping_patience=0
     - 预期结果：Test Macro F1 > 0.35（相比 6 类基线 0.163 提升 >100%）
     - 训练时间：GPU 约 1-1.5 小时，CPU 约 3-4 小时
-  
   - **Colab Phase 1 训练（增强数据 + 类权重，当前推荐）**
+
     - 准备：确保本地已 `git push` 最新代码（包含 `bert_finetune_cls.py` 修复）。
     - 单元格 1：环境准备
       ```python
@@ -642,8 +709,8 @@
     - 预期结果：Test Macro F1 > 0.35（基线 0.163，提升 >100%）；稀有类别 F1 > 0。
     - 训练时间：约 1-1.5 小时（T4 GPU，~2355 steps）。
     - 完整单元格参考：`colab_phase1_cells.txt`。
-  
   - Colab 训练（多标签 6 类 + Drive，FinBERT/中文 BERT）
+
     - 挂载 Drive 并设置目录：`DATA_DIR=/content/drive/MyDrive/datasets/xauusd_multilabel`，`MODEL_DIR=/content/drive/MyDrive/models/bert_xauusd_multilabel_6cls`。
     - 确认 Drive 下存在三份 CSV：`train_multi_labeled.csv`、`val_multi_labeled.csv`、`test_multi_labeled.csv`。若缺失，可运行笔记本中的“从仓库复制到 Drive”或手动上传。
     - 设置预训练模型 `MODEL_NAME`：
@@ -663,6 +730,7 @@
       ```
     - 产出：`metrics_val.json`、`metrics_test.json`、`report_test.txt`、`pred_test.csv` 与 `best/`（最优模型）。
   - 6 类 BERT 首次评估（中文 RoBERTa-wwm-ext）
+
     - val：accuracy=0.4321，macro_f1=0.1822。
     - test：accuracy=0.4251，macro_f1=0.1631。
     - 按类简述（test 支持数：0/1/2/3/4/5 = 4030/1654/1417/15/5/868）：
@@ -672,6 +740,7 @@
       - 5（观望）：F1=0。
     - 改进方向：更久训练（epochs↑）、更长序列（max_length↑）、类权重（加权交叉熵）、早停（EarlyStopping）、warmup 与 weight_decay、按 steps 验证与保存。
   - 复合标签训练集导出（15 分钟基础 + 前 120 分钟趋势对照）
+
     ```powershell
     python scripts/modeling/prepare_multilabel_dataset.py `
       --db finance_analysis.db `
@@ -681,6 +750,7 @@
       --out_dir data\processed
     ```
   - 构建与计算冲击（UPSERT 幂等）
+
     ```powershell
     python scripts\build_finance_analysis.py `
       --prices_csv "data\processed\xauusd_m1_mt5_2024_2025.csv" `
@@ -692,6 +762,7 @@
       --windows 5 10 15 30
     ```
   - 覆盖率复检（PowerShell here-string → Python 标准输入，稳定免转义）
+
     ```powershell
     $code = @'
     import sqlite3, pandas as pd
@@ -702,8 +773,8 @@
     '@
     $code | python -
     ```
-
   - 建模脚本（Baseline / BERT）
+
     ```powershell
     # 基线：TF-IDF + LinearSVC（CPU 即可）
     python scripts/modeling/baseline_tfidf_svm.py \
@@ -723,6 +794,7 @@
       --epochs 2 --lr 2e-5 --max_length 256
     ```
   - 导出训练集（全量 CSV + Parquet）
+
     ```powershell
     $code = @'
     import sqlite3, pandas as pd, os
@@ -759,6 +831,7 @@
     $code | python -
     ```
   - 30 分钟窗口打标与切分（时间切分避免泄漏）
+
     ```powershell
     $code = @'
     import sqlite3, pandas as pd, os, json
@@ -803,14 +876,139 @@
     $code | python -
     ```
 
-## 7) 关键文件
+## 7) 训练工作流（Training Workflow）
+
+### 7.1 存算分离架构
+
+本项目采用"本地开发 + 云端训练（GitHub 代码 + Drive 数据）"的存算分离方案：
+
+- **代码（Git）**：在本地 E 盘开发并推送到 GitHub，Colab 从 GitHub 拉取最新代码
+- **数据与训练产物（云端）**：Google Drive（G 盘）存放
+  - 数据：`/content/drive/MyDrive/Graduation_Project/data/processed/...`
+  - 实验：`/content/drive/MyDrive/Graduation_Project/experiments/<run_name>/...`
+- **结果回传（本地）**：`reports/<run_name>/...`（由同步脚本生成，仅小文件）
+
+### 7.2 Colab 训练流程
+
+1. **准备环境**（每次新会话建议先升级依赖）
+
+   ```python
+   !pip install -U transformers datasets evaluate huggingface_hub
+   ```
+2. **挂载 Drive**（用于数据与产物）
+
+   ```python
+   from google.colab import drive
+   drive.mount('/content/drive')
+   ```
+3. **拉取代码**（GitHub）并进入仓库目录
+
+   ```bash
+   !git clone https://github.com/<your_org>/<your_repo>.git  # 首次
+   %cd /content/<your_repo>
+   # 之后更新用：!git -C /content/<your_repo> pull
+   ```
+4. **运行训练**（将输出目录指向 Drive）
+
+   ```bash
+   python scripts/modeling/bert_finetune_cls.py \
+     --train_csv /content/drive/MyDrive/Graduation_Project/data/processed/train.csv \
+     --val_csv   /content/drive/MyDrive/Graduation_Project/data/processed/val.csv \
+     --test_csv  /content/drive/MyDrive/Graduation_Project/data/processed/test.csv \
+     --output_dir /content/drive/MyDrive/Graduation_Project/experiments/bert_3cls_v1 \
+     --model_name hfl/chinese-roberta-wwm-ext \
+     --epochs 5 --lr 1e-5 --max_length 384 \
+     --class_weight auto --warmup_steps 100 --weight_decay 0.01 \
+     --eval_steps 100 --save_steps 100 --early_stopping_patience 0
+   ```
+
+### 7.3 本地同步训练产物
+
+运行同步脚本，仅复制小文件到仓库 `reports/`（默认跳过大权重）：
+
+```powershell
+# 先预演
+python scripts/tools/sync_results.py `
+  --src_root "G:\我的云端硬盘\Graduation_Project\experiments" `
+  --dst_root "E:\Projects\Graduation_Project\reports" `
+  --dry_run --verbose
+
+# 实际执行
+python scripts/tools/sync_results.py `
+  --src_root "G:\我的云端硬盘\Graduation_Project\experiments" `
+  --dst_root "E:\Projects\Graduation_Project\reports" `
+  --verbose
+```
+
+可通过 include/exclude 精细控制（示例：加入最优权重）：
+
+```powershell
+python scripts/tools/sync_results.py `
+  --include "**/eval_results.json" --include "**/metrics*.json" `
+  --include "**/report*.txt" --include "**/pred*.csv" `
+  --include "**/best/config.json" --include "**/*.safetensors"
+```
+
+### 7.4 方案 A 优化策略（已实施）
+
+**核心思路**：基于金融大模型综述（Time Series Textualization），将市场行情与新闻文本在输入端融合。
+
+**输入增强（Input Augmentation）**：
+
+- **问题**：BERT 仅能看到新闻文本，无法感知发布前的市场状态
+- **方案**：将发布前的 K 线趋势转化为自然语言前缀（Prefix），注入上下文
+- **实现**：`scripts/modeling/build_enhanced_dataset_3cls.py`
+
+**市场上下文前缀映射**：
+
+| 市场状态 | 判定条件                                           | 生成前缀              | 含义             |
+| :------- | :------------------------------------------------- | :-------------------- | :--------------- |
+| 强势上涨 | `pre_ret > 1.0%`                                 | `[Strong Rally]`    | 市场情绪极度乐观 |
+| 急剧下跌 | `pre_ret < -1.0%`                                | `[Sharp Decline]`   | 市场情绪极度悲观 |
+| 温和上涨 | `0.3% < pre_ret <= 1.0%`                         | `[Mild Rally]`      | 情绪偏多         |
+| 弱势下跌 | `-1.0% <= pre_ret < -0.3%`                       | `[Weak Decline]`    | 情绪偏弱         |
+| 高波动   | `abs(pre_ret) < 0.3%` AND `range_ratio > 1.5%` | `[High Volatility]` | 多空分歧巨大     |
+| 横盘震荡 | 其他情况                                           | `[Sideways]`        | 情绪平稳         |
+
+**宏观数据特殊处理**：
+
+- 原：`美国1月CPI年率录得2.8%，预期2.9%。`
+- 新：`[Sideways] [Economic Data] [Actual 2.8 Exp 2.9] [Beat] 美国1月CPI年率录得2.8%，预期2.9%。`
+
+**效果**：
+
+- 训练集前缀分布：Sideways 60.6%, Mild Rally 15.3%, Weak Decline 12.8%, Sharp Decline 5.7%, Strong Rally 5.4%, High Volatility 0.1%
+- 模型学习到模式：`[Strong Rally]` + `利好消息` → 可能是"利好兑现"（需后处理规则引擎判断）
+
+### 7.5 常见问答（FAQ）
+
+- **是否必须创建/上传 .ipynb？**
+
+  - 否。推荐在 Colab 新建一个极简 Runner 笔记本，仅包含上述几段单元即可；也可直接在 Colab 的终端执行命令。
+- **训练数据放哪里？**
+
+  - 放在 `/content/drive/MyDrive/Graduation_Project/data/processed/...`，训练命令直接指向该路径。
+- **训练输出放哪里？**
+
+  - 指定 `--output_dir` 到 `/content/drive/MyDrive/Graduation_Project/experiments/<run_name>`。
+- **本地如何获取指标？**
+
+  - 运行 `scripts/tools/sync_results.py`，会将关键小文件复制到 `reports/<run_name>/`。
+- **可忽略的警告**：
+
+  - HuggingFace 403 Forbidden：讨论功能被禁用，不影响模型加载
+  - UNEXPECTED/MISSING weights：分类头重新初始化，正常现象
+
+## 8) 关键文件
 
 - 计划：`PLAN.md`
 - 状态：`Project_Status.md`
+- 剩余任务开发文档：`REMAINING_TASKS.md`
 - 配置：`configs/config.yaml`
 - 环境：`.env.example`
 - 数据库：`finance.db`
 - 分钟级冲击数据库：`finance_analysis.db`
+- Colab 训练单元格：`colab_3cls_training_cells.txt`
 - 脚本：`scripts/`
   - `scripts/crawlers/jin10_dynamic.py`
   - `scripts/crawlers/jin10_flash_api.py`
@@ -819,8 +1017,11 @@
   - `scripts/build_finance_analysis.py`
   - `scripts/modeling/baseline_tfidf_svm.py`
   - `scripts/modeling/bert_finetune_cls.py`
+  - `scripts/modeling/prepare_3cls_dataset.py`
+  - `scripts/modeling/build_enhanced_dataset_3cls.py`
+  - `scripts/tools/sync_results.py`
 
-## 8) 常用指令（数据库）
+## 9) 常用指令（数据库）
 
 - 只读：列出所有表
   ```powershell
