@@ -1,0 +1,41 @@
+{
+  "window_post": 15,
+  "pre_minutes": 120,
+  "clip_ret": 0.05,
+  "splits": {
+    "train_end": "2025-08-01 00:00:00",
+    "val_end": "2025-11-01 00:00:00",
+    "test_end": "2026-02-01 00:00:00"
+  },
+  "thresholds": {
+    "q_low": -0.00040500072427133597,
+    "q_high": 0.0004360557867793623
+  },
+  "label_mapping": {
+    "-1": "bearish",
+    "0": "neutral",
+    "1": "bullish"
+  },
+  "sizes": {
+    "train": 12841,
+    "val": 2692,
+    "test": 3823
+  },
+  "label_distribution": {
+    "train": {
+      "bearish": 3853,
+      "neutral": 5135,
+      "bullish": 3853
+    },
+    "val": {
+      "bearish": 715,
+      "neutral": 1170,
+      "bullish": 807
+    },
+    "test": {
+      "bearish": 1290,
+      "neutral": 1032,
+      "bullish": 1501
+    }
+  }
+}

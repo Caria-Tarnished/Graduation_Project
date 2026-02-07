@@ -178,6 +178,23 @@
       - `TRAINING_GUIDE_PHASE1.md`：Phase 1 (6 类) 训练指南，已被方案 A (3 类) 替代。
       - `COLAB_TRAINING_COMMAND.md`：Phase 1 Colab 命令，已被 `colab_3cls_training_cells.txt` 替代。
     - 文档整合：将上述文件的关键信息整合到 `Project_Status.md` 和 `colab_3cls_training_cells.txt` 中。
+  
+  - **.gitignore 优化与工作流改进**：
+    - **3 类数据集反选**：在 `data/processed/**` 规则下添加反选，允许提交 3 类数据集到 GitHub：
+      - `train_3cls.csv`, `val_3cls.csv`, `test_3cls.csv`
+      - `train_enhanced_3cls.csv`, `val_enhanced_3cls.csv`, `test_enhanced_3cls.csv`
+      - `labeling_thresholds_3cls.json`
+    - **reports/ 工作流优化**：
+      - 默认状态：`reports/**` 忽略所有内容（不提交到 GitHub）
+      - AI 分析时：临时取消注释反选规则（去掉 `#` 号），AI 可读取文件
+      - 分析完成后：重新注释反选规则（加上 `#` 号），提交代码时不包含 reports/
+      - 优势：既能让 AI 读取分析，又不会污染 GitHub 仓库
+    - **工作流程**：
+      1. 训练完成 → 运行 `sync_results.py` 同步 Drive 结果到 `reports/`
+      2. 需要 AI 分析 → 临时取消注释 `.gitignore` 中的 reports 反选规则
+      3. AI 读取分析 → 完成后重新注释反选规则
+      4. 提交代码 → `reports/` 内容不会被提交
+  
   - **本地数据集生成说明**：
     - 用户需要在本地运行以下命令生成 3 类数据集：
       ```powershell
@@ -194,8 +211,7 @@
         --input_dir data/processed `
         --output_dir data/processed
       ```
-    - 生成后将文件提交到 GitHub，Colab 可以直接从仓库拉取。
-    - 或者在 Colab 单元格 2 中自动生成（如果 Drive 上不存在）。
+    - 生成后提交到 GitHub（已在 `.gitignore` 中反选），Colab 可以直接从仓库拉取。
 
 - 2026-02-06（下午）
   - **方案 A 实施完成**：基于 Phase 1 失败分析，重新设计标签体系。

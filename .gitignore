@@ -49,6 +49,14 @@ data/interim/**
 data/processed/**
 !data/processed/.gitkeep
 !data/processed/qa_dataset_report.json
+# 3 类数据集（方案 A）- 允许提交到 GitHub
+!data/processed/train_3cls.csv
+!data/processed/val_3cls.csv
+!data/processed/test_3cls.csv
+!data/processed/train_enhanced_3cls.csv
+!data/processed/val_enhanced_3cls.csv
+!data/processed/test_enhanced_3cls.csv
+!data/processed/labeling_thresholds_3cls.json
 
 data/processed_stale*/**
 !data/processed_stale*/qa_dataset_report.json
@@ -63,14 +71,21 @@ models/**
 models/rag/chroma/**
 
 # Reports (keep directory, ignore contents)
+# 策略：默认忽略所有内容，仅在需要 AI 分析时临时取消注释反选规则
+# 工作流：
+#   1. 训练完成后，运行 sync_results.py 将 Drive 结果同步到 reports/
+#   2. 临时取消注释下面的反选规则（去掉 # 号）
+#   3. AI 读取并分析 reports/ 中的文件
+#   4. 分析完成后，重新注释反选规则（加上 # 号）
+#   5. 提交代码时 reports/ 内容不会被提交
 reports/**
-# !reports/.gitkeep
+!reports/.gitkeep
 # !reports/**/
-# !reports/**/best/
 # !reports/**/eval_results.json
 # !reports/**/metrics*.json
 # !reports/**/report*.txt
 # !reports/**/pred*.csv
+# !reports/**/best/
 # !reports/**/best/config.json
 
 # Database files
@@ -102,3 +117,4 @@ debug/
 archive/
 参考代码和文档/
 bert_xauusd_multilabel_6cls/
+WORKFLOW_REPORTS.md
