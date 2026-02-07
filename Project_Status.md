@@ -184,6 +184,7 @@
       - 将 `--warmup_ratio` 改为 `--warmup_steps`（transformers 5.x 推荐）
       - 保留 `--warmup_ratio` 参数以兼容旧命令，但默认值改为 0
       - 自动计算：如果 `warmup_steps=0` 且 `warmup_ratio>0`，则自动计算 warmup_steps
+      - **修复 NameError**：将 `train_df` 改为 `train`（变量名错误）
     - **禁用 HuggingFace 警告**：
       - 设置 `hf_logging.set_verbosity_error()` 减少输出噪音
       - 设置环境变量 `HF_HUB_DISABLE_IMPLICIT_TOKEN=1` 避免 403 错误

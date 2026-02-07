@@ -355,7 +355,7 @@ def main() -> None:
         )
 
     # 计算总训练步数（用于 warmup_steps）
-    total_steps = (len(train_df) // args.train_bs) * args.epochs
+    total_steps = (len(train) // args.train_bs) * args.epochs
     if use_warmup_ratio:
         calculated_warmup_steps = int(total_steps * args.warmup_ratio)
         print(f"计算 warmup_steps: {calculated_warmup_steps} (total_steps={total_steps}, warmup_ratio={args.warmup_ratio})")
