@@ -42,6 +42,7 @@ logs/**
 # Data (keep directory, ignore contents)
 data/raw/**
 !data/raw/.gitkeep
+!data/raw/reports
 
 data/interim/**
 !data/interim/.gitkeep
@@ -69,6 +70,10 @@ models/**
 
 # RAG stores / vector DB
 models/rag/chroma/**
+
+# Reports data (RAG)
+data/reports/chroma_db/**
+!data/reports/chroma_db/.gitkeep
 
 # Reports (keep directory, ignore contents)
 # 策略：默认忽略所有内容，仅在需要 AI 分析时临时取消注释反选规则

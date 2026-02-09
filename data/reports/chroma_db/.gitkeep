@@ -1,0 +1,2 @@
+# 保留 chroma_db 目录结构
+# 向量库文件会被 .gitignore 忽略
