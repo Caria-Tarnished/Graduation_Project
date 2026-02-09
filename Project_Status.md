@@ -115,9 +115,56 @@
       - 缓存支持（SimpleCache，TTL 可配置）
       - 降级策略（引擎未加载时返回默认结果）
     - 测试：所有用例函数正常工作
+- **阶段 4：Streamlit UI 实现（已完成）**
+
+  - [X] **任务 4.1: 实现聊天页面**（已完成）
+    - 完善文件：`app/hosts/streamlit_app/app.py`（主入口文件）
+    - 功能：
+      - 页面配置和布局
+      - 侧边栏（功能导航、系统状态检查）
+      - 聊天界面（消息历史、用户输入）
+      - Agent 初始化（使用 @st.cache_resource 缓存）
+      - 引擎状态检查（BERT、Chroma、LLM）
+      - 查询处理（自动判断类型并调用 Agent）
+      - 结果展示（总结、情感分析、引用、工具追踪）
+  - [X] **任务 4.2: 实现 K 线图表页面**（已完成）
+    - 新增文件：`app/hosts/streamlit_app/pages/2_Charts.py`
+    - 功能：
+      - 使用 Plotly 绘制 K 线图
+      - 从数据库加载价格数据和事件数据
+      - 在图表上标注事件点（带星级和内容预览）
+      - 支持时间范围和星级筛选
+      - 点击事件点触发情感分析
+      - 显示事件详情和分析结果
+  - [X] **任务 4.3: 实现财报检索页面**（已完成）
+    - 新增文件：`app/hosts/streamlit_app/pages/3_Reports.py`
+    - 功能：
+      - 输入问题，调用 RAG 引擎检索
+      - 显示 Top-K 引用片段（可配置 1-10）
+      - 显示页码和相似度分数
+      - LLM 生成的答案总结
+      - 支持语言筛选（全部/中文/英文）
+      - 支持显示选项配置（元数据、完整文本）
+      - 提供示例问题快速测试
+  - [X] **任务 4.4: 完善主入口和配置**（已完成）
+    - 完善 Agent 初始化逻辑（加载所有引擎）
+    - 添加完整的错误处理和降级策略
+    - 创建 README 文档（`app/hosts/streamlit_app/README.md`）
+    - 文档内容：
+      - 功能说明（3 个页面）
+      - 启动方法和前置条件
+      - 使用说明和示例
+      - 常见问题和解决方法
+      - 答辩演示建议
+  - 阶段 4 总结：
+    - ✅ 完成 3 个页面（聊天、K 线图表、财报检索）
+    - ✅ 实现完整的 Agent 初始化和引擎加载
+    - ✅ 支持降级策略（引擎未加载时仍可运行）
+    - ✅ 提供完整的文档和使用说明
   - 下一步：
-    1. 开始阶段 4（Streamlit UI 实现）
-    2. 参考 `REMAINING_TASKS.md` 中的详细任务计划
+    1. 开始阶段 5（测试与优化）
+    2. 端到端测试所有功能
+    3. 性能优化和答辩准备
 
   **冗余文件清理（待手动删除）**：
 
@@ -220,6 +267,110 @@
 
 ## 5) 变更记录（Changelog）
 
+- 2026-02-09（晚）
+
+  - **阶段 4 完成（Streamlit UI 实现）**：
+    - **任务 4.1 完成（聊天页面）**：
+      - 完善文件：`app/hosts/streamlit_app/app.py`
+      - 改进 Agent 初始化逻辑：
+        - 加载 SentimentAnalyzer（Engine A）
+        - 加载 RagEngine（Engine B）
+        - 加载 DeepseekClient（LLM）
+        - 显示各引擎加载状态
+        - 支持降级策略（引擎未加载时仍可运行）
+      - 聊天界面功能：
+        - 消息历史显示
+        - 用户输入框
+        - 自动判断查询类型
+        - 显示分析结果（总结、情感、引用、工具追踪）
+    - **任务 4.2 完成（K 线图表页面）**：
+      - 新增文件：`app/hosts/streamlit_app/pages/2_Charts.py`
+      - 功能实现：
+        - 从 finance_analysis.db 加载价格数据（prices_m1 表）
+        - 从 finance_analysis.db 加载事件数据（events 表）
+        - 使用 Plotly 绘制 K 线图
+        - 在图表上标注事件点（带星级和内容预览）
+        - 支持参数配置（标的、时间范围、最低星级）
+        - 点击事件点触发情感分析
+        - 显示事件详情和分析结果
+    - **任务 4.3 完成（财报检索页面）**：
+      - 新增文件：`app/hosts/streamlit_app/pages/3_Reports.py`
+      - 功能实现：
+        - 输入问题，调用 RAG 引擎检索
+        - 显示 Top-K 引用片段（可配置 1-10）
+        - 显示页码和相似度分数
+        - LLM 生成的答案总结
+        - 支持语言筛选（全部/中文/英文）
+        - 支持显示选项配置（元数据、完整文本）
+        - 提供示例问题快速测试
+        - 显示工具调用追踪和警告信息
+    - **任务 4.4 完成（文档和配置）**：
+      - 新增文件：`app/hosts/streamlit_app/README.md`
+      - 文档内容：
+        - 功能说明（3 个页面的详细介绍）
+        - 启动方法和前置条件
+        - 使用说明和示例问题
+        - 常见问题和解决方法
+        - 系统状态检查说明
+        - 性能优化建议
+        - 答辩演示建议（流程、场景、技术亮点、备用方案）
+        - 技术栈和开发规范
+    - **模块导入问题修复**：
+      - 问题：Streamlit 启动时报错 `ModuleNotFoundError: No module named 'app.core'`
+      - 原因：Python 模块导入路径问题
+      - 解决方案：使用 `importlib.util` 动态加载模块
+      - 修改文件：
+        - `app/hosts/streamlit_app/app.py`（Agent 初始化）
+        - `app/hosts/streamlit_app/pages/2_Charts.py`（事件分析函数）
+        - `app/hosts/streamlit_app/pages/3_Reports.py`（财报检索）
+      - 修复内容：
+        - 使用 `importlib.util.spec_from_file_location()` 动态加载模块
+        - 分别加载 Agent, SentimentAnalyzer, RagEngine, DeepseekClient
+        - 保持原有的错误处理和降级策略
+    - **快速启动指南**：
+      - 新增文件：`STREAMLIT_QUICKSTART.md`
+      - 内容：
+        - 前置条件检查（必需文件、依赖安装）
+        - 启动步骤（基础启动、完整启动）
+        - 功能测试（聊天、K 线图表、财报检索）
+        - 常见问题（启动失败、模型未找到、API 未配置等）
+        - 性能优化建议
+        - 答辩演示建议（流程、备用方案）
+  - **阶段 4 总结**：
+    - ✅ 任务 4.1: 实现聊天页面（完整的 Agent 初始化和查询处理）
+    - ✅ 任务 4.2: 实现 K 线图表页面（Plotly 图表 + 事件标注 + 情感分析）
+    - ✅ 任务 4.3: 实现财报检索页面（RAG 检索 + LLM 总结 + 引用展示）
+    - ✅ 任务 4.4: 完善主入口和配置（文档、错误处理、降级策略）
+    - ✅ 修复模块导入问题（动态导入方案）
+    - ✅ 创建快速启动指南
+  - **下一步**：
+    - 开始阶段 5（测试与优化）
+    - 端到端测试所有功能
+    - 性能优化和答辩准备
+- **阶段 6：QLoRA 微调（可选，进行中）**
+
+  - [ ] **任务 6.1: 准备指令集数据**（进行中）
+    - 新增脚本：`scripts/qlora/build_instruction_dataset.py`
+    - 功能：从 finance_analysis.db 提取真实案例，生成 Instruction-Input-Output 格式数据
+    - 目标：300 条指令（60% 新闻 + 20% 市场分析 + 20% 财报）
+    - 输出：`data/qlora/instructions.jsonl`
+  - [ ] **任务 6.2: Colab 训练**（待开始）
+    - 新增脚本：`scripts/qlora/train_qlora.py`
+    - 新增文档：`colab_qlora_training_cells.txt`（Colab 训练单元格）
+    - 基础模型：deepseek-ai/deepseek-llm-7b-chat
+    - 训练方法：QLoRA（4-bit 量化 + LoRA）
+    - 训练参数：3 epochs, batch_size=4, lr=2e-4, lora_r=8
+    - 预计时间：2-4 小时（T4 GPU）
+    - 输出：LoRA 权重文件（约 30-50 MB）
+  - [ ] **任务 6.3: 测试与集成**（待开始）
+    - 新增脚本：`scripts/qlora/test_qlora_model.py`
+    - 功能：测试微调后的模型
+    - 可选：集成到本地 Agent 系统
+  - 阶段 6 说明：
+    - 目标：微调 Deepseek-7B 模型，提升财经领域专业性
+    - 方法：使用 QLoRA 技术在 Colab T4 GPU 上微调
+    - 答辩策略：展示训练日志和权重文件，实际使用 Deepseek API
+    - 完整文档：`QLORA_WORKFLOW.md`
 - 2026-02-09（下午）
 
   - **阶段 2 完成（Engine B - RAG 检索管线）**：
