@@ -85,8 +85,38 @@
     - 新增文件：`scripts/rag/test_rag_engine.py`（测试脚本）
     - 功能：加载 Chroma 向量库、提供检索接口、支持元数据过滤
     - 测试结果：所有功能正常，检索准确度良好
+- **阶段 3：Agent 编排与工具集成（已完成）**
+
+  - [X] **任务 3.1: 实现 Deepseek LLM 客户端**（已完成）
+    - 新增文件：`app/adapters/llm/deepseek_client.py`（Deepseek API 客户端）
+    - 功能：调用 Deepseek API、处理超时和错误、支持重试机制
+    - 配置：在 `.env` 中添加 `DEEPSEEK_API_KEY`
+    - 测试：支持简单问答和带系统提示词的对话
+  - [X] **任务 3.2: 实现核心工具函数**（已完成）
+    - 新增文件：`app/core/orchestrator/tools.py`（工具函数集合）
+    - 工具 1：`get_market_context` - 从数据库获取市场上下文
+    - 工具 2：`analyze_sentiment` - 调用 Engine A + 规则引擎
+    - 工具 3：`search_reports` - 调用 Engine B RAG 检索
+    - 测试：所有工具函数正常工作
+  - [X] **任务 3.3: 实现 Agent 编排器**（已完成）
+    - 新增文件：`app/core/orchestrator/agent.py`（Agent 主编排器）
+    - 功能：
+      - 自动判断查询类型（快讯分析 vs 财报问答）
+      - 协调各个引擎和工具
+      - 记录工具调用追踪（Tool Trace）
+      - 使用 LLM 生成最终总结
+    - 测试：基础功能正常，支持降级策略
+  - [X] **任务 3.4: 实现用例层函数**（已完成）
+    - 新增文件：`app/application/utils.py`（工具函数：超时、缓存、重试）
+    - 新增文件：`app/application/analyze_news.py`（快讯分析用例）
+    - 新增文件：`app/application/ask_report.py`（财报问答用例）
+    - 功能：
+      - 超时控制（装饰器）
+      - 缓存支持（SimpleCache，TTL 可配置）
+      - 降级策略（引擎未加载时返回默认结果）
+    - 测试：所有用例函数正常工作
   - 下一步：
-    1. 开始阶段 3（Agent 编排与工具集成）
+    1. 开始阶段 4（Streamlit UI 实现）
     2. 参考 `REMAINING_TASKS.md` 中的详细任务计划
 
   **冗余文件清理（待手动删除）**：
@@ -237,6 +267,64 @@
     - ✅ 任务 2.4: 实现 RAG Engine（检索功能正常）
   - **下一步**：
     - 开始阶段 3（Agent 编排与工具集成）
+    - 参考 `REMAINING_TASKS.md` 中的详细任务计划
+- 2026-02-09（晚）
+
+  - **阶段 3 完成（Agent 编排与工具集成）**：
+    - **任务 3.1 完成（Deepseek LLM 客户端）**：
+      - 创建文件：`app/adapters/llm/deepseek_client.py`
+      - 功能实现：
+        - 调用 Deepseek API 生成文本
+        - 处理超时和错误（401/429/网络异常）
+        - 支持重试机制（最多 2 次重试）
+        - 支持系统提示词（system prompt）
+      - 配置更新：`.env.example` 添加 `DEEPSEEK_API_KEY` 说明
+      - 测试通过：简单问答和带系统提示词的对话均正常
+    - **任务 3.2 完成（核心工具函数）**：
+      - 创建文件：`app/core/orchestrator/tools.py`
+      - 工具函数实现：
+        - `get_market_context`: 从 finance_analysis.db 读取价格数据，计算前期收益率、波动率、趋势标签
+        - `analyze_sentiment`: 调用 SentimentEngine + RuleEngine 进行情感分析
+        - `search_reports`: 调用 RagEngine 进行财报检索
+      - 测试结果：
+        - ✓ 市场上下文获取成功（XAUUSD，120分钟窗口）
+        - ✓ 情感分析支持降级（无引擎时返回默认结果）
+        - ✓ 财报检索支持降级（无引擎时返回空列表）
+    - **任务 3.3 完成（Agent 编排器）**：
+      - 创建文件：`app/core/orchestrator/agent.py`
+      - 功能实现：
+        - 自动判断查询类型（快讯分析 vs 财报问答）
+        - 协调各个引擎和工具（SentimentEngine, RagEngine, RuleEngine, LLM）
+        - 记录工具调用追踪（Tool Trace，包含耗时和状态）
+        - 使用 LLM 生成最终总结（支持降级）
+      - 查询类型检测：基于关键词匹配（财报/营收/利润 vs 加息/降息/非农）
+      - 测试结果：
+        - ✓ 快讯分析流程正常（获取上下文 → 情感分析 → LLM 总结）
+        - ✓ 财报问答流程正常（RAG 检索 → LLM 总结）
+        - ✓ 工具追踪记录完整（包含耗时和状态）
+    - **任务 3.4 完成（用例层函数）**：
+      - 创建文件：`app/application/utils.py`（工具函数）
+        - `with_timeout`: 超时装饰器（记录执行时间）
+        - `SimpleCache`: 简单内存缓存（支持 TTL）
+        - `with_cache`: 缓存装饰器
+        - `retry_on_failure`: 失败重试装饰器
+      - 创建文件：`app/application/analyze_news.py`（快讯分析用例）
+        - `analyze_news_with_context`: 完整的快讯分析（带缓存和超时控制）
+        - `analyze_news_simple`: 简化版（仅返回总结文本）
+        - 缓存配置：5 分钟 TTL
+      - 创建文件：`app/application/ask_report.py`（财报问答用例）
+        - `ask_report_question`: 完整的财报问答（带缓存和超时控制）
+        - `ask_report_simple`: 简化版（仅返回总结文本）
+        - `get_report_citations`: 仅获取引用（不生成总结）
+        - 缓存配置：10 分钟 TTL
+      - 测试结果：所有用例函数正常工作，缓存和降级策略有效
+  - **阶段 3 总结**：
+    - ✅ 任务 3.1: 实现 Deepseek LLM 客户端
+    - ✅ 任务 3.2: 实现核心工具函数
+    - ✅ 任务 3.3: 实现 Agent 编排器
+    - ✅ 任务 3.4: 实现用例层函数
+  - **下一步**：
+    - 开始阶段 4（Streamlit UI 实现）
     - 参考 `REMAINING_TASKS.md` 中的详细任务计划
 - 2026-02-07（晚）
 
