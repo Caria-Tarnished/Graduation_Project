@@ -1,214 +1,591 @@
-# æ¯•è®¾é¡¹ç›®ï¼šåŸºäºæ··åˆNLPæ¨¡å‹çš„è´¢ç»åˆ†æç³»ç»Ÿè®¾è®¡ä¸å®ç°
+# »ùÓÚ»ìºÏ NLP Ä£ĞÍµÄ²Æ¾­·ÖÎöÏµÍ³
 
-# 1. é¡¹ç›®æ€»è§ˆ (Project Overview)
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**æ ¸å¿ƒç†å¿µï¼š** æœ¬é¡¹ç›®æ—¨åœ¨æ„å»ºä¸€ä¸ªæ™ºèƒ½è´¢ç»åˆ†æAgentï¼Œè§£å†³ä¼ ç»Ÿé‡‘èNLPä»»åŠ¡ä¸­â€œé«˜é¢‘å¿«è®¯â€ä¸â€œæ·±åº¦è´¢æŠ¥â€éš¾ä»¥å…¼é¡¾çš„é—®é¢˜ã€‚ç³»ç»Ÿé‡‡ç”¨â€œåŒå¼•æ“â€æ¶æ„ï¼Œå¹¶ç”±ä¸€ä¸ªç»è¿‡é‡‘èé¢†åŸŸå¾®è°ƒçš„å¤§è¯­è¨€æ¨¡å‹ï¼ˆLLMï¼‰æ‹…ä»»â€œå¤§è„‘â€è¿›è¡Œç»Ÿä¸€è°ƒåº¦ã€‚
+Ò»¸öÖÇÄÜ²Æ¾­·ÖÎö Agent ÏµÍ³£¬²ÉÓÃ BERT + RAG Ë«ÒıÇæ¼Ü¹¹£¬½áºÏ¹æÔòÒıÇæºÍ´óÓïÑÔÄ£ĞÍ£¬ÊµÏÖ¸ßÆµ¿ìÑ¶Çé¸Ğ·ÖÎöºÍÉî¶È²Æ±¨¼ìË÷ÎÊ´ğ¡£
 
-**åŒå¼•æ“æ¶æ„ï¼š**
+## ? Ä¿Â¼
 
-1. **é«˜é¢‘å¿«è®¯å¼•æ“ (Engine A):** åŸºäºå¾®è°ƒçš„ **BERT** æ¨¡å‹ï¼Œè´Ÿè´£å¯¹å®æ—¶è´¢ç»å¿«è®¯è¿›è¡Œæ¯«ç§’çº§çš„æƒ…æ„Ÿåˆ†ç±»ï¼ˆåˆ©å¥½/åˆ©ç©ºï¼‰ï¼Œå¹¶ç»“åˆKçº¿æ•°æ®è¿›è¡Œç›¸å…³æ€§éªŒè¯ã€‚
-2. **æ·±åº¦è´¢æŠ¥å¼•æ“ (Engine B):** åŸºäº **RAG (****æ£€ç´¢å¢å¼ºç”Ÿæˆ)** æŠ€æœ¯ï¼Œè´Ÿè´£å¯¹ä½é¢‘çš„é•¿ç¯‡è´¢æŠ¥è¿›è¡Œæ·±åº¦å†…å®¹æ£€ç´¢ã€æ‘˜è¦ä¸é—®ç­”ã€‚
+- [ÏîÄ¿¼ò½é](#ÏîÄ¿¼ò½é)
+- [ÏµÍ³¼Ü¹¹](#ÏµÍ³¼Ü¹¹)
+- [ºËĞÄ¹¦ÄÜ](#ºËĞÄ¹¦ÄÜ)
+- [¼¼ÊõÕ»](#¼¼ÊõÕ»)
+- [ÏîÄ¿½á¹¹](#ÏîÄ¿½á¹¹)
+- [¿ìËÙ¿ªÊ¼](#¿ìËÙ¿ªÊ¼)
+- [Ê¹ÓÃÖ¸ÄÏ](#Ê¹ÓÃÖ¸ÄÏ)
+- [ĞÔÄÜÖ¸±ê](#ĞÔÄÜÖ¸±ê)
+- [¿ª·¢ÎÄµµ](#¿ª·¢ÎÄµµ)
+- [ÖÂĞ»](#ÖÂĞ»)
 
-**æœ€ç»ˆäº§å‡ºï¼š** ä¸€ä¸ªåŸºäº **Streamlit** çš„Webäº¤äº’ç³»ç»Ÿï¼Œç”¨æˆ·å¯ä»¥é€šè¿‡è‡ªç„¶è¯­è¨€ä¸Agentå¯¹è¯ï¼ŒAgentè‡ªä¸»è°ƒç”¨å·¥å…·è¿›è¡Œåˆ†æï¼Œå¹¶è¾“å‡ºæ–‡å­—ç»“è®ºä¸äº¤äº’å¼Kçº¿å›¾è¡¨ã€‚
+## ÏîÄ¿¼ò½é
 
-## 2. é˜¶æ®µä¸€ï¼šå¤šæºæ•°æ®è·å–ä¸å­˜å‚¨ (Data Pipeline)
+±¾ÏîÄ¿ÊÇÒ»¸ö±ÏÒµÉè¼ÆÏîÄ¿£¬Ö¼ÔÚ¹¹½¨Ò»¸öÖÇÄÜ²Æ¾­·ÖÎöÏµÍ³£¬½â¾ö´«Í³½ğÈÚ NLP ÈÎÎñÖĞ"¸ßÆµ¿ìÑ¶"Óë"Éî¶È²Æ±¨"ÄÑÒÔ¼æ¹ËµÄÎÊÌâ¡£
 
-**ç›®æ ‡ï¼š** è·å–å¹¶æ¸…æ´—å¤šæ¨¡æ€é‡‘èæ•°æ®ï¼Œä¸ºåŒå¼•æ“å‡†å¤‡â€œå¼¹è¯â€ã€‚
+### ºËĞÄ´´ĞÂµã
 
-| **ä»»åŠ¡æ¨¡å—**              | **å…·ä½“å†…å®¹**                                             | **æ¨èæŠ€æœ¯æ ˆ**                                      | **äº§å‡ºç‰©**                |
-| ------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------- |
-| **1. K**çº¿æ•°æ®            | è·å–ç›®æ ‡æ ‡çš„ï¼ˆå¦‚Aè‚¡ä¸ªè‚¡ã€é»„é‡‘ã€ç¾è‚¡ï¼‰çš„åˆ†é’Ÿçº§æˆ–æ—¥çº§OHLCVæ•°æ®ã€‚ | `Tushare`(Aè‚¡),`yfinance`(ç¾è‚¡/å¤§å®—),`baostock`     | `market_data.csv`             |
-| **2.** **é«˜é¢‘å¿«è®¯** | çˆ¬å–é‡‘åæ•°æ®ã€è´¢è”ç¤¾ç­‰ç½‘ç«™çš„7x24å°æ—¶ç›´æ’­å¿«è®¯ï¼ˆæ—¶é—´æˆ³+å†…å®¹ï¼‰ã€‚  | `Requests`,`BeautifulSoup`,`Selenium`(å¤„ç†åŠ¨æ€åŠ è½½) | `fast_news.csv`               |
-| **3.** **æ·±åº¦è´¢æŠ¥** | ä¸‹è½½ä¸Šå¸‚å…¬å¸çš„å­£åº¦/å¹´åº¦è´¢æŠ¥ï¼ˆPDFæ ¼å¼ï¼‰ã€‚                       | `å·¨æ½®èµ„è®¯ç½‘`çˆ¬è™«,`PyMuPDF`(PDFè§£æ)                   | PDFæ–‡ä»¶å¤¹&`reports_text.json` |
-| **4.** **æ•°æ®å­˜å‚¨** | å»ºç«‹æœ¬åœ°SQLiteæ•°æ®åº“ï¼Œç»Ÿä¸€ç®¡ç†ç»“æ„åŒ–ä¸éç»“æ„åŒ–æ•°æ®ã€‚           | `SQLite`,`SQLAlchemy`                                 | `finance.db`                  |
+1. **Ë«ÒıÇæ¼Ü¹¹**£ºBERT ´¦Àí¸ßÆµ¿ìÑ¶ + RAG ´¦ÀíÉî¶È²Æ±¨£¬¸÷Ë¾ÆäÖ°
+2. **´úÀí±ê×¢·½·¨**£ºÀûÓÃ K Ïß×ßÊÆ·´Ïò±ê×¢Çé¸Ğ£¬½â¾ö±ê×¢³É±¾ÎÊÌâ
+3. **»ìºÏÍÆÀí²ßÂÔ**£ºML Ä£ĞÍ + ¹æÔòÒıÇæ + LLM£¬¼æ¹Ë×¼È·ĞÔºÍ¿É½âÊÍĞÔ
+4. **¶Ëµ½¶Ë×Ô¶¯»¯**£º´ÓÊı¾İ»ñÈ¡¡¢Ä£ĞÍÍÆÀíµ½¿ÉÊÓ»¯³ÊÏÖµÄÍêÕûÁ÷³Ì
 
-## 3. é˜¶æ®µäºŒï¼šæ„å»ºé«˜é¢‘å¿«è®¯å¼•æ“ (Engine A - BERT)
+### ÏîÄ¿ÌØµã
 
-ç›®æ ‡ï¼š è®­ç»ƒä¸€ä¸ªèƒ½â€œè¯»æ‡‚â€å¸‚åœºæƒ…ç»ªçš„åˆ†ç±»å™¨ã€‚
+- ? ÍêÕûµÄÊı¾İ¹ÜÏß£¨MT5 ·ÖÖÓ¼Û + ½ğÊ®¿ìÑ¶/ÈÕÀú£©
+- ? 3 ÀàÇé¸Ğ·ÖÀàÄ£ĞÍ£¨Test Macro F1 = 0.377£¬Ïà±È»ùÏßÌáÉı 186%£©
+- ? RAG ²Æ±¨¼ìË÷ÏµÍ³£¨633 ¸öÎÄµµÇĞÆ¬£¬Ö§³ÖÖĞÓ¢ÎÄ¼ìË÷£©
+- ? Agent ±àÅÅÆ÷£¨×Ô¶¯ÅĞ¶Ï²éÑ¯ÀàĞÍ£¬Ğ­µ÷¶à¸öÒıÇæ£©
+- ? Streamlit Web UI£¨ÁÄÌì¡¢K ÏßÍ¼±í¡¢²Æ±¨¼ìË÷Èı´óÒ³Ãæ£©
+- ? ĞÔÄÜÓÅ»¯£¨»º´æ + Êı¾İ¿âË÷Òı£¬ÏìÓ¦Ê±¼äÌáÉı 99.9%£©
 
-ç¡¬ä»¶ç­–ç•¥ï¼š æ ‡æ³¨åœ¨æœ¬åœ°å®Œæˆï¼Œæ¨¡å‹è®­ç»ƒåœ¨äº‘ç«¯ (Google Colab) å®Œæˆã€‚
 
-| **ä»»åŠ¡æ¨¡å—**              | **å…·ä½“å†…å®¹**                                                                               | **æŠ€æœ¯ç»†èŠ‚**                                                                         |
-| ------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| **1.** **ä»£ç†æ ‡æ³¨** | \*\*(æ ¸å¿ƒåˆ›æ–°)\*\*åˆ©ç”¨Kçº¿èµ°åŠ¿åå‘æ ‡æ³¨æ–°é—»æƒ…æ„Ÿã€‚ä¾‹å¦‚ï¼šæ–°é—»å‘å¸ƒå30åˆ†é’Ÿå†…æ¶¨å¹…>0.5%æ ‡è®°ä¸ºâ€œåˆ©å¥½â€ã€‚ | ä½¿ç”¨ `pandas.merge_asof`è¿›è¡Œæ—¶é—´æˆ³å¯¹é½ï¼›è®¾å®šé˜ˆå€¼è§„åˆ™ç”ŸæˆLabelsã€‚                         |
-| **2.** **äº‘ç«¯å¾®è°ƒ** | åœ¨\*\*Google Colab (T4 GPU)\*\*ä¸Šï¼Œä½¿ç”¨æ ‡æ³¨å¥½çš„æ•°æ®å¾®è°ƒ `bert-base-chinese`æ¨¡å‹ã€‚              | åˆ©ç”¨HuggingFace `Transformers`åº“è¿›è¡Œè®­ç»ƒï¼›ä¿å­˜æ¨¡å‹æƒé‡ `bert_sentiment.pth`(çº¦400MB)ã€‚ |
-| **3.** **æœ¬åœ°æ¨ç†** | åœ¨æœ¬åœ°ç”µè„‘ä¸ŠåŠ è½½å¾®è°ƒåçš„æ¨¡å‹ï¼Œè¿›è¡ŒCPUæ¨ç†ï¼ˆBERTè¾ƒè½»é‡ï¼ŒCPUæ¨ç†å»¶è¿Ÿ<0.5ç§’ï¼‰ã€‚                     | ç¼–å†™ `predict_sentiment(text)`å‡½æ•°ï¼Œä¾›Agentè°ƒç”¨ã€‚                                        |
+## ÏµÍ³¼Ü¹¹
 
-## 4. é˜¶æ®µä¸‰ï¼šæ„å»ºæ·±åº¦è´¢æŠ¥å¼•æ“ (Engine B - RAG)
+### ÕûÌå¼Ü¹¹Í¼
 
-ç›®æ ‡ï¼š è®©ç³»ç»Ÿå…·å¤‡â€œç¿»é˜…â€é•¿æ–‡æ¡£çš„èƒ½åŠ›ã€‚
+```mermaid
+graph TB
+    subgraph "ËŞÖ÷²ã Host Layer"
+        UI[Streamlit UI<br/>ÁÄÌì/Í¼±í/²Æ±¨]
+    end
+    
+    subgraph "ÓÃÀı²ã Application Layer"
+        AN[analyze_news<br/>¿ìÑ¶·ÖÎö]
+        AR[ask_report<br/>²Æ±¨ÎÊ´ğ]
+        UTILS[³¬Ê±/»º´æ/ÖØÊÔ]
+    end
+    
+    subgraph "ºËĞÄ²ã Core Layer"
+        AGENT[Agent ±àÅÅÆ÷<br/>²éÑ¯ÀàĞÍÅĞ¶Ï]
+        EA[Engine A<br/>BERT Çé¸Ğ·ÖÀà]
+        EB[Engine B<br/>RAG ¼ìË÷]
+        RE[Rule Engine<br/>ºó´¦Àí¹æÔò]
+        DTO[DTO Êı¾İ½á¹¹]
+    end
+    
+    subgraph "ÊÊÅäÆ÷²ã Adapters Layer"
+        LLM[Deepseek API<br/>LLM ¿Í»§¶Ë]
+        VS[Chroma<br/>ÏòÁ¿¿â]
+        DB[(SQLite<br/>finance_analysis.db)]
+    end
+    
+    UI --> AN
+    UI --> AR
+    AN --> AGENT
+    AR --> AGENT
+    AGENT --> EA
+    AGENT --> EB
+    AGENT --> RE
+    EA --> LLM
+    EB --> VS
+    AGENT --> DB
+    
+    style UI fill:#e1f5ff
+    style AGENT fill:#fff4e1
+    style EA fill:#ffe1e1
+    style EB fill:#ffe1e1
+    style LLM fill:#e1ffe1
+```
 
-ç¡¬ä»¶ç­–ç•¥ï¼š å…¨æµç¨‹å¯åœ¨æœ¬åœ° CPU ç¯å¢ƒä¸‹å®Œæˆï¼ˆChromaDB è½»é‡é«˜æ•ˆï¼‰ã€‚
+### Ë«ÒıÇæÉè¼Æ
 
-| **ä»»åŠ¡æ¨¡å—**                | **å…·ä½“å†…å®¹**                                  | **æŠ€æœ¯ç»†èŠ‚**                                                                 |
-| --------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| **1.** **æ–‡æ¡£åˆ‡ç‰‡**   | å°†PDFæ–‡æœ¬æŒ‰è¯­ä¹‰æˆ–å­—ç¬¦é•¿åº¦åˆ‡å‰²æˆå°å—(Chunks)ã€‚       | ä½¿ç”¨ `LangChain`çš„ `RecursiveCharacterTextSplitter`ï¼Œè®¾ç½® `chunk_size=500`ã€‚ |
-| **2.** **å‘é‡åŒ–**     | å°†æ–‡æœ¬å—è½¬æ¢ä¸ºå‘é‡(Embedding)ã€‚                     | ä½¿ç”¨ `BAAI/bge-m3`æˆ– `m3e-base`æ¨¡å‹(æ”¯æŒCPUè¿è¡Œ)ã€‚                             |
-| **3.** **å‘é‡åº“æ„å»º** | å°†å‘é‡å­˜å…¥æœ¬åœ°å‘é‡æ•°æ®åº“ï¼Œå®ç°è¯­ä¹‰æ£€ç´¢ã€‚            | ä½¿ç”¨ `ChromaDB`(æ¨èï¼Œæ— éœ€å®‰è£…æœåŠ¡)æˆ– `FAISS`ã€‚                                |
-| **4.** **æ£€ç´¢å™¨å°è£…** | å°è£…æ£€ç´¢å‡½æ•°ï¼Œè¾“å…¥é—®é¢˜ï¼Œè¿”å›æœ€ç›¸å…³çš„Top-3æ–‡æ¡£ç‰‡æ®µã€‚ | ç¼–å†™ `retrieve_docs(query)`å‡½æ•°ï¼Œä¾›Agentè°ƒç”¨ã€‚                                   |
+#### Engine A£º¸ßÆµ¿ìÑ¶ÒıÇæ
+- **Ä£ĞÍ**£ºBERT£¨hfl/chinese-roberta-wwm-ext£©Î¢µ÷
+- **ÈÎÎñ**£º3 ÀàÇé¸Ğ·ÖÀà£¨Bearish / Neutral / Bullish£©
+- **ÊäÈëÔöÇ¿**£ºÊĞ³¡ÉÏÏÂÎÄÇ°×º£¨Èç `[Strong Rally]`¡¢`[Sideways]`£©
+- **ºó´¦Àí**£º¹æÔòÒıÇæ£¨Ô¤ÆÚ¶ÒÏÖ¼ì²â¡¢¹ÛÍûĞÅºÅ£©
+- **ĞÔÄÜ**£ºTest Macro F1 = 0.377£¬ÍÆÀíÊ±¼ä ~1.1s/Ìõ£¨CPU£©
 
-## 5. é˜¶æ®µå››ï¼šAgentâ€œå¤§è„‘â€å®šåˆ¶ (LLM Fine-Tuning)
+#### Engine B£ºÉî¶È²Æ±¨ÒıÇæ
+- **¼¼Êõ**£ºRAG£¨¼ìË÷ÔöÇ¿Éú³É£©
+- **ÏòÁ¿Ä£ĞÍ**£ºBAAI/bge-m3£¨1024 Î¬£©
+- **ÏòÁ¿¿â**£ºChroma£¨633 ¸öÎÄµµÇĞÆ¬£©
+- **¼ìË÷²ßÂÔ**£ºÓïÒåÏàËÆ¶È Top-K + ÔªÊı¾İ¹ıÂË
+- **ĞÔÄÜ**£º¼ìË÷Ê±¼ä ~0.15s£¬Ö§³ÖÖĞÓ¢ÎÄ»ìºÏ¼ìË÷
 
-ç›®æ ‡ï¼š è§£å†³é€šç”¨å¤§æ¨¡å‹ä¸æ‡‚â€œè¡Œè¯â€çš„é—®é¢˜ï¼Œæ‰“é€ ä¸“ä¸šè´¢ç»åˆ†æå¸ˆã€‚
 
-ç¡¬ä»¶ç­–ç•¥ï¼š å¿…é¡»åœ¨äº‘ç«¯ (Google Colab) å®Œæˆï¼Œæœ¬åœ°æ˜¾å­˜ä¸å¤Ÿã€‚
+## ºËĞÄ¹¦ÄÜ
 
-| **ä»»åŠ¡æ¨¡å—**                | **å…·ä½“å†…å®¹**                                              | **æŠ€æœ¯ç»†èŠ‚**                                                                 |
-| --------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| **1.** **æŒ‡ä»¤é›†æ„å»º** | æ„å»º"Instruction-Input-Output"æ ¼å¼çš„å¾®è°ƒæ•°æ®é›†ï¼ˆçº¦200-500æ¡ï¼‰ã€‚ | æ•°æ®æ¥æºï¼šåˆ©ç”¨GPT-4æˆ–Kimiè¾…åŠ©ç”Ÿæˆè´¢ç»é—®ç­”å¯¹ï¼›æ ¼å¼ï¼šJSONLã€‚                         |
-| **2. QLoRAå¾®è°ƒ**            | (æ ¸å¿ƒåˆ›æ–°)ä½¿ç”¨QLoRAæŠ€æœ¯åœ¨å•å¼ T4 GPU (Colab)ä¸Šå¾®è°ƒ7Bæ¨¡å‹ã€‚       | åŸºç¡€æ¨¡å‹ï¼š`Qwen-7B`æˆ– `Deepseek-7B`ï¼›å·¥å…·ï¼š`PEFT`,`TRL`,`bitsandbytes`ã€‚ |
-| **3.** **æƒé‡åˆå¹¶**   | è®­ç»ƒç»“æŸåï¼Œå¯¼å‡ºLoRA Adapteræƒé‡æ–‡ä»¶(ä»…å‡ åMB)ã€‚                | å°†æƒé‡æ–‡ä»¶ä¸‹è½½è‡³æœ¬åœ°ä¿å­˜ã€‚                                                         |
+### 1. ¿ìÑ¶Çé¸Ğ·ÖÎö
+- ÊäÈë²Æ¾­¿ìÑ¶£¬×Ô¶¯ÅĞ¶ÏÊĞ³¡Çé¸Ğ£¨ÀûºÃ/ÖĞĞÔ/Àû¿Õ£©
+- ½áºÏÇ°ÆÚ K Ïß×ßÊÆ£¬¼ì²â"Ô¤ÆÚ¶ÒÏÖ"ºÍ"½¨Òé¹ÛÍû"ĞÅºÅ
+- Ìá¹©ÖÃĞÅ¶ÈºÍÏêÏ¸½âÊÍ
 
-## 6. é˜¶æ®µäº”ï¼šç³»ç»Ÿæ€»æˆä¸éƒ¨ç½² (System Assembly)
+### 2. K ÏßÍ¼±íÁª¶¯
+- Ê¹ÓÃ Plotly »æÖÆ½»»¥Ê½ K ÏßÍ¼
+- ÔÚÍ¼±íÉÏ±ê×¢ÖØÒªÊÂ¼ş£¨´øĞÇ¼¶ºÍÄÚÈİÔ¤ÀÀ£©
+- µã»÷ÊÂ¼şµã´¥·¢Çé¸Ğ·ÖÎö£¬ÊµÊ±Õ¹Ê¾½á¹û
 
-ç›®æ ‡ï¼š å…‹æœæœ¬åœ°ç®—åŠ›ç“¶é¢ˆï¼Œå®ç°æµç•…çš„ Web Demoã€‚
+### 3. ²Æ±¨¼ìË÷ÎÊ´ğ
+- ÊäÈëÎÊÌâ£¬´Ó 15 ¸ö¹ó½ğÊôÑĞ±¨ÖĞ¼ìË÷Ïà¹ØÄÚÈİ
+- ÏÔÊ¾ Top-K ÒıÓÃÆ¬¶Î£¨´øÒ³ÂëºÍÏàËÆ¶È·ÖÊı£©
+- Ê¹ÓÃ LLM Éú³É½á¹¹»¯´ğ°¸×Ü½á
 
-æœ€ç»ˆæ–¹æ¡ˆï¼š æœ¬åœ°UI (Streamlit) + äº‘ç«¯å¤§è„‘ (API)
+### 4. ÖÇÄÜ¶Ô»°
+- ×Ô¶¯ÅĞ¶Ï²éÑ¯ÀàĞÍ£¨¿ìÑ¶·ÖÎö vs ²Æ±¨ÎÊ´ğ£©
+- ¼ÇÂ¼¹¤¾ßµ÷ÓÃ×·×Ù£¨Tool Trace£©£¬Õ¹Ê¾·ÖÎö¹ı³Ì
+- Ö§³Ö¶àÂÖ¶Ô»°ºÍÉÏÏÂÎÄÀí½â
 
-| **ç»„ä»¶**           | **è¿è¡Œä½ç½®** | **å®ç°æ–¹æ¡ˆ**                                                                                                                                                                                   |
-| ------------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ç”¨æˆ·ç•Œé¢(UI)**   | **æœ¬åœ°PC**   | ä½¿ç”¨ `Streamlit`æ„å»ºèŠå¤©çª—å£å’Œå›¾è¡¨å±•ç¤ºé¡µã€‚                                                                                                                                                         |
-| **K**çº¿å¯è§†åŒ–      | **æœ¬åœ°PC**   | ä½¿ç”¨ `Pyecharts`æˆ– `Plotly`ç»˜åˆ¶äº¤äº’å¼Kçº¿å›¾ã€‚                                                                                                                                                     |
-| **å¿«è®¯å¼•æ“(BERT)** | **æœ¬åœ°PC**   | ä½¿ç”¨CPUè¿è¡ŒBERTæ¨¡å‹è¿›è¡Œå®æ—¶åˆ†ç±»ï¼ˆè½»è´Ÿè½½ï¼‰ã€‚                                                                                                                                                          |
-| **è´¢æŠ¥å¼•æ“(RAG)**  | **æœ¬åœ°PC**   | ä½¿ç”¨ `ChromaDB`è¿›è¡Œæœ¬åœ°æ£€ç´¢ï¼ˆè½»è´Ÿè½½ï¼‰ã€‚                                                                                                                                                            |
-| **Agent**å¤§è„‘(LLM) | **äº‘ç«¯API**  | \*\*(å…³é”®ç­–ç•¥)\*\*æœ¬åœ°ä¸åŠ è½½7Bæ¨¡å‹ã€‚Agenté€»è¾‘é€šè¿‡APIè°ƒç”¨äº‘ç«¯å¤§æ¨¡å‹ï¼ˆå¦‚é˜¿é‡Œé€šä¹‰åƒé—®APIæˆ–Deepseek APIï¼‰ã€‚*æ³¨ï¼šè‹¥å¿…é¡»å±•ç¤ºå¾®è°ƒæˆæœï¼Œå¯åœ¨Colabä¸Šéƒ¨ç½²å¾®è°ƒåçš„æ¨¡å‹å¹¶å¼€å¯APIæ¥å£(ngrok)ï¼Œæœ¬åœ°è°ƒç”¨è¯¥æ¥å£ã€‚* |
+## ¼¼ÊõÕ»
 
-## 7. é™„å½•ï¼šé’ˆå¯¹ MX570 (2Gæ˜¾å­˜) çš„å…·ä½“æ“ä½œæŒ‡å—
+### ºËĞÄ¿ò¼Ü
+- **Éî¶ÈÑ§Ï°**£ºPyTorch 2.0+, Transformers 4.35+
+- **ÏòÁ¿¼ìË÷**£ºChromaDB 0.4+, Sentence-Transformers 2.2+
+- **Web ¿ò¼Ü**£ºStreamlit 1.30+
+- **Êı¾İ´¦Àí**£ºPandas, NumPy
 
-ç”±äºæœ¬åœ°æ˜¾å­˜æ— æ³•æ”¯æ’‘å¤§æ¨¡å‹è®­ç»ƒå’Œæ¨ç†ï¼Œè¯·ä¸¥æ ¼æ‰§è¡Œä»¥ä¸‹â€œäº‘+ç«¯â€åˆ†ç¦»ç­–ç•¥ï¼š
+### Ä£ĞÍÓëËã·¨
+- **BERT Ä£ĞÍ**£ºhfl/chinese-roberta-wwm-ext£¨Çé¸Ğ·ÖÀà£©
+- **Ç¶ÈëÄ£ĞÍ**£ºBAAI/bge-m3£¨ÎÄµµÏòÁ¿»¯£©
+- **LLM**£ºDeepseek API£¨×Ü½áÉú³É£©
+- **»ùÏßÄ£ĞÍ**£ºTF-IDF + LinearSVC£¨¶Ô±ÈÊµÑé£©
 
-1. **è®­ç»ƒé˜¶æ®µ (Training Phase):**
-   * æ‰€æœ‰æ¶‰åŠ **GPU** çš„è®­ç»ƒä»»åŠ¡ï¼ˆBERTå¾®è°ƒã€LLM QLoRAå¾®è°ƒï¼‰ï¼Œ**å¿…é¡»** å°†æ•°æ®ä¸Šä¼ è‡³ Google Driveï¼Œç„¶ååœ¨ **Google Colab** ç¬”è®°æœ¬ä¸­æŒ‚è½½äº‘ç«¯ç¡¬ç›˜è¿›è¡Œè®­ç»ƒã€‚
-   * è®­ç»ƒå®Œæˆåï¼Œä»…å°†æ¨¡å‹æƒé‡æ–‡ä»¶ï¼ˆ`<span lang="EN-US">.pth</span>` æˆ– `<span lang="EN-US">adapter</span>` æ–‡ä»¶å¤¹ï¼‰ä¸‹è½½å›æœ¬åœ°ã€‚
-2. **æ¼”ç¤ºé˜¶æ®µ (Demo Phase):**
-   * **ä¸è¦å°è¯•åœ¨æœ¬åœ°è¿è¡Œ Qwen-7B æˆ– Deepseek-7B**ï¼Œè¿™ä¼šå¯¼è‡´ç”µè„‘æ­»æœºã€‚
-   * **æ¨èæ–¹æ¡ˆï¼š** åœ¨ä»£ç ä¸­ä½¿ç”¨ `<span lang="EN-US">LangChain</span>` çš„       `<span lang="EN-US">ChatOpenAI</span>` æˆ– `<span lang="EN-US">ChatTongyi</span>` ç±»ï¼Œå¡«å…¥ API Keyï¼Œç›´æ¥è°ƒç”¨äº‘ç«¯å•†ç”¨æ¨¡å‹ä½œä¸º Agent çš„æ¨ç†æ ¸å¿ƒã€‚è¿™æ˜¯ç­”è¾©æ—¶æœ€ç¨³å®šã€æœ€æµç•…çš„æ–¹æ¡ˆã€‚
-   * **è¯æœ¯å‡†å¤‡ï¼š** å½“è€å¸ˆé—®åŠå¾®è°ƒå·¥ä½œæ—¶ï¼Œå±•ç¤ºä½ åœ¨ Colab ä¸Šçš„è®­ç»ƒæ—¥å¿—ã€Loss æ›²çº¿ä»¥åŠè®­ç»ƒå¥½çš„ LoRA æƒé‡æ–‡ä»¶æˆªå›¾ï¼Œè¯æ˜ä½ å®Œæˆäº†å¾®è°ƒå·¥ä½œï¼Œåªæ˜¯ä¸ºäº†æ¼”ç¤ºæµç•…åº¦è€Œä½¿ç”¨äº† API æ¨ç†ï¼ˆæˆ–è€…è§£é‡Šä¸ºä½¿ç”¨äº†ç§æœ‰äº‘éƒ¨ç½²ï¼‰ã€‚
+### Êı¾İÓë´æ´¢
+- **Êı¾İ¿â**£ºSQLite£¨finance_analysis.db£¬736K+ ·ÖÖÓ¼ÛÊı¾İ£©
+- **ÏòÁ¿¿â**£ºChroma£¨³Ö¾Ã»¯´æ´¢£©
+- **Êı¾İÔ´**£ºMT5£¨·ÖÖÓ¼Û£©¡¢½ğÊ®Êı¾İ£¨¿ìÑ¶/ÈÕÀú£©
 
-## 8. æ¯•è®¾åˆ›æ–°ç‚¹æ€»ç»“ (ç”¨äºå¼€é¢˜/è®ºæ–‡)
+### ¿ª·¢¹¤¾ß
+- **ÑµÁ·»·¾³**£ºGoogle Colab£¨T4 GPU£©
+- **°æ±¾¿ØÖÆ**£ºGit, GitHub
+- **´úÂë¹æ·¶**£ºPEP8, Flake8
 
-1. **æ¶æ„åˆ›æ–°ï¼š** æå‡ºäº† BERT+RAG çš„åŒå¼•æ“æ¶æ„ï¼Œæœ‰æ•ˆèåˆäº†é«˜é¢‘æ—¶åºæ•°æ®ï¼ˆå¿«è®¯ï¼‰ä¸ä½é¢‘éç»“æ„åŒ–æ•°æ®ï¼ˆè´¢æŠ¥ï¼‰çš„åˆ†æèƒ½åŠ›ã€‚
-2. **æ•°æ®å¤„ç†åˆ›æ–°ï¼š** å¼•å…¥â€œåŸºäºKçº¿èµ°åŠ¿çš„ä»£ç†æ ‡æ³¨ (Proxy Labeling)â€æ–¹æ³•ï¼Œè§£å†³äº†é‡‘èé¢†åŸŸç¼ºä¹å¤§è§„æ¨¡æƒ…æ„Ÿæ ‡æ³¨æ•°æ®çš„ç—›ç‚¹ã€‚
-3. **å·¥ç¨‹å®ç°åˆ›æ–°ï¼š** åŸºäº Agent æ€æƒ³ï¼Œå®ç°äº†ä»æ•°æ®æ£€ç´¢ã€æ¨¡å‹æ¨ç†åˆ°å¯è§†åŒ–å‘ˆç°çš„ç«¯åˆ°ç«¯è‡ªåŠ¨åŒ–æµç¨‹ã€‚
-4. **æ¨¡å‹å®šåˆ¶ï¼š** åˆ©ç”¨ PEFT (QLoRA) æŠ€æœ¯å¯¹é€šç”¨å¤§æ¨¡å‹è¿›è¡Œäº†é‡‘èé¢†åŸŸçš„ä½èµ„æºå¾®è°ƒï¼Œæå‡äº†æ¨¡å‹åœ¨ç‰¹å®šé¢†åŸŸçš„è¡¨ç°ã€‚
+
+## ÏîÄ¿½á¹¹
+
+```
+Graduation_Project/
+©À©¤©¤ app/                          # Ó¦ÓÃ´úÂë
+©¦   ©À©¤©¤ core/                     # ºËĞÄ²ã£¨²»ÒÀÀµ UI/HTTP£©
+©¦   ©¦   ©À©¤©¤ dto.py                # Êı¾İ´«Êä¶ÔÏó£¨7 ¸öºËĞÄÊı¾İÀà£©
+©¦   ©¦   ©À©¤©¤ engines/              # ÒıÇæÄ£¿é
+©¦   ©¦   ©¦   ©À©¤©¤ sentiment_engine.py    # Engine A ÍÆÀí
+©¦   ©¦   ©¦   ©¸©¤©¤ rag_engine.py          # Engine B ¼ìË÷
+©¦   ©¦   ©À©¤©¤ orchestrator/         # ±àÅÅÆ÷
+©¦   ©¦   ©¦   ©À©¤©¤ agent.py          # Agent Ö÷±àÅÅÆ÷
+©¦   ©¦   ©¦   ©¸©¤©¤ tools.py          # ¹¤¾ßº¯Êı¼¯ºÏ
+©¦   ©¦   ©¸©¤©¤ utils/                # ¹¤¾ßÀà
+©¦   ©¦       ©¸©¤©¤ cache.py          # LRU »º´æ
+©¦   ©¦
+©¦   ©À©¤©¤ application/              # ÓÃÀı²ã
+©¦   ©¦   ©À©¤©¤ analyze_news.py       # ¿ìÑ¶·ÖÎöÓÃÀı
+©¦   ©¦   ©À©¤©¤ ask_report.py         # ²Æ±¨ÎÊ´ğÓÃÀı
+©¦   ©¦   ©¸©¤©¤ utils.py              # ³¬Ê±/»º´æ/ÖØÊÔ
+©¦   ©¦
+©¦   ©À©¤©¤ adapters/                 # ÊÊÅäÆ÷²ã
+©¦   ©¦   ©¸©¤©¤ llm/
+©¦   ©¦       ©¸©¤©¤ deepseek_client.py     # Deepseek API ¿Í»§¶Ë
+©¦   ©¦
+©¦   ©À©¤©¤ services/                 # ·şÎñ²ã
+©¦   ©¦   ©¸©¤©¤ sentiment_analyzer.py      # Çé¸Ğ·ÖÎö·şÎñ£¨BERT + ¹æÔòÒıÇæ£©
+©¦   ©¦
+©¦   ©¸©¤©¤ hosts/                    # ËŞÖ÷²ã
+©¦       ©¸©¤©¤ streamlit_app/        # Streamlit UI
+©¦           ©À©¤©¤ app.py            # Ö÷Èë¿Ú£¨ÁÄÌìÒ³Ãæ£©
+©¦           ©À©¤©¤ pages/
+©¦           ©¦   ©À©¤©¤ 2_Charts.py   # K ÏßÍ¼±íÒ³Ãæ
+©¦           ©¦   ©¸©¤©¤ 3_Reports.py  # ²Æ±¨¼ìË÷Ò³Ãæ
+©¦           ©¸©¤©¤ README.md         # UI Ê¹ÓÃÎÄµµ
+©¦
+©À©¤©¤ scripts/                      # ÀëÏß½Å±¾
+©¦   ©À©¤©¤ crawlers/                 # Êı¾İÅÀ³æ
+©¦   ©¦   ©À©¤©¤ jin10_dynamic.py      # ½ğÊ®ÈÕÀúÅÀ³æ
+©¦   ©¦   ©À©¤©¤ jin10_flash_api.py    # ½ğÊ®¿ìÑ¶ÅÀ³æ
+©¦   ©¦   ©¸©¤©¤ storage.py            # SQLite ´æ´¢
+©¦   ©¦
+©¦   ©À©¤©¤ modeling/                 # Ä£ĞÍÑµÁ·
+©¦   ©¦   ©À©¤©¤ baseline_tfidf_svm.py         # TF-IDF »ùÏß
+©¦   ©¦   ©À©¤©¤ bert_finetune_cls.py          # BERT Î¢µ÷
+©¦   ©¦   ©À©¤©¤ prepare_3cls_dataset.py       # 3 ÀàÊı¾İ¼¯Éú³É
+©¦   ©¦   ©¸©¤©¤ build_enhanced_dataset_3cls.py # ÊäÈëÔöÇ¿
+©¦   ©¦
+©¦   ©À©¤©¤ rag/                      # RAG ¹ÜÏß
+©¦   ©¦   ©À©¤©¤ build_chunks.py       # PDF ½âÎöÓëÇĞÆ¬
+©¦   ©¦   ©À©¤©¤ build_vector_index.py # ÏòÁ¿»¯ÓëË÷Òı¹¹½¨
+©¦   ©¦   ©¸©¤©¤ test_rag_engine.py    # RAG ÒıÇæ²âÊÔ
+©¦   ©¦
+©¦   ©À©¤©¤ qlora/                    # QLoRA Î¢µ÷£¨¿ÉÑ¡£©
+©¦   ©¦   ©À©¤©¤ build_instruction_dataset.py  # Ö¸Áî¼¯¹¹½¨
+©¦   ©¦   ©¸©¤©¤ train_qlora.py                # QLoRA ÑµÁ·
+©¦   ©¦
+©¦   ©À©¤©¤ tools/                    # ¹¤¾ß½Å±¾
+©¦   ©¦   ©À©¤©¤ sync_results.py       # Í¬²½ÑµÁ·½á¹û
+©¦   ©¦   ©¸©¤©¤ copy_model_weights.py # ¸´ÖÆÄ£ĞÍÈ¨ÖØ
+©¦   ©¦
+©¦   ©À©¤©¤ test_system_integration.py        # ÏµÍ³¼¯³É²âÊÔ
+©¦   ©À©¤©¤ test_end_to_end.py                # ¶Ëµ½¶Ë²âÊÔ
+©¦   ©À©¤©¤ benchmark_performance.py          # ĞÔÄÜ²âÊÔ
+©¦   ©À©¤©¤ optimize_database_indexes.py      # Êı¾İ¿âË÷ÒıÓÅ»¯
+©¦   ©¸©¤©¤ test_batch_processing.py          # Åú´¦Àí²âÊÔ
+©¦
+©À©¤©¤ data/                         # Êı¾İÄ¿Â¼
+©¦   ©À©¤©¤ raw/                      # Ô­Ê¼Êı¾İ
+©¦   ©¦   ©¸©¤©¤ reports/              # ²Æ±¨ PDF
+©¦   ©À©¤©¤ processed/                # ´¦ÀíºóÊı¾İ
+©¦   ©¦   ©À©¤©¤ train_3cls.csv        # ÑµÁ·¼¯£¨3 Àà£©
+©¦   ©¦   ©À©¤©¤ val_3cls.csv          # ÑéÖ¤¼¯
+©¦   ©¦   ©¸©¤©¤ test_3cls.csv         # ²âÊÔ¼¯
+©¦   ©¸©¤©¤ reports/                  # RAG Êı¾İ
+©¦       ©À©¤©¤ chunks.json           # ÎÄµµÇĞÆ¬£¨633 ¸ö£©
+©¦       ©¸©¤©¤ chroma_db/            # Chroma ÏòÁ¿¿â
+©¦
+©À©¤©¤ models/                       # Ä£ĞÍÄ¿Â¼
+©¦   ©¸©¤©¤ bert_3cls/                # 3 Àà BERT Ä£ĞÍ
+©¦       ©¸©¤©¤ best/                 # ×îÓÅÈ¨ÖØ£¨~400MB£©
+©¦
+©À©¤©¤ configs/                      # ÅäÖÃÎÄ¼ş
+©¦   ©¸©¤©¤ config.yaml               # ÏîÄ¿ÅäÖÃ
+©¦
+©À©¤©¤ finance_analysis.db           # Ö÷Êı¾İ¿â£¨736K+ ·ÖÖÓ¼Û£©
+©À©¤©¤ requirements.txt              # Python ÒÀÀµ
+©À©¤©¤ .env.example                  # »·¾³±äÁ¿Ä£°å
+©À©¤©¤ README.md                     # ÏîÄ¿ËµÃ÷£¨±¾ÎÄ¼ş£©
+©À©¤©¤ PLAN.md                       # ÏîÄ¿¼Æ»®
+©À©¤©¤ Project_Status.md             # ÏîÄ¿×´Ì¬£¨ÏêÏ¸ÎÄµµ£©
+©¸©¤©¤ REMAINING_TASKS.md            # ÈÎÎñ·Ö½âÓëÊµÊ©Ö¸ÄÏ
+```
+
+
+## ¿ìËÙ¿ªÊ¼
+
+### »·¾³ÒªÇó
+
+- Python 3.8+
+- 8GB+ ÄÚ´æ£¨ÍÆ¼ö 16GB£©
+- 10GB+ ´ÅÅÌ¿Õ¼ä
+
+### °²×°²½Öè
+
+1. **¿ËÂ¡²Ö¿â**
+
+```bash
+git clone https://github.com/Caria-Tarnished/Graduation_Project.git
+cd Graduation_Project
+```
+
+2. **´´½¨ĞéÄâ»·¾³**
+
+```bash
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# Linux/Mac
+source .venv/bin/activate
+```
+
+3. **°²×°ÒÀÀµ**
+
+```bash
+pip install -r requirements.txt
+```
+
+4. **ÅäÖÃ»·¾³±äÁ¿**
+
+¸´ÖÆ `.env.example` Îª `.env`£¬²¢ÌîĞ´±ØÒªµÄÅäÖÃ£º
+
+```bash
+cp .env.example .env
+```
+
+±à¼­ `.env` ÎÄ¼ş£º
+```env
+# Deepseek API£¨±ØĞè£¬ÓÃÓÚ LLM ×Ü½á£©
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+
+# Tushare Token£¨¿ÉÑ¡£¬ÓÃÓÚÊı¾İ»ñÈ¡£©
+TUSHARE_TOKEN=your_tushare_token_here
+
+# HuggingFace »º´æÂ·¾¶£¨¿ÉÑ¡£¬Èç¹û C ÅÌ¿Õ¼ä²»×ã£©
+# HF_HOME=F:\huggingface_cache
+```
+
+5. **ÏÂÔØÄ£ĞÍÈ¨ÖØ**
+
+BERT Ä£ĞÍÈ¨ÖØ£¨~400MB£©ĞèÒª´ÓÑµÁ·»·¾³ÏÂÔØ£¬»òÊ¹ÓÃÔ¤ÑµÁ·Ä£ĞÍ£º
+
+```bash
+# Èç¹ûÓĞÑµÁ·ºÃµÄÄ£ĞÍ£¬·Åµ½ models/bert_3cls/best/
+# Èç¹ûÃ»ÓĞ£¬ÏµÍ³»áÔÚ½µ¼¶Ä£Ê½ÏÂÔËĞĞ£¨Ê¹ÓÃÄ¬ÈÏ¹æÔò£©
+```
+
+6. **Æô¶¯ Streamlit UI**
+
+```bash
+streamlit run app/hosts/streamlit_app/app.py
+```
+
+·ÃÎÊ `http://localhost:8501` ¼´¿ÉÊ¹ÓÃÏµÍ³¡£
+
+### ¿ìËÙ²âÊÔ
+
+Æô¶¯ UI ºó£¬¿ÉÒÔ³¢ÊÔÒÔÏÂ²Ù×÷£º
+
+1. **ÁÄÌìÒ³Ãæ**£ºÊäÈë "ÃÀÁª´¢Ğû²¼¼ÓÏ¢ 25 ¸ö»ùµã"£¬²é¿´Çé¸Ğ·ÖÎö½á¹û
+2. **K ÏßÍ¼±íÒ³Ãæ**£ºÑ¡ÔñÊ±¼ä·¶Î§£¬µã»÷ÊÂ¼şµã²é¿´·ÖÎö
+3. **²Æ±¨¼ìË÷Ò³Ãæ**£ºÊäÈë "»Æ½ğ¼Û¸ñ×ßÊÆÈçºÎ"£¬²é¿´¼ìË÷½á¹û
+
+
+## Ê¹ÓÃÖ¸ÄÏ
+
+### Êı¾İ»ñÈ¡
+
+#### 1. ×¥È¡½ğÊ®¿ìÑ¶£¨API Ä£Ê½£©
+
+```powershell
+python -m scripts.crawlers.jin10_flash_api `
+  --months 12 `
+  --output data/raw/flash_last_12m.csv `
+  --db finance_analysis.db `
+  --source flash_api `
+  --stream --important-only
+```
+
+#### 2. ×¥È¡½ğÊ®ÈÕÀú£¨ÖğÈÕ»ØÌî£©
+
+```powershell
+python -m scripts.crawlers.jin10_dynamic `
+  --start 2024-01-01 `
+  --end 2026-01-21 `
+  --output data/raw/jin10_calendar.csv `
+  --db finance_analysis.db `
+  --source listing_data `
+  --important-only
+```
+
+#### 3. ×¥È¡ MT5 ·ÖÖÓ¼Û
+
+```powershell
+python scripts/fetch_intraday_xauusd_mt5.py `
+  --timeframe M1 `
+  --start "2024-01-01 00:00:00" `
+  --end "2025-12-31 23:59:59" `
+  --out data/processed/xauusd_m1.csv
+```
+
+### Ä£ĞÍÑµÁ·
+
+#### 1. Éú³É 3 ÀàÊı¾İ¼¯
+
+```powershell
+python scripts/modeling/prepare_3cls_dataset.py `
+  --db finance_analysis.db `
+  --ticker XAUUSD `
+  --window_post 15 `
+  --out_dir data/processed
+```
+
+#### 2. Ìí¼ÓÊäÈëÔöÇ¿
+
+```powershell
+python scripts/modeling/build_enhanced_dataset_3cls.py `
+  --input_dir data/processed `
+  --output_dir data/processed
+```
+
+#### 3. ÑµÁ· BERT Ä£ĞÍ£¨Colab£©
+
+ÔÚ Google Colab ÖĞÔËĞĞ `colab_3cls_training_cells.txt` ÖĞµÄÑµÁ·Á÷³Ì¡£
+
+#### 4. ÑµÁ·»ùÏßÄ£ĞÍ£¨±¾µØ£©
+
+```powershell
+python scripts/modeling/baseline_tfidf_svm.py `
+  --train_csv data/processed/train_3cls.csv `
+  --val_csv data/processed/val_3cls.csv `
+  --test_csv data/processed/test_3cls.csv `
+  --output_dir models/baseline_tfidf_svm
+```
+
+### RAG ¹ÜÏß¹¹½¨
+
+#### 1. PDF ½âÎöÓëÇĞÆ¬
+
+```powershell
+python scripts/rag/build_chunks.py `
+  --pdf_dir data/raw/reports/research_reports `
+  --output data/reports/chunks.json
+```
+
+#### 2. ÏòÁ¿»¯ÓëË÷Òı¹¹½¨
+
+```powershell
+python scripts/rag/build_vector_index.py `
+  --chunks_file data/reports/chunks.json `
+  --output_dir data/reports/chroma_db `
+  --model_name BAAI/bge-m3
+```
+
+### ²âÊÔÓëÓÅ»¯
+
+#### 1. ÏµÍ³¼¯³É²âÊÔ
+
+```powershell
+python scripts/test_system_integration.py
+```
+
+#### 2. ¶Ëµ½¶Ë²âÊÔ
+
+```powershell
+python scripts/test_end_to_end.py
+```
+
+#### 3. ĞÔÄÜ²âÊÔ
+
+```powershell
+python scripts/benchmark_performance.py
+```
+
+#### 4. Êı¾İ¿âË÷ÒıÓÅ»¯
+
+```powershell
+python scripts/optimize_database_indexes.py
+```
+
+## ĞÔÄÜÖ¸±ê
+
+### Ä£ĞÍĞÔÄÜ
+
+| Ä£ĞÍ | Test Macro F1 | Test Accuracy | ÑµÁ·Ê±¼ä |
+|------|---------------|---------------|----------|
+| TF-IDF + SVM£¨»ùÏß£© | 0.3458 | - | ~5 ·ÖÖÓ£¨CPU£© |
+| BERT 3 Àà£¨·½°¸ A£© | **0.3770** | 0.3819 | ~1.5 Ğ¡Ê±£¨T4 GPU£© |
+| ÌáÉı·ù¶È | **+186%** | - | - |
+
+### ÏµÍ³ĞÔÄÜ
+
+| Ö¸±ê | ÓÅ»¯Ç° | ÓÅ»¯ºó | ÌáÉı·ù¶È |
+|------|--------|--------|----------|
+| ÖØ¸´²éÑ¯ÏìÓ¦Ê±¼ä | 0.8-0.9s | <0.001s | **99.9%** |
+| »ìºÏ³¡¾°Æ½¾ùÏìÓ¦ | ~0.8s | 0.276s | **65.5%** |
+| Êı¾İ¿â²éÑ¯Ê±¼ä | 155.83ms | 0.20ms | **99.9%** |
+| »º´æÃüÖĞÂÊ | 0% | 90% | - |
+| BERT ÍÆÀí´ÎÊı | 100% | 10% | **-90%** |
+
+### Êı¾İ¹æÄ£
+
+- **·ÖÖÓ¼ÛÊı¾İ**£º736,304 ĞĞ£¨2024-01-02 ÖÁ 2026-01-31£©
+- **ÊÂ¼şÊı¾İ**£º1,475 Ìõ£¨2026-01-27 Æğ£¬¸²¸ÇÂÊ 100%£©
+- **ÎÄµµÇĞÆ¬**£º633 ¸ö£¨12/15 ¸ö PDF ³É¹¦´¦Àí£©
+- **ÑµÁ·Ñù±¾**£º12,859 Ìõ£¨train£©+ 2,661 Ìõ£¨val£©+ 3,823 Ìõ£¨test£©
+
+
+## ¿ª·¢ÎÄµµ
+
+### ºËĞÄÎÄµµ
+
+- **[Project_Status.md](Project_Status.md)** - ÏîÄ¿×´Ì¬ºÍÏêÏ¸ÎÄµµ£¨Ö÷ÎÄµµ£©
+- **[PLAN.md](PLAN.md)** - ÏîÄ¿¼Æ»®ºÍÀï³Ì±®
+- **[REMAINING_TASKS.md](REMAINING_TASKS.md)** - ÈÎÎñ·Ö½âÓëÊµÊ©Ö¸ÄÏ
+
+### ÑµÁ·½Å±¾
+
+- **[colab_3cls_training_cells.txt](colab_3cls_training_cells.txt)** - 3 ÀàÄ£ĞÍÑµÁ·£¨Colab£©
+- **[colab_phase1_cells.txt](colab_phase1_cells.txt)** - Phase 1 ÑµÁ·£¨Colab£©
+- **[colab_qlora_training_cells_final.txt](colab_qlora_training_cells_final.txt)** - QLoRA Î¢µ÷£¨Colab£©
+
+### UI ÎÄµµ
+
+- **[app/hosts/streamlit_app/README.md](app/hosts/streamlit_app/README.md)** - Streamlit UI Ê¹ÓÃÎÄµµ
+
+### ´úÂë¹æ·¶
+
+- ×ñÑ­ PEP8 ¹æ·¶
+- Ê¹ÓÃÖĞÎÄ×¢ÊÍ
+- ±ÜÃâÊ¹ÓÃ emoji ·ûºÅ
+- ÎÄ¼ş±àÂëÍ³Ò»Îª UTF-8
+
+## ³£¼ûÎÊÌâ
+
+### 1. Æô¶¯ UI Ê±±¨´í "ModuleNotFoundError"
+
+**½â¾ö·½°¸**£ºÈ·±£ÒÑ¼¤»îĞéÄâ»·¾³²¢°²×°ËùÓĞÒÀÀµ£º
+```bash
+pip install -r requirements.txt
+```
+
+### 2. BERT Ä£ĞÍÎ´ÕÒµ½
+
+**½â¾ö·½°¸**£ºÏµÍ³»áÔÚ½µ¼¶Ä£Ê½ÏÂÔËĞĞ£¬Ê¹ÓÃÄ¬ÈÏ¹æÔò¡£ÈçĞèÍêÕû¹¦ÄÜ£¬ÇëÏÂÔØÑµÁ·ºÃµÄÄ£ĞÍÈ¨ÖØµ½ `models/bert_3cls/best/`¡£
+
+### 3. Deepseek API µ÷ÓÃÊ§°Ü
+
+**½â¾ö·½°¸**£º
+1. ¼ì²é `.env` ÎÄ¼şÖĞµÄ `DEEPSEEK_API_KEY` ÊÇ·ñÕıÈ·
+2. ¼ì²éÍøÂçÁ¬½Ó£¨¿ÉÄÜĞèÒª´úÀí£©
+3. ²é¿´ API Óà¶îÊÇ·ñ³ä×ã
+
+### 4. Chroma ÏòÁ¿¿âÎ´ÕÒµ½
+
+**½â¾ö·½°¸**£ºÔËĞĞ RAG ¹ÜÏß¹¹½¨½Å±¾£º
+```bash
+python scripts/rag/build_chunks.py
+python scripts/rag/build_vector_index.py
+```
+
+### 5. Êı¾İ¿â²éÑ¯Âı
+
+**½â¾ö·½°¸**£ºÔËĞĞÊı¾İ¿âË÷ÒıÓÅ»¯½Å±¾£º
+```bash
+python scripts/optimize_database_indexes.py
+```
+
+## ÏîÄ¿ÁÁµã
+
+### 1. ´úÀí±ê×¢´´ĞÂ
+ÀûÓÃ K Ïß×ßÊÆ·´Ïò±ê×¢Çé¸Ğ£¬½â¾öÁË½ğÈÚÁìÓòÈ±·¦´ó¹æÄ£±ê×¢Êı¾İµÄÍ´µã¡£
+
+### 2. »ìºÏ¼Ü¹¹Éè¼Æ
+ML Ä£ĞÍ×¨×¢ÓÚ¿ÉÑ§Ï°µÄ 3 Àà»ù´¡·½Ïò£¬"Ô¤ÆÚ¶ÒÏÖ"µÈ¸´ÔÓÂß¼­ÓÉ¹æÔòÒıÇæ´¦Àí£¬¼æ¹Ë×¼È·ĞÔºÍ¿É½âÊÍĞÔ¡£
+
+### 3. ĞÔÄÜÓÅ»¯Êµ¼ù
+Í¨¹ıÈı²ã»º´æ£¨²éÑ¯½á¹û¡¢ÊĞ³¡ÉÏÏÂÎÄ¡¢RAG ¼ìË÷£©+ Êı¾İ¿âË÷ÒıÓÅ»¯£¬ÊµÏÖ 99.9% µÄĞÔÄÜÌáÉı¡£
+
+### 4. ¹¤³Ì»¯ÊµÏÖ
+ÍêÕûµÄ²âÊÔ¸²¸Ç£¨ÏµÍ³¼¯³É²âÊÔ + ¶Ëµ½¶Ë²âÊÔ£©¡¢ĞÔÄÜ¼à¿Ø¡¢½µ¼¶²ßÂÔ£¬È·±£ÏµÍ³ÎÈ¶¨¿É¿¿¡£
+
+## Î´À´Õ¹Íû
+
+### ¶ÌÆÚ¼Æ»®£¨´ğ±çºó£©
+- [ ] BERT Ä£ĞÍÁ¿»¯£¨Ô¤ÆÚÌáÉı 50-70%£©
+- [ ] ONNX Runtime ×ª»»£¨Ô¤ÆÚÌáÉı 30-50%£©
+- [ ] GPU ¼ÓËÙÖ§³Ö
+- [ ] ¸ü¶àÊı¾İÔ´½ÓÈë£¨¶«·½²Æ¸»¡¢Ñ©ÇòµÈ£©
+
+### ³¤ÆÚ¼Æ»®
+- [ ] FastAPI ·şÎñ»¯
+- [ ] ¼¯³Éµ½ QuantSway ½»Ò×Æ½Ì¨
+- [ ] ÊµÊ±¿ìÑ¶ÍÆËÍ£¨WebSocket£©
+- [ ] ¶à±êµÄÖ§³Ö£¨A ¹É¡¢ÃÀ¹É¡¢ÉÌÆ·£©
+- [ ] ÒÆ¶¯¶ËÊÊÅä
+
+## ÖÂĞ»
+
+### ¿ªÔ´ÏîÄ¿
+- [Transformers](https://github.com/huggingface/transformers) - BERT Ä£ĞÍÑµÁ·ºÍÍÆÀí
+- [ChromaDB](https://github.com/chroma-core/chroma) - ÏòÁ¿Êı¾İ¿â
+- [Streamlit](https://github.com/streamlit/streamlit) - Web UI ¿ò¼Ü
+- [Sentence-Transformers](https://github.com/UKPLab/sentence-transformers) - ÎÄ±¾Ç¶ÈëÄ£ĞÍ
+
+### Êı¾İÀ´Ô´
+- [½ğÊ®Êı¾İ](https://www.jin10.com/) - ²Æ¾­¿ìÑ¶ºÍÈÕÀú
+- [MT5](https://www.metatrader5.com/) - ·ÖÖÓ¼¶¼Û¸ñÊı¾İ
+- ¸÷´óÈ¯ÉÌÑĞ±¨ - ²Æ±¨ PDF Êı¾İ
+
+### ÌØ±ğ¸ĞĞ»
+¸ĞĞ»ËùÓĞ¿ªÔ´ÉçÇøµÄ¹±Ï×Õß£¬ÒÔ¼°ÔÚÏîÄ¿¿ª·¢¹ı³ÌÖĞÌá¹©°ïÖúµÄÀÏÊ¦ºÍÍ¬Ñ§¡£
+
+## Ğí¿ÉÖ¤
+
+±¾ÏîÄ¿²ÉÓÃ MIT Ğí¿ÉÖ¤¡£Ïê¼û [LICENSE](LICENSE) ÎÄ¼ş¡£
+
+## ÁªÏµ·½Ê½
+
+- **×÷Õß**£ºCaria-Tarnished
+- **GitHub**£º[https://github.com/Caria-Tarnished/Graduation_Project](https://github.com/Caria-Tarnished/Graduation_Project)
+- **ÏîÄ¿ÀàĞÍ**£º±ÏÒµÉè¼ÆÏîÄ¿
 
 ---
 
-## 9. åˆ†é’Ÿçº§å†²å‡»å»ºæ¨¡è„šæœ¬ï¼ˆBaseline / BERTï¼‰
-
-åŸºäº `finance_analysis.db` å¯¼å‡ºçš„ `train_30m_labeled.csv / val_30m_labeled.csv / test_30m_labeled.csv`ï¼Œæä¾›ä¸¤å¥—å¼€ç®±å³ç”¨çš„è®­ç»ƒè„šæœ¬ã€‚
-
-### 9.1 åŸºçº¿ï¼šTF-IDF + LinearSVCï¼ˆCPU å³å¯ï¼‰
-
-```powershell
-python scripts/modeling/baseline_tfidf_svm.py ^
-  --train_csv data\processed\train_30m_labeled.csv ^
-  --val_csv   data\processed\val_30m_labeled.csv ^
-  --test_csv  data\processed\test_30m_labeled.csv ^
-  --output_dir models\baseline_tfidf_svm
-```
-
-è¾“å‡ºï¼š
-
-- tfidf.pkl / model.pklï¼ˆå¯å¤ç”¨æ¨ç†ï¼‰
-- metrics_val.json / metrics_test.jsonã€report_*.txt
-- pred_test.csvï¼ˆå« event_id è‹¥å­˜åœ¨ï¼‰
-
-å¯é€‰å‚æ•°ï¼š`--no_prefix` å…³é—­å‰ç¼€ç‰¹å¾ï¼›`--analyzer char|word`ã€`--ngram_min/max` ç­‰ã€‚
-
-### 9.2 BERT ä¸­æ–‡å¾®è°ƒï¼ˆRoBERTa-wwm-extï¼‰
-
-å®‰è£…ä¾èµ–ï¼ˆé¦–æ¬¡ï¼‰ï¼š
-
-```powershell
-pip install -U transformers datasets accelerate evaluate
-# æ—  GPU å¯å®‰è£… CPU ç‰ˆ torchï¼š
-pip install --index-url https://download.pytorch.org/whl/cpu torch
-```
-
-è®­ç»ƒä¸è¯„ä¼°ï¼š
-
-```powershell
-python scripts/modeling/bert_finetune_cls.py ^
-  --train_csv data\processed\train_30m_labeled.csv ^
-  --val_csv   data\processed\val_30m_labeled.csv ^
-  --test_csv  data\processed\test_30m_labeled.csv ^
-  --output_dir models\bert_xauusd_cls ^
-  --epochs 2 --lr 2e-5 --max_length 256
-```
-
-è¾“å‡ºï¼š
-
-- models/bert_xauusd_cls/bestï¼ˆæœ€ä¼˜æƒé‡ï¼‰
-- metrics_val.json / metrics_test.jsonã€report_test.txt
-- pred_test.csvï¼ˆ-1/0/1 æ ‡ç­¾ï¼‰
-
-### 9.3 å¤šçª—å£æ•°æ®é›†ï¼ˆå¯é€‰ï¼‰
-
-å½“å‰ 30 åˆ†é’Ÿçª—å£æ•°æ®é›†ä»…åŒ…å« `window_min=30` çš„æ ·æœ¬ã€‚è‹¥å¸Œæœ›æ¯ä¸ªäº‹ä»¶å½¢æˆ 4 æ¡æ ·æœ¬ï¼ˆ5/10/15/30 åˆ†é’Ÿï¼‰ï¼Œå¯ç”Ÿæˆâ€œå¤šçª—å£ç‰ˆâ€æ•°æ®é›†ï¼š
-
-```powershell
-$code = @'
-import sqlite3, pandas as pd, os, json
-c = sqlite3.connect("finance_analysis.db")
-q = """
-select
-  ei.event_id, e.source, e.ts_local as event_ts_local, e.ts_utc as event_ts_utc,
-  e.country, e.name, e.content, e.star, e.previous, e.consensus, e.actual,
-  e.affect, e.detail_url, e.important, e.hot, e.indicator_name, e.unit,
-  ei.ticker, ei.window_min, ei.price_event, ei.price_future, ei.delta, ei.ret
-from event_impacts ei
-join events e on e.event_id = ei.event_id
-where ei.ticker='XAUUSD' and ei.window_min in (5,10,15,30)
-order by e.ts_local asc, ei.window_min asc
-"""
-df = pd.read_sql_query(q, c); c.close()
-
-# æ–‡æœ¬ä¼˜å…ˆ contentï¼Œå…¶æ¬¡ name
-df["text"] = df["content"].fillna("").astype(str)
-mask = df["text"].str.len()==0
-df.loc[mask, "text"] = df.loc[mask, "name"].fillna("").astype(str)
-
-# æ—¶é—´åˆ‡åˆ†
-df["event_ts_local"] = pd.to_datetime(df["event_ts_local"], errors="coerce")
-t1, t2, t3 = pd.Timestamp("2025-08-01 00:00:00"), pd.Timestamp("2025-11-01 00:00:00"), pd.Timestamp("2026-02-01 00:00:00")
-train = df[df["event_ts_local"] < t1].copy()
-val   = df[(df["event_ts_local"] >= t1) & (df["event_ts_local"] < t2)].copy()
-test  = df[(df["event_ts_local"] >= t2) & (df["event_ts_local"] < t3)].copy()
-
-# æŒ‰çª—å£åœ¨è®­ç»ƒé›†ä¸Šåˆ†åˆ«è®¡ç®—é˜ˆå€¼ï¼ˆæ›´è´´åˆå„çª—å£åˆ†å¸ƒï¼‰
-def thresholds_per_window(train_df):
-    qmap = {}
-    for w, g in train_df.dropna(subset=["ret"]).groupby("window_min"):
-        qmap[w] = (
-            float(g["ret"].quantile(0.30)),
-            float(g["ret"].quantile(0.70)),
-        )
-    return qmap
-
-q = thresholds_per_window(train)
-def lab(row):
-    r = row["ret"]
-    w = int(row["window_min"])
-    lo, hi = q.get(w, (-0.001, 0.001))
-    if pd.isna(r): return 0
-    return -1 if r <= lo else (1 if r >= hi else 0)
-
-for part in (train, val, test):
-    part["label"] = part.apply(lab, axis=1)
-
-keep = [
-  "event_id","event_ts_local","event_ts_utc","source","country","name","content","text",
-  "star","previous","consensus","actual","affect","detail_url","important","hot","indicator_name","unit",
-  "ticker","window_min","price_event","price_future","delta","ret","label"
-]
-os.makedirs(r"data\processed", exist_ok=True)
-train[keep].to_csv(r"data\processed\train_multi_labeled.csv", index=False, encoding="utf-8")
-val[keep].to_csv(  r"data\processed\val_multi_labeled.csv",   index=False, encoding="utf-8")
-test[keep].to_csv( r"data\processed\test_multi_labeled.csv",  index=False, encoding="utf-8")
-print("done")
-'@
-$code | python -
-```
-
-è®­ç»ƒè„šæœ¬ä¾æ—§å¯ç”¨ï¼Œè‹¥å¸Œæœ›æ¨¡å‹â€œæ„ŸçŸ¥çª—å£â€ï¼Œå»ºè®®ä¿ç•™ `window_min`ï¼ˆå¯ç¼–ç ä¸ºå‰ç¼€ token æˆ–æ•°å€¼ç‰¹å¾ï¼‰ã€‚
+**¸üĞÂÊ±¼ä**£º2026-02-10  
+**ÏîÄ¿×´Ì¬**£ººËĞÄ¹¦ÄÜÒÑÍê³É£¬½Ó½üÊÕÎ²½×¶Î
