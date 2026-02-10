@@ -233,7 +233,7 @@ print("="*60)
 print("加载微调后的模型...")
 
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 
 # 配置
@@ -241,10 +241,15 @@ base_model_name = "deepseek-ai/deepseek-llm-7b-chat"
 adapter_path = "/content/drive/MyDrive/Graduation_Project/qlora_output"
 
 try:
-    # 加载 tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(base_model_name, trust_remote_code=True)
+    # 1. 加载 tokenizer
+    print("\n1. 加载 Tokenizer...")
+    tokenizer = AutoTokenizer.from_pretrained(adapter_path, trust_remote_code=True)
+    print("   ✓ Tokenizer 加载成功")
     
-    # 配置 4-bit 量化
+    # 2. 加载基础模型（使用 BitsAndBytesConfig，避免 deprecated 警告）
+    print("\n2. 加载基础模型（4-bit 量化）...")
+    from transformers import BitsAndBytesConfig
+    
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_use_double_quant=True,
@@ -252,21 +257,22 @@ try:
         bnb_4bit_compute_dtype=torch.float16
     )
     
-    # 加载基础模型
     base_model = AutoModelForCausalLM.from_pretrained(
         base_model_name,
         quantization_config=bnb_config,
         device_map="auto",
-        trust_remote_code=True
+        trust_remote_code=True,
+        torch_dtype=torch.float16
     )
+    print("   ✓ 基础模型加载成功")
     
-    # 加载 LoRA 权重
+    # 3. 加载 LoRA 权重
+    print("\n3. 加载 LoRA 权重...")
     model = PeftModel.from_pretrained(base_model, adapter_path)
     model.eval()
+    print("   ✓ LoRA 权重加载成功")
     
-    print("✓ 模型加载成功\n")
-    
-    # 测试案例
+    # 4. 测试案例
     test_cases = [
         {
             "instruction": "分析以下财经快讯对市场的影响",
@@ -278,7 +284,7 @@ try:
         }
     ]
     
-    print("="*60)
+    print("\n" + "="*60)
     print("模型测试")
     print("="*60)
     
@@ -298,7 +304,8 @@ try:
                 max_new_tokens=256,
                 temperature=0.7,
                 top_p=0.9,
-                do_sample=True
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id
             )
         
         response = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -312,10 +319,38 @@ try:
     print("\n✓ 测试完成")
 
 except Exception as e:
-    print(f"✗ 测试失败: {e}")
+    print(f"\n✗ 测试失败: {e}")
     print("\n可能原因：")
-    print("1. LoRA 权重文件不存在（训练未完成）")
-    print("2. 模型加载失败（显存不足）")
+    print("1. bitsandbytes 版本不兼容")
+    print("2. 显存不足")
+    print("\n尝试解决方案：")
+    print("方案 1: 重启 Runtime 并重新运行单元格 1-6")
+    print("方案 2: 使用 CPU 加载（较慢）")
+    
+    # 提供 CPU 加载的备选方案
+    print("\n" + "="*60)
+    print("尝试使用 CPU 加载（较慢但更稳定）...")
+    print("="*60)
+    
+    try:
+        # CPU 加载（不使用量化）
+        tokenizer = AutoTokenizer.from_pretrained(adapter_path, trust_remote_code=True)
+        base_model = AutoModelForCausalLM.from_pretrained(
+            base_model_name,
+            device_map="cpu",
+            trust_remote_code=True,
+            torch_dtype=torch.float32,
+            low_cpu_mem_usage=True
+        )
+        model = PeftModel.from_pretrained(base_model, adapter_path)
+        model.eval()
+        
+        print("✓ CPU 模式加载成功（速度较慢）")
+        print("\n提示：如果需要 GPU 加速，请重启 Runtime")
+        
+    except Exception as e2:
+        print(f"✗ CPU 加载也失败: {e2}")
+        print("\n建议：重启 Colab Runtime 并重新运行所有单元格")
 ```
 
 ---
