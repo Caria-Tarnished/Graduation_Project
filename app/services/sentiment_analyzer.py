@@ -305,6 +305,143 @@ class SentimentAnalyzer:
                 "enhanced_text": enhanced_text
             }
         }
+    
+    def analyze_batch(
+        self,
+        texts: list,
+        pre_rets: Optional[list] = None,
+        range_ratios: Optional[list] = None
+    ) -> list:
+        """
+        批量分析新闻情感（BERT 批处理 + 规则引擎）
+        
+        批处理优势：
+        - 减少模型调用次数
+        - 提高 GPU 利用率
+        - 降低推理延迟
+        
+        Args:
+            texts: 新闻文本列表
+            pre_rets: 前120分钟收益率列表（可选，默认全0）
+            range_ratios: 波动率列表（可选，默认全0）
+        
+        Returns:
+            分析结果列表，每个元素为 analyze() 返回的字典
+        """
+        batch_size = len(texts)
+        
+        # 填充默认值
+        if pre_rets is None:
+            pre_rets = [0.0] * batch_size
+        if range_ratios is None:
+            range_ratios = [0.0] * batch_size
+        
+        # 验证输入长度
+        if len(pre_rets) != batch_size or len(range_ratios) != batch_size:
+            raise ValueError(
+                f"输入长度不匹配：texts={batch_size}, "
+                f"pre_rets={len(pre_rets)}, range_ratios={len(range_ratios)}"
+            )
+        
+        # 1. 构建增强文本（批量）
+        enhanced_texts = [
+            self._build_enhanced_text(text, pre_ret, range_ratio)
+            for text, pre_ret, range_ratio in zip(texts, pre_rets, range_ratios)
+        ]
+        
+        # 2. BERT 批量推理
+        base_labels, confidences = self._predict_base_sentiment_batch(enhanced_texts)
+        
+        # 3. 应用规则引擎（逐个处理）
+        results = []
+        for i in range(batch_size):
+            base_label = base_labels[i]
+            confidence = confidences[i]
+            pre_ret = pre_rets[i]
+            range_ratio = range_ratios[i]
+            enhanced_text = enhanced_texts[i]
+            
+            base_sentiment = self.LABEL_MAP[base_label]
+            final_sentiment = base_sentiment
+            explanation = f"基础情感分析：{base_sentiment}（置信度：{confidence:.2%}）"
+            recommendation = ""
+            
+            # 规则1：预期兑现
+            priced_in = self._apply_priced_in_rule(base_label, pre_ret)
+            if priced_in:
+                final_sentiment = priced_in
+                direction = "利好" if base_label == 1 else "利空"
+                trend = "大涨" if pre_ret > 0 else "大跌"
+                explanation = (
+                    f"虽然消息{direction}，但前期已{trend}{abs(pre_ret):.2%}，"
+                    f"可能是{direction}预期兑现"
+                )
+                recommendation = "建议谨慎追多" if base_label == 1 else "建议谨慎追空"
+            
+            # 规则2：建议观望
+            abs_ret = abs(pre_ret)
+            if self._apply_watch_rule(range_ratio, abs_ret):
+                final_sentiment = "watch"
+                explanation = (
+                    f"市场波动率较高（{range_ratio:.2%}），但净变动较小（{abs_ret:.2%}），"
+                    f"多空分歧较大"
+                )
+                recommendation = "建议观望，等待方向明确"
+            
+            results.append({
+                "base_sentiment": base_sentiment,
+                "base_confidence": confidence,
+                "final_sentiment": final_sentiment,
+                "explanation": explanation,
+                "recommendation": recommendation,
+                "market_context": {
+                    "pre_ret": pre_ret,
+                    "range_ratio": range_ratio,
+                    "enhanced_text": enhanced_text
+                }
+            })
+        
+        return results
+    
+    def _predict_base_sentiment_batch(
+        self,
+        texts: list
+    ) -> Tuple[list, list]:
+        """
+        使用 BERT 模型批量预测基础情感
+        
+        Args:
+            texts: 输入文本列表（已包含市场上下文前缀）
+        
+        Returns:
+            (labels, confidences): 标签列表和置信度列表
+        """
+        # 批量分词
+        inputs = self.tokenizer(
+            texts,
+            max_length=self.max_length,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt"
+        )
+        
+        # 移动到设备
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        
+        # 批量推理
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            logits = outputs.logits
+            probs = torch.softmax(logits, dim=-1)
+            pred_labels = torch.argmax(probs, dim=-1).cpu().numpy()
+            confidences = torch.max(probs, dim=-1).values.cpu().numpy()
+        
+        # 将模型输出（0/1/2）映射回标签（-1/0/1）
+        label_mapping = {0: -1, 1: 0, 2: 1}
+        labels = [label_mapping.get(int(pred), 0) for pred in pred_labels]
+        confidences = [float(conf) for conf in confidences]
+        
+        return labels, confidences
 
 
 # 便捷函数：创建全局分析器实例

@@ -7,6 +7,7 @@ Agent 编排器
 2. 调用相应的工具和引擎
 3. 记录工具调用追踪
 4. 使用 LLM 生成最终总结
+5. 支持查询结果缓存（性能优化）
 
 使用示例：
     from app.core.orchestrator.agent import Agent
@@ -15,7 +16,8 @@ Agent 编排器
         sentiment_engine=sentiment_engine,
         rag_engine=rag_engine,
         rule_engine=rule_engine,
-        llm_client=llm_client
+        llm_client=llm_client,
+        enable_cache=True  # 启用缓存
     )
     
     answer = agent.process_query("美联储加息对黄金有什么影响？")
@@ -36,6 +38,7 @@ from app.core.orchestrator.tools import (
     analyze_sentiment,
     search_reports
 )
+from app.core.utils.cache import get_cache
 
 
 class Agent:
@@ -47,7 +50,9 @@ class Agent:
         rag_engine=None,
         rule_engine=None,
         llm_client=None,
-        db_path: str = "finance_analysis.db"
+        db_path: str = "finance_analysis.db",
+        enable_cache: bool = True,
+        cache_ttl: int = 300  # 5 分钟
     ):
         """
         初始化 Agent
@@ -58,12 +63,25 @@ class Agent:
             rule_engine: 规则引擎
             llm_client: LLM 客户端（Deepseek）
             db_path: 数据库路径
+            enable_cache: 是否启用缓存
+            cache_ttl: 缓存过期时间（秒）
         """
         self.sentiment_engine = sentiment_engine
         self.rag_engine = rag_engine
         self.rule_engine = rule_engine
         self.llm = llm_client
         self.db_path = db_path
+        self.enable_cache = enable_cache
+        
+        # 初始化缓存
+        if enable_cache:
+            self.query_cache = get_cache("agent_query", maxsize=100, ttl=cache_ttl)
+            self.market_context_cache = get_cache("market_context", maxsize=50, ttl=60)
+            self.rag_cache = get_cache("rag_retrieval", maxsize=100, ttl=600)
+        else:
+            self.query_cache = None
+            self.market_context_cache = None
+            self.rag_cache = None
     
     def process_query(
         self,
@@ -82,6 +100,21 @@ class Agent:
         Returns:
             AgentAnswer 对象
         """
+        # 尝试从缓存获取结果
+        if self.enable_cache and self.query_cache is not None:
+            cache_key = (user_query, ticker, query_type)
+            cached_result = self.query_cache.get(cache_key)
+            if cached_result is not None:
+                # 添加缓存命中标记
+                cached_result.tool_trace.insert(0, ToolTraceItem(
+                    name="cache_hit",
+                    elapsed_ms=0,
+                    ok=True,
+                    input_summary=f"query={user_query[:50]}...",
+                    output_summary="从缓存返回结果"
+                ))
+                return cached_result
+        
         tool_trace = []
         warnings = []
         
@@ -91,16 +124,16 @@ class Agent:
         
         # 2. 根据查询类型调用不同的处理流程
         if query_type == "news_analysis":
-            return self._process_news_analysis(
+            result = self._process_news_analysis(
                 user_query, ticker, tool_trace, warnings
             )
         elif query_type == "report_qa":
-            return self._process_report_qa(
+            result = self._process_report_qa(
                 user_query, tool_trace, warnings
             )
         else:
             # 未知查询类型，返回默认回复
-            return AgentAnswer(
+            result = AgentAnswer(
                 summary="抱歉，我无法理解您的问题。请尝试询问财经快讯分析或财报相关问题。",
                 query=user_query,
                 query_type="unknown",
@@ -108,6 +141,13 @@ class Agent:
                 tool_trace=[],
                 ts=datetime.now()
             )
+        
+        # 存入缓存
+        if self.enable_cache and self.query_cache is not None:
+            cache_key = (user_query, ticker, query_type)
+            self.query_cache.set(cache_key, result)
+        
+        return result
     
     def _detect_query_type(self, query: str) -> str:
         """
@@ -155,18 +195,35 @@ class Agent:
         Returns:
             AgentAnswer 对象
         """
-        # 步骤 1: 获取市场上下文
+        # 步骤 1: 获取市场上下文（带缓存）
         start = time.time()
-        context = get_market_context(
-            ticker=ticker,
-            event_time=datetime.now(),
-            window_minutes=120,
-            db_path=self.db_path
-        )
+        
+        # 尝试从缓存获取
+        context = None
+        cache_hit = False
+        if self.enable_cache and self.market_context_cache is not None:
+            cache_key = (ticker, datetime.now().strftime('%Y-%m-%d %H:%M'), 120)
+            context = self.market_context_cache.get(cache_key)
+            if context is not None:
+                cache_hit = True
+        
+        # 缓存未命中，查询数据库
+        if context is None:
+            context = get_market_context(
+                ticker=ticker,
+                event_time=datetime.now(),
+                window_minutes=120,
+                db_path=self.db_path
+            )
+            # 存入缓存
+            if self.enable_cache and self.market_context_cache is not None and context is not None:
+                cache_key = (ticker, datetime.now().strftime('%Y-%m-%d %H:%M'), 120)
+                self.market_context_cache.set(cache_key, context)
+        
         elapsed_ms = int((time.time() - start) * 1000)
         
         tool_trace.append(ToolTraceItem(
-            name="get_market_context",
+            name="get_market_context" + (" (cached)" if cache_hit else ""),
             elapsed_ms=elapsed_ms,
             ok=context is not None,
             error=None if context else "数据不足或数据库不存在",
@@ -228,17 +285,34 @@ class Agent:
         Returns:
             AgentAnswer 对象
         """
-        # 步骤 1: RAG 检索
+        # 步骤 1: RAG 检索（带缓存）
         start = time.time()
-        citations = search_reports(
-            query=query,
-            rag_engine=self.rag_engine,
-            top_k=5
-        )
+        
+        # 尝试从缓存获取
+        citations = None
+        cache_hit = False
+        if self.enable_cache and self.rag_cache is not None:
+            cache_key = (query, 5)  # query + top_k
+            citations = self.rag_cache.get(cache_key)
+            if citations is not None:
+                cache_hit = True
+        
+        # 缓存未命中，执行检索
+        if citations is None:
+            citations = search_reports(
+                query=query,
+                rag_engine=self.rag_engine,
+                top_k=5
+            )
+            # 存入缓存
+            if self.enable_cache and self.rag_cache is not None:
+                cache_key = (query, 5)
+                self.rag_cache.set(cache_key, citations)
+        
         elapsed_ms = int((time.time() - start) * 1000)
         
         tool_trace.append(ToolTraceItem(
-            name="rag_retrieval",
+            name="rag_retrieval" + (" (cached)" if cache_hit else ""),
             elapsed_ms=elapsed_ms,
             ok=len(citations) > 0,
             error=None if len(citations) > 0 else "未找到相关内容",
@@ -407,6 +481,39 @@ class Agent:
         except Exception as e:
             # LLM 调用失败，返回简单总结
             return self._generate_summary_for_report(query, citations, [])
+    
+    def get_cache_stats(self) -> dict:
+        """
+        获取缓存统计信息
+        
+        Returns:
+            缓存统计信息字典
+        """
+        if not self.enable_cache:
+            return {"enabled": False}
+        
+        stats = {"enabled": True}
+        
+        if self.query_cache is not None:
+            stats["query_cache"] = self.query_cache.get_stats()
+        
+        if self.market_context_cache is not None:
+            stats["market_context_cache"] = self.market_context_cache.get_stats()
+        
+        if self.rag_cache is not None:
+            stats["rag_cache"] = self.rag_cache.get_stats()
+        
+        return stats
+    
+    def clear_cache(self) -> None:
+        """清空所有缓存"""
+        if self.enable_cache:
+            if self.query_cache is not None:
+                self.query_cache.clear()
+            if self.market_context_cache is not None:
+                self.market_context_cache.clear()
+            if self.rag_cache is not None:
+                self.rag_cache.clear()
 
 
 # 测试代码
@@ -415,8 +522,8 @@ if __name__ == "__main__":
     print("Agent 编排器测试")
     print("=" * 80)
     
-    # 初始化 Agent（无引擎）
-    agent = Agent()
+    # 初始化 Agent（无引擎，启用缓存）
+    agent = Agent(enable_cache=True)
     
     # 测试 1: 快讯分析
     print("\n测试 1: 快讯分析")
@@ -433,20 +540,23 @@ if __name__ == "__main__":
         status = "✓" if trace.ok else "✗"
         print(f"  {status} {trace.name} ({trace.elapsed_ms}ms)")
     
-    # 测试 2: 财报问答
-    print("\n测试 2: 财报问答")
+    # 测试 2: 重复查询（测试缓存）
+    print("\n测试 2: 重复查询（测试缓存）")
     print("-" * 80)
     
-    query2 = "贵州茅台 2023 年营收情况如何？"
-    answer2 = agent.process_query(query2)
-    
-    print(f"查询: {query2}")
-    print(f"查询类型: {answer2.query_type}")
-    print(f"总结: {answer2.summary}")
+    answer2 = agent.process_query(query1, ticker="XAUUSD")
+    print(f"查询: {query1}")
     print(f"工具调用: {len(answer2.tool_trace)} 个")
     for trace in answer2.tool_trace:
         status = "✓" if trace.ok else "✗"
         print(f"  {status} {trace.name} ({trace.elapsed_ms}ms)")
+    
+    # 测试 3: 缓存统计
+    print("\n测试 3: 缓存统计")
+    print("-" * 80)
+    
+    stats = agent.get_cache_stats()
+    print(f"缓存统计: {stats}")
     
     print("\n" + "=" * 80)
     print("Agent 测试完成")
@@ -454,3 +564,4 @@ if __name__ == "__main__":
     print("\n说明:")
     print("- 当前测试未加载引擎，使用默认行为")
     print("- 完整功能需要初始化所有引擎（SentimentEngine, RagEngine, LLM）")
+    print("- 缓存功能已启用，重复查询会从缓存返回结果")
