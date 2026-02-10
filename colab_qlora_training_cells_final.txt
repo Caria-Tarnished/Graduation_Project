@@ -254,9 +254,9 @@ base_model_name = "deepseek-ai/deepseek-llm-7b-chat"
 adapter_path = "/content/drive/MyDrive/Graduation_Project/qlora_output"
 
 try:
-    # 1. 加载 tokenizer
+    # 1. 加载 tokenizer（从基础模型加载，避免版本不兼容）
     print("\n1. 加载 Tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained(adapter_path, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(base_model_name, trust_remote_code=True)
     print("   ✓ Tokenizer 加载成功")
     
     # 2. 加载基础模型（FP16，不使用 bitsandbytes）
