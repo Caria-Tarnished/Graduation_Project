@@ -349,19 +349,25 @@
     - 性能优化和答辩准备
 - **阶段 6：QLoRA 微调（可选，进行中）**
 
-  - [ ] **任务 6.1: 准备指令集数据**（进行中）
+  - [X] **任务 6.1: 准备指令集数据**（已完成）
     - 新增脚本：`scripts/qlora/build_instruction_dataset.py`
     - 功能：从 finance_analysis.db 提取真实案例，生成 Instruction-Input-Output 格式数据
     - 目标：300 条指令（60% 新闻 + 20% 市场分析 + 20% 财报）
     - 输出：`data/qlora/instructions.jsonl`
-  - [ ] **任务 6.2: Colab 训练**（待开始）
+    - 状态：本地已生成 300 条指令
+  - [ ] **任务 6.2: Colab 训练**（问题修复中）
     - 新增脚本：`scripts/qlora/train_qlora.py`
-    - 新增文档：`colab_qlora_training_cells.txt`（Colab 训练单元格）
+    - 新增文档：`colab_qlora_training_cells_final.txt`（Colab 训练单元格，最终修复版）
     - 基础模型：deepseek-ai/deepseek-llm-7b-chat
     - 训练方法：QLoRA（4-bit 量化 + LoRA）
     - 训练参数：3 epochs, batch_size=4, lr=2e-4, lora_r=8
     - 预计时间：2-4 小时（T4 GPU）
     - 输出：LoRA 权重文件（约 30-50 MB）
+    - 已修复问题：
+      - ✅ triton 版本兼容（2.1.0 → 2.2.0）
+      - ✅ bitsandbytes 版本兼容（0.43.1 → 0.43.3）
+      - ✅ 数据库列名错误（ret_post_15 → ret_post_15m，避免重复替换）
+      - ✅ 数据库路径处理（支持 datasets/ 子目录）
   - [ ] **任务 6.3: 测试与集成**（待开始）
     - 新增脚本：`scripts/qlora/test_qlora_model.py`
     - 功能：测试微调后的模型
@@ -370,8 +376,28 @@
     - 目标：微调 Deepseek-7B 模型，提升财经领域专业性
     - 方法：使用 QLoRA 技术在 Colab T4 GPU 上微调
     - 答辩策略：展示训练日志和权重文件，实际使用 Deepseek API
-    - 完整文档：`QLORA_WORKFLOW.md`
-- 2026-02-09（下午）
+    - 完整文档：`QLORA_WORKFLOW.md`（包含问题修复说明）
+- 2026-02-10（下午）
+
+  - **QLoRA 训练问题修复**：
+    - 问题 1：triton 版本不可用
+      - 错误：`ERROR: Could not find a version that satisfies the requirement triton==2.1.0`
+      - 原因：Colab 环境只提供 triton 2.2.0+
+      - 解决：修改为 `triton==2.2.0` + `bitsandbytes==0.43.3`
+    - 问题 2：数据库列名重复替换
+      - 错误：`no such column: ei.ret_post_15mm`
+      - 原因：脚本重复执行导致列名被多次替换
+      - 解决：添加检查条件，避免重复替换
+    - 问题 3：bitsandbytes CUDA 支持缺失
+      - 错误：`ModuleNotFoundError: No module named 'triton.ops'`
+      - 原因：依赖版本不兼容
+      - 解决：使用兼容版本组合（triton 2.2.0 + bitsandbytes 0.43.3）
+    - 更新文件：
+      - `colab_qlora_training_cells_final.txt`（修复依赖版本和数据库列名）
+      - `QLORA_WORKFLOW.md`（添加问题修复说明章节）
+      - `scripts/qlora/build_instruction_dataset.py`（修复数据库列名）
+    - 下一步：在 Colab 中使用修复版本重新训练
+- 2026-02-09（晚）
 
   - **阶段 2 完成（Engine B - RAG 检索管线）**：
     - **任务 2.2 完成（PDF 解析与切片）**：
