@@ -13,11 +13,16 @@
 """
 import streamlit as st
 import sys
+import os
 from pathlib import Path
 
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
+# 添加项目根目录到路径（使用绝对路径）
+project_root = Path(__file__).parent.parent.parent.parent.parent.resolve()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# 确保当前工作目录是项目根目录
+os.chdir(str(project_root))
 
 
 st.set_page_config(
@@ -61,8 +66,12 @@ def main():
         show_full_text = st.checkbox("显示完整文本", value=False)
     
     # 主区域：搜索框
+    # 从 query_params 获取初始值
+    initial_question = st.query_params.get("q", "")
+    
     question = st.text_input(
         "请输入您的问题",
+        value=initial_question,
         placeholder="例如：贵州茅台 2023 年营收情况如何？",
         key="question_input"
     )
@@ -75,28 +84,56 @@ def main():
         clear_button = st.button("🗑️ 清空")
     
     if clear_button:
-        st.session_state.question_input = ""
+        st.query_params.clear()
         st.rerun()
     
     # 执行搜索
     if search_button and question:
         with st.spinner("正在检索..."):
-            # 初始化 Agent（使用动态导入）
-            import importlib.util
-            
-            app_module_path = project_root / "app" / "hosts" / "streamlit_app" / "app.py"
-            spec = importlib.util.spec_from_file_location("streamlit_app", app_module_path)
-            app_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(app_module)
-            
-            agent = app_module.initialize_agent()
-            
-            if agent is None:
-                st.error("Agent 未初始化")
-                return
-            
-            # 调用 Agent 检索
+            # 直接导入模块
             try:
+                from app.core.orchestrator.agent import Agent
+                from app.services.sentiment_analyzer import SentimentAnalyzer
+                from app.core.engines.rag_engine import RagEngine
+                from app.adapters.llm.deepseek_client import DeepseekClient
+                import os
+                
+                # 初始化引擎
+                sentiment_engine = None
+                rag_engine = None
+                llm_client = None
+                
+                # 加载情感分析引擎
+                bert_path = project_root / "models" / "bert_3cls" / "best"
+                if bert_path.exists():
+                    sentiment_engine = SentimentAnalyzer(model_path=str(bert_path))
+                
+                # 加载 RAG 引擎
+                chroma_path = project_root / "data" / "reports" / "chroma_db"
+                if chroma_path.exists():
+                    rag_engine = RagEngine(
+                        chroma_path=str(chroma_path),
+                        model_name="BAAI/bge-m3"
+                    )
+                else:
+                    st.error(f"Chroma 向量库未找到: {chroma_path}")
+                    return
+                
+                # 加载 LLM 客户端
+                if os.getenv("DEEPSEEK_API_KEY"):
+                    llm_client = DeepseekClient()
+                
+                # 创建 Agent
+                db_path = project_root / "finance_analysis.db"
+                agent = Agent(
+                    sentiment_engine=sentiment_engine,
+                    rag_engine=rag_engine,
+                    rule_engine=None,
+                    llm_client=llm_client,
+                    db_path=str(db_path)
+                )
+                
+                # 调用 Agent 检索
                 answer = agent.process_query(
                     user_query=question,
                     query_type="report_qa"
@@ -183,7 +220,8 @@ def main():
     for i, (col, example) in enumerate(zip(cols, example_questions)):
         with col:
             if st.button(example, key=f"example_{i}"):
-                st.session_state.question_input = example
+                # 使用 query_params 而不是直接修改 session_state
+                st.query_params["q"] = example
                 st.rerun()
 
 

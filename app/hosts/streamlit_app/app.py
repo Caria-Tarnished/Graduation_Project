@@ -14,11 +14,27 @@ Streamlit 主入口
 """
 import streamlit as st
 import sys
+import os
 from pathlib import Path
 
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent.parent.parent
+# 添加项目根目录到路径（使用绝对路径）
+project_root = Path(__file__).parent.parent.parent.parent.resolve()
+
+# 清理可能冲突的路径
+sys.path = [p for p in sys.path if 'app' not in Path(p).name or p == str(project_root)]
+
+# 确保项目根目录在最前面
+if str(project_root) in sys.path:
+    sys.path.remove(str(project_root))
 sys.path.insert(0, str(project_root))
+
+# 确保当前工作目录是项目根目录
+os.chdir(str(project_root))
+
+# 调试信息（可选，用于排查问题）
+# st.write(f"Project root: {project_root}")
+# st.write(f"Current dir: {os.getcwd()}")
+# st.write(f"sys.path[0]: {sys.path[0]}")
 
 
 # 页面配置
@@ -148,31 +164,29 @@ def initialize_agent():
     """
     try:
         import os
+        from dotenv import load_dotenv
         
-        # 动态导入模块（避免路径问题）
-        import importlib.util
+        # 加载 .env 文件
+        env_path = project_root / ".env"
+        if env_path.exists():
+            load_dotenv(env_path)
+            st.info(f"✓ 已加载环境变量: {env_path}")
+        else:
+            st.warning(f"⚠ .env 文件未找到: {env_path}")
         
-        # 加载 Agent 模块
-        agent_module_path = project_root / "app" / "core" / "orchestrator" / "agent.py"
-        spec = importlib.util.spec_from_file_location("agent", agent_module_path)
-        agent_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(agent_module)
-        Agent = agent_module.Agent
+        # 直接导入模块（不使用动态导入）
+        from app.core.orchestrator.agent import Agent
+        from app.services.sentiment_analyzer import SentimentAnalyzer
+        from app.core.engines.rag_engine import RagEngine
+        from app.adapters.llm.deepseek_client import DeepseekClient
         
         # 尝试加载所有引擎
         sentiment_engine = None
         rag_engine = None
-        rule_engine = None
         llm_client = None
         
         # 1. 加载情感分析引擎（Engine A）
         try:
-            sentiment_module_path = project_root / "app" / "services" / "sentiment_analyzer.py"
-            spec = importlib.util.spec_from_file_location("sentiment_analyzer", sentiment_module_path)
-            sentiment_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(sentiment_module)
-            SentimentAnalyzer = sentiment_module.SentimentAnalyzer
-            
             bert_path = project_root / "models" / "bert_3cls" / "best"
             if bert_path.exists():
                 sentiment_engine = SentimentAnalyzer(model_path=str(bert_path))
@@ -184,12 +198,6 @@ def initialize_agent():
         
         # 2. 加载 RAG 引擎（Engine B）
         try:
-            rag_module_path = project_root / "app" / "core" / "engines" / "rag_engine.py"
-            spec = importlib.util.spec_from_file_location("rag_engine", rag_module_path)
-            rag_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(rag_module)
-            RagEngine = rag_module.RagEngine
-            
             chroma_path = project_root / "data" / "reports" / "chroma_db"
             if chroma_path.exists():
                 rag_engine = RagEngine(
@@ -202,17 +210,8 @@ def initialize_agent():
         except Exception as e:
             st.warning(f"⚠ RAG 引擎加载失败: {e}")
         
-        # 3. 加载规则引擎（已集成在 SentimentAnalyzer 中）
-        # 规则引擎不需要单独加载
-        
-        # 4. 加载 LLM 客户端
+        # 3. 加载 LLM 客户端
         try:
-            llm_module_path = project_root / "app" / "adapters" / "llm" / "deepseek_client.py"
-            spec = importlib.util.spec_from_file_location("deepseek_client", llm_module_path)
-            llm_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(llm_module)
-            DeepseekClient = llm_module.DeepseekClient
-            
             if os.getenv("DEEPSEEK_API_KEY"):
                 llm_client = DeepseekClient()
                 st.success("✓ LLM 客户端初始化成功")
@@ -221,7 +220,7 @@ def initialize_agent():
         except Exception as e:
             st.warning(f"⚠ LLM 客户端初始化失败: {e}")
         
-        # 5. 创建 Agent
+        # 4. 创建 Agent
         db_path = project_root / "finance_analysis.db"
         agent = Agent(
             sentiment_engine=sentiment_engine,
@@ -292,6 +291,9 @@ def process_user_query(query: str, agent):
         }
     
     try:
+        # 导入必要的模块
+        from app.core.dto import sentiment_label_to_text
+        
         # 调用 Agent 处理
         answer = agent.process_query(query)
         
@@ -305,7 +307,6 @@ def process_user_query(query: str, agent):
         
         # 添加情感分析结果
         if answer.sentiment:
-            from app.core.dto import sentiment_label_to_text
             label_text = sentiment_label_to_text(answer.sentiment.label)
             response["sentiment"] = f"{label_text}（置信度 {answer.sentiment.score:.2%}）"
         
@@ -334,8 +335,9 @@ def process_user_query(query: str, agent):
         return response
     
     except Exception as e:
+        import traceback
         return {
-            "summary": f"处理查询时出错: {str(e)}",
+            "summary": f"处理查询时出错: {str(e)}\n\n{traceback.format_exc()}",
             "sentiment": None,
             "citations": [],
             "tool_trace": []

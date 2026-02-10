@@ -2,10 +2,10 @@
 """
 Adapters Layer
 
-ÊÊÅäÆ÷²ã£¬¸ºÔðÓëÍâ²¿·þÎñºÍ×ÊÔ´µÄ½»»¥£º
-- LLM ¿Í»§¶Ë£¨Deepseek API£©
-- ÏòÁ¿´æ´¢£¨Chroma£©
-- Êý¾ÝÔ´£¨SQLite£©
+é€‚é…å™¨å±‚ï¼Œè´Ÿè´£ä¸Žå¤–éƒ¨æœåŠ¡å’Œèµ„æºçš„äº¤äº’ï¼š
+- LLM å®¢æˆ·ç«¯ï¼ˆDeepseek APIï¼‰
+- å‘é‡å­˜å‚¨ï¼ˆChromaï¼‰
+- æ•°æ®æºï¼ˆSQLiteï¼‰
 """
 
 __all__ = []

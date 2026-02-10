@@ -157,10 +157,17 @@ def analyze_sentiment(
         )
     
     try:
-        # 1. 调用情感分析引擎
-        sentiment = sentiment_engine.predict_sentiment(news_text, context)
+        # 1. 调用情感分析引擎（使用 analyze 方法）
+        result = sentiment_engine.analyze(news_text, context)
         
-        # 2. 如果有规则引擎，进行后处理
+        # 2. 转换为 SentimentResult
+        sentiment = SentimentResult(
+            label=result['label'],
+            score=result['score'],
+            explain=result.get('explain', '')
+        )
+        
+        # 3. 如果有规则引擎，进行后处理
         if rule_engine is not None:
             from app.core.dto import NewsItem
             news_item = NewsItem(
@@ -174,6 +181,8 @@ def analyze_sentiment(
     
     except Exception as e:
         print(f"情感分析失败: {e}")
+        import traceback
+        traceback.print_exc()
         return SentimentResult(
             label=0,
             score=0.0,

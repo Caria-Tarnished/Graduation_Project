@@ -12,14 +12,19 @@ K 线图表页面
 """
 import streamlit as st
 import sys
+import os
 from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
+# 添加项目根目录到路径（使用绝对路径）
+project_root = Path(__file__).parent.parent.parent.parent.parent.resolve()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# 确保当前工作目录是项目根目录
+os.chdir(str(project_root))
 
 
 st.set_page_config(
@@ -84,8 +89,8 @@ def main():
                 return
             
             # 绘制 K 线图
-            fig = plot_kline_with_events(prices_df, events_df, ticker)
-            st.plotly_chart(fig, use_container_width=True)
+            fig, config = plot_kline_with_events(prices_df, events_df, ticker)
+            st.plotly_chart(fig, width="stretch", config=config)
             
             # 显示事件列表
             if events_df is not None and len(events_df) > 0:
@@ -252,7 +257,11 @@ def plot_kline_with_events(prices_df: pd.DataFrame, events_df: pd.DataFrame, tic
     
     # 添加事件标注
     if events_df is not None and len(events_df) > 0:
-        for _, event in events_df.iterrows():
+        # 计算价格范围，用于调整标注位置
+        price_range = prices_df['high'].max() - prices_df['low'].min()
+        annotation_offset = price_range * 0.05  # 标注偏移量为价格范围的 5%
+        
+        for idx, event in events_df.iterrows():
             # 获取事件时间对应的价格
             price = event['price_event']
             if pd.isna(price):
@@ -260,21 +269,25 @@ def plot_kline_with_events(prices_df: pd.DataFrame, events_df: pd.DataFrame, tic
                 nearest_price = prices_df[prices_df['ts_local'] <= event['ts_local']]['close'].iloc[-1] if len(prices_df[prices_df['ts_local'] <= event['ts_local']]) > 0 else prices_df['close'].iloc[0]
                 price = nearest_price
             
+            # 交替显示标注在上方和下方，避免重叠
+            ay_offset = -50 if idx % 2 == 0 else 50
+            
             # 添加标注
             fig.add_annotation(
                 x=event['ts_local'],
                 y=price,
-                text=f"★{event['star']} {event['content'][:20]}...",
+                text=f"★{event['star']} {event['content'][:15]}...",
                 showarrow=True,
                 arrowhead=2,
                 arrowsize=1,
                 arrowwidth=2,
-                arrowcolor="red",
+                arrowcolor="red" if idx % 2 == 0 else "blue",
                 ax=0,
-                ay=-40,
-                bgcolor="rgba(255, 255, 255, 0.8)",
-                bordercolor="red",
-                borderwidth=1
+                ay=ay_offset,
+                bgcolor="rgba(255, 255, 255, 0.9)",
+                bordercolor="red" if idx % 2 == 0 else "blue",
+                borderwidth=1,
+                font=dict(size=10)
             )
     
     # 更新布局
@@ -284,10 +297,21 @@ def plot_kline_with_events(prices_df: pd.DataFrame, events_df: pd.DataFrame, tic
         yaxis_title="价格",
         xaxis_rangeslider_visible=False,
         height=600,
-        hovermode='x unified'
+        hovermode='x unified',
+        # 添加更好的交互配置
+        dragmode='zoom',  # 默认拖拽模式为缩放
     )
     
-    return fig
+    # 配置交互工具
+    config = {
+        'scrollZoom': True,  # 启用鼠标滚轮缩放
+        'displayModeBar': True,  # 显示工具栏
+        'modeBarButtonsToAdd': ['drawline', 'drawopenpath', 'eraseshape'],
+        'modeBarButtonsToRemove': [],
+        'displaylogo': False,  # 隐藏 Plotly logo
+    }
+    
+    return fig, config
 
 
 def show_event_analysis(event, ticker: str):
@@ -317,22 +341,48 @@ def show_event_analysis(event, ticker: str):
     st.subheader("情感分析")
     
     with st.spinner("正在分析..."):
-        # 初始化 Agent（使用动态导入）
-        import importlib.util
-        
-        app_module_path = project_root / "app" / "hosts" / "streamlit_app" / "app.py"
-        spec = importlib.util.spec_from_file_location("streamlit_app", app_module_path)
-        app_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(app_module)
-        
-        agent = app_module.initialize_agent()
-        
-        if agent is None:
-            st.error("Agent 未初始化")
-            return
-        
-        # 调用 Agent 分析
+        # 直接导入模块
         try:
+            from app.core.orchestrator.agent import Agent
+            from app.services.sentiment_analyzer import SentimentAnalyzer
+            from app.core.engines.rag_engine import RagEngine
+            from app.adapters.llm.deepseek_client import DeepseekClient
+            from app.core.dto import sentiment_label_to_text
+            import os
+            
+            # 初始化引擎
+            sentiment_engine = None
+            rag_engine = None
+            llm_client = None
+            
+            # 加载情感分析引擎
+            bert_path = project_root / "models" / "bert_3cls" / "best"
+            if bert_path.exists():
+                sentiment_engine = SentimentAnalyzer(model_path=str(bert_path))
+            
+            # 加载 RAG 引擎
+            chroma_path = project_root / "data" / "reports" / "chroma_db"
+            if chroma_path.exists():
+                rag_engine = RagEngine(
+                    chroma_path=str(chroma_path),
+                    model_name="BAAI/bge-m3"
+                )
+            
+            # 加载 LLM 客户端
+            if os.getenv("DEEPSEEK_API_KEY"):
+                llm_client = DeepseekClient()
+            
+            # 创建 Agent
+            db_path = project_root / "finance_analysis.db"
+            agent = Agent(
+                sentiment_engine=sentiment_engine,
+                rag_engine=rag_engine,
+                rule_engine=None,
+                llm_client=llm_client,
+                db_path=str(db_path)
+            )
+            
+            # 调用 Agent 分析
             answer = agent.process_query(
                 user_query=event['content'],
                 ticker=ticker,
@@ -343,13 +393,6 @@ def show_event_analysis(event, ticker: str):
             st.markdown(f"**总结**: {answer.summary}")
             
             if answer.sentiment:
-                # 动态导入 sentiment_label_to_text
-                dto_module_path = project_root / "app" / "core" / "dto.py"
-                spec = importlib.util.spec_from_file_location("dto", dto_module_path)
-                dto_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(dto_module)
-                sentiment_label_to_text = dto_module.sentiment_label_to_text
-                
                 label_text = sentiment_label_to_text(answer.sentiment.label)
                 
                 col1, col2 = st.columns(2)
@@ -368,7 +411,9 @@ def show_event_analysis(event, ticker: str):
                         st.text(f"{status} {trace.name} ({trace.elapsed_ms}ms)")
         
         except Exception as e:
+            import traceback
             st.error(f"分析失败: {e}")
+            st.error(traceback.format_exc())
 
 
 if __name__ == "__main__":
