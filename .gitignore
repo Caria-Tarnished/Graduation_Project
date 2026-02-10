@@ -97,6 +97,13 @@ reports/**
 finance.db
 *.db
 
+# Large model files (prevent Git and Drive sync)
+*.safetensors
+*.bin
+*.ckpt
+*.pth
+*.pt
+
 
 # Environment / secrets
 .env
