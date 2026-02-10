@@ -357,3 +357,114 @@ model = PeftModel.from_pretrained(model, "models/qlora/adapter")
 ---
 
 **祝训练顺利！** 🎓
+
+
+---
+
+## 9. 常见问题修复（2026-02-10 更新）
+
+### 问题 1：triton 版本不可用
+
+**错误信息**：
+```
+ERROR: Could not find a version that satisfies the requirement triton==2.1.0
+```
+
+**原因**：Colab 环境只提供 triton 2.2.0 及以上版本
+
+**解决方案**（已在 colab_qlora_training_cells_final.txt 中修复）：
+```python
+# 使用 Colab 可用的最低版本
+!pip install -q triton==2.2.0
+!pip install -q bitsandbytes==0.43.3  # 兼容 triton 2.2.0
+```
+
+### 问题 2：数据库列名重复替换
+
+**错误信息**：
+```
+✗ 提取新闻样本失败: no such column: ei.ret_post_15mm
+```
+
+**原因**：脚本重复执行导致列名被多次替换（`ret_post_15` → `ret_post_15m` → `ret_post_15mm`）
+
+**解决方案**（已在 colab_qlora_training_cells_final.txt 中修复）：
+```python
+# 添加检查，避免重复替换
+if 'ei.ret_post_15m' not in script_content:
+    script_content = script_content.replace('ei.ret_post_15', 'ei.ret_post_15m')
+```
+
+### 问题 3：bitsandbytes CUDA 支持缺失
+
+**错误信息**：
+```
+WARNING: The installed version of bitsandbytes was compiled without GPU support
+ModuleNotFoundError: No module named 'triton.ops'
+```
+
+**原因**：依赖版本不兼容
+
+**解决方案**：
+1. 确保按顺序安装依赖（先 triton，后 bitsandbytes）
+2. 使用兼容的版本组合：
+   - triton==2.2.0
+   - bitsandbytes==0.43.3
+   - transformers==4.46.0
+
+### 问题 4：fsspec 版本冲突警告
+
+**警告信息**：
+```
+gcsfs 2025.3.0 requires fsspec==2025.3.0, but you have fsspec 2024.6.1
+```
+
+**影响**：不影响训练，可以忽略
+
+**可选解决**：
+```python
+!pip install -q fsspec==2025.3.0
+```
+
+### 最新修复版本
+
+使用文件：`colab_qlora_training_cells_final.txt`
+
+**关键修复点**：
+1. ✅ triton 版本：2.1.0 → 2.2.0
+2. ✅ bitsandbytes 版本：0.43.1 → 0.43.3
+3. ✅ 数据库列名替换：添加重复检查
+4. ✅ 依赖安装顺序：先卸载旧版本，再按顺序安装
+
+**验证成功标志**：
+```
+✓ 环境准备完成
+✓ 依赖版本：
+Name: bitsandbytes
+Version: 0.43.3
+Name: triton
+Version: 2.2.0
+```
+
+### 如果仍然遇到问题
+
+1. **重启 Colab Runtime**
+   - 点击"运行时" → "重启运行时"
+   - 重新执行所有单元格
+
+2. **检查 GPU 可用性**
+   ```python
+   !nvidia-smi
+   ```
+
+3. **手动安装依赖**
+   ```python
+   !pip uninstall -y bitsandbytes triton -q
+   !pip install triton==2.2.0 -q
+   !pip install bitsandbytes==0.43.3 -q
+   ```
+
+4. **使用模板数据训练**
+   - 如果数据库问题无法解决
+   - 删除或重命名 `finance_analysis.db`
+   - 脚本会自动使用模板数据（120条指令）

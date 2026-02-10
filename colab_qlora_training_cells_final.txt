@@ -24,16 +24,18 @@ drive.mount('/content/drive')
 print("安装依赖（修复 triton.ops 问题）...")
 
 # 先卸载可能存在的旧版本
-!pip uninstall -y bitsandbytes triton
+!pip uninstall -y bitsandbytes triton -q
 
-# 安装兼容的版本组合
+# 关键修复：使用 Colab 可用的 triton 版本
+!pip install -q triton==2.2.0  # Colab 最低可用版本
 !pip install -q transformers==4.46.0
 !pip install -q peft==0.13.0
-!pip install -q triton==2.1.0  # 先安装 triton
-!pip install -q bitsandbytes==0.43.1  # 使用 0.43.1 避免 triton.ops 问题
 !pip install -q accelerate==1.0.0
 !pip install -q datasets==3.0.0
 !pip install -q trl==0.11.0
+
+# 最后安装 bitsandbytes（让它适配已安装的 triton）
+!pip install -q bitsandbytes==0.43.3  # 0.43.3 兼容 triton 2.2.0
 
 print("\n✓ 环境准备完成")
 print("✓ 依赖版本：")
@@ -92,9 +94,11 @@ print("\n修复数据库查询脚本...")
 with open('scripts/qlora/build_instruction_dataset.py', 'r', encoding='utf-8') as f:
     script_content = f.read()
 
-# 修复列名：ret_post_15 -> ret_post_15m, pre_ret_120 -> pre_ret_120m
-script_content = script_content.replace('ei.ret_post_15', 'ei.ret_post_15m')
-script_content = script_content.replace('ei.pre_ret_120', 'ei.pre_ret_120m')
+# 修复列名：确保只替换一次，避免重复替换
+if 'ei.ret_post_15m' not in script_content:
+    script_content = script_content.replace('ei.ret_post_15', 'ei.ret_post_15m')
+if 'ei.pre_ret_120m' not in script_content:
+    script_content = script_content.replace('ei.pre_ret_120', 'ei.pre_ret_120m')
 
 # 保存修复后的脚本
 with open('scripts/qlora/build_instruction_dataset_fixed.py', 'w', encoding='utf-8') as f:
