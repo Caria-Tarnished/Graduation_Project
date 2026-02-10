@@ -379,24 +379,30 @@
     - 完整文档：`QLORA_WORKFLOW.md`（包含问题修复说明）
 - 2026-02-10（下午）
 
-  - **QLoRA 训练问题修复**：
+  - **QLoRA 训练问题修复（最终版）**：
     - 问题 1：triton 版本不可用
       - 错误：`ERROR: Could not find a version that satisfies the requirement triton==2.1.0`
       - 原因：Colab 环境只提供 triton 2.2.0+
       - 解决：修改为 `triton==2.2.0` + `bitsandbytes==0.43.3`
-    - 问题 2：数据库列名重复替换
-      - 错误：`no such column: ei.ret_post_15mm`
-      - 原因：脚本重复执行导致列名被多次替换
-      - 解决：添加检查条件，避免重复替换
+    - 问题 2：数据库列名错误（根本原因）
+      - 错误：`no such column: ei.ret_post_15m`
+      - 原因：数据库实际结构与代码假设不匹配
+      - 发现：通过 `sqlite3 finance_analysis.db ".schema event_impacts"` 查看实际结构
+      - 实际结构：使用 `window_min` 列区分时间窗口（5/10/15/30/120），`ret` 列存储收益率
+      - 解决：修改 SQL 查询，使用 `LEFT JOIN` 和 `window_min` 筛选
     - 问题 3：bitsandbytes CUDA 支持缺失
       - 错误：`ModuleNotFoundError: No module named 'triton.ops'`
       - 原因：依赖版本不兼容
       - 解决：使用兼容版本组合（triton 2.2.0 + bitsandbytes 0.43.3）
+    - 验证成功：
+      - ✅ 本地成功生成 300 条指令（180 条真实新闻 + 60 条市场分析 + 60 条财报问答）
+      - ✅ 数据库查询正常，无错误
+      - ✅ 输出文件：`data/qlora/instructions.jsonl`（117.28 KB）
     - 更新文件：
-      - `colab_qlora_training_cells_final.txt`（修复依赖版本和数据库列名）
-      - `QLORA_WORKFLOW.md`（添加问题修复说明章节）
-      - `scripts/qlora/build_instruction_dataset.py`（修复数据库列名）
-    - 下一步：在 Colab 中使用修复版本重新训练
+      - `scripts/qlora/build_instruction_dataset.py`（修复数据库查询 SQL）
+      - `colab_qlora_training_cells_final.txt`（移除不必要的列名替换逻辑）
+      - `QLORA_WORKFLOW.md`（更新问题 2 的说明，记录数据库实际结构）
+    - 下一步：在 Colab 中使用修复版本开始训练
 - 2026-02-09（晚）
 
   - **阶段 2 完成（Engine B - RAG 检索管线）**：
