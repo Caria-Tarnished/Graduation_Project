@@ -230,20 +230,22 @@ print("="*60)
 ## 单元格 5.5：修复 bitsandbytes（如果单元格 6 失败，先运行这个）
 
 ```python
-print("修复 bitsandbytes 依赖...")
+print("修复 bitsandbytes 和 transformers 依赖...")
+print("这可能需要 1-2 分钟...\n")
 
-# 卸载当前版本
-!pip uninstall -y bitsandbytes -q
+# 完全卸载并重新安装兼容的版本组合
+!pip uninstall -y bitsandbytes transformers accelerate -q
 
-# 安装兼容版本
-!pip install bitsandbytes==0.44.1 -q
+# 安装兼容的版本组合
+!pip install transformers==4.36.0 -q
+!pip install accelerate==0.25.0 -q
+!pip install bitsandbytes==0.41.3 -q
 
-print("\n✓ bitsandbytes 已重新安装")
-print("✓ 现在可以运行单元格 6 了")
+print("\n✓ 依赖已重新安装")
+print("✓ 版本组合：")
+!pip show transformers bitsandbytes | grep "Name:\|Version:"
 
-# 验证安装
-import bitsandbytes as bnb
-print(f"\nbitsandbytes 版本: {bnb.__version__}")
+print("\n✓ 现在可以运行单元格 6 了")
 ```
 
 ---
