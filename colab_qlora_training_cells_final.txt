@@ -227,6 +227,27 @@ print("="*60)
 
 ---
 
+## 单元格 5.5：修复 bitsandbytes（如果单元格 6 失败，先运行这个）
+
+```python
+print("修复 bitsandbytes 依赖...")
+
+# 卸载当前版本
+!pip uninstall -y bitsandbytes -q
+
+# 安装兼容版本
+!pip install bitsandbytes==0.44.1 -q
+
+print("\n✓ bitsandbytes 已重新安装")
+print("✓ 现在可以运行单元格 6 了")
+
+# 验证安装
+import bitsandbytes as bnb
+print(f"\nbitsandbytes 版本: {bnb.__version__}")
+```
+
+---
+
 ## 单元格 6：测试微调后的模型
 
 ```python
