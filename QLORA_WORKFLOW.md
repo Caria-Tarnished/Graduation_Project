@@ -379,21 +379,45 @@ ERROR: Could not find a version that satisfies the requirement triton==2.1.0
 !pip install -q bitsandbytes==0.43.3  # 兼容 triton 2.2.0
 ```
 
-### 问题 2：数据库列名重复替换
+### 问题 2：数据库列名错误
 
 **错误信息**：
 ```
-✗ 提取新闻样本失败: no such column: ei.ret_post_15mm
+✗ 提取新闻样本失败: no such column: ei.ret_post_15m
 ```
 
-**原因**：脚本重复执行导致列名被多次替换（`ret_post_15` → `ret_post_15m` → `ret_post_15mm`）
+**原因**：数据库实际结构与代码假设不匹配
 
-**解决方案**（已在 colab_qlora_training_cells_final.txt 中修复）：
-```python
-# 添加检查，避免重复替换
-if 'ei.ret_post_15m' not in script_content:
-    script_content = script_content.replace('ei.ret_post_15', 'ei.ret_post_15m')
+**数据库实际结构**：
+```sql
+-- event_impacts 表结构
+CREATE TABLE event_impacts (
+    event_id TEXT NOT NULL,
+    ticker TEXT NOT NULL,
+    window_min INTEGER NOT NULL,  -- 时间窗口（5/10/15/30/120 分钟）
+    ret REAL,                      -- 收益率
+    ...
+    PRIMARY KEY (event_id, ticker, window_min)
+);
 ```
+
+**正确的查询方式**：
+```sql
+-- 使用 window_min 区分不同时间窗口
+SELECT 
+    e.content,
+    e.star,
+    ei_post.ret as ret_post,      -- 15 分钟后收益
+    ei_pre.ret as ret_pre          -- 120 分钟前收益
+FROM events e
+LEFT JOIN event_impacts ei_post ON e.event_id = ei_post.event_id AND ei_post.window_min = 15
+LEFT JOIN event_impacts ei_pre ON e.event_id = ei_pre.event_id AND ei_pre.window_min = 120
+```
+
+**解决方案**（已在 scripts/qlora/build_instruction_dataset.py 中修复）：
+- 使用正确的表结构和列名
+- 通过 `window_min` 筛选不同时间窗口
+- 移除 Colab 中的列名替换逻辑（不再需要）
 
 ### 问题 3：bitsandbytes CUDA 支持缺失
 

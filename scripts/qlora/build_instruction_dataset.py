@@ -30,15 +30,17 @@ def get_news_samples(db_path: str, num_samples: int = 100):
     cursor = conn.cursor()
     
     # 查询高星级事件（3-5星）
+    # 注意：数据库结构使用 window_min 列区分时间窗口，ret 列存储收益率
     query = """
     SELECT 
         e.content,
         e.star,
         e.country,
-        ei.ret_post_15m,
-        ei.pre_ret_120m
+        ei_post.ret as ret_post,
+        ei_pre.ret as ret_pre
     FROM events e
-    LEFT JOIN event_impacts ei ON e.event_id = ei.event_id
+    LEFT JOIN event_impacts ei_post ON e.event_id = ei_post.event_id AND ei_post.window_min = 15
+    LEFT JOIN event_impacts ei_pre ON e.event_id = ei_pre.event_id AND ei_pre.window_min = 120
     WHERE e.star >= 3
       AND e.content IS NOT NULL
       AND LENGTH(e.content) > 10
@@ -52,13 +54,13 @@ def get_news_samples(db_path: str, num_samples: int = 100):
     
     samples = []
     for row in rows:
-        content, star, country, ret_post, pre_ret = row
+        content, star, country, ret_post, ret_pre = row
         samples.append({
             'content': content,
             'star': star,
             'country': country or 'N/A',
             'ret_post': ret_post if ret_post is not None else 0.0,
-            'pre_ret': pre_ret if pre_ret is not None else 0.0
+            'pre_ret': ret_pre if ret_pre is not None else 0.0
         })
     
     return samples

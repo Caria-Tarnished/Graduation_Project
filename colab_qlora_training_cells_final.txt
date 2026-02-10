@@ -87,28 +87,9 @@ if not db_path.exists():
 else:
     print("✓ 数据库已存在")
 
-# 3.2 修复数据库查询脚本（临时修复）
-print("\n修复数据库查询脚本...")
-
-# 读取原始脚本
-with open('scripts/qlora/build_instruction_dataset.py', 'r', encoding='utf-8') as f:
-    script_content = f.read()
-
-# 修复列名：确保只替换一次，避免重复替换
-if 'ei.ret_post_15m' not in script_content:
-    script_content = script_content.replace('ei.ret_post_15', 'ei.ret_post_15m')
-if 'ei.pre_ret_120m' not in script_content:
-    script_content = script_content.replace('ei.pre_ret_120', 'ei.pre_ret_120m')
-
-# 保存修复后的脚本
-with open('scripts/qlora/build_instruction_dataset_fixed.py', 'w', encoding='utf-8') as f:
-    f.write(script_content)
-
-print("✓ 脚本修复完成")
-
-# 3.3 生成指令集
+# 3.2 生成指令集
 print("\n生成指令集数据...")
-!python scripts/qlora/build_instruction_dataset_fixed.py \
+!python scripts/qlora/build_instruction_dataset.py \
     --db finance_analysis.db \
     --output data/qlora/instructions.jsonl \
     --num_samples 300
