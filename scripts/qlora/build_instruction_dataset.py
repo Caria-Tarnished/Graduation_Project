@@ -35,8 +35,8 @@ def get_news_samples(db_path: str, num_samples: int = 100):
         e.content,
         e.star,
         e.country,
-        ei.ret_post_15,
-        ei.pre_ret_120
+        ei.ret_post_15m,
+        ei.pre_ret_120m
     FROM events e
     LEFT JOIN event_impacts ei ON e.event_id = ei.event_id
     WHERE e.star >= 3

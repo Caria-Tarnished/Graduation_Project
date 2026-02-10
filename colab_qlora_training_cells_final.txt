@@ -1,0 +1,431 @@
+# QLoRA 微调 Deepseek-7B - Colab 训练单元格（最终修复版）
+
+## 🔧 关键修复
+1. 修复 triton.ops 模块缺失问题（降级到 bitsandbytes 0.43.1）
+2. 修复数据库列名错误（ret_post_15 -> ret_post_15m）
+3. 优化依赖版本兼容性
+
+---
+
+## 单元格 1：环境准备与挂载 Drive（最终修复版）
+
+```python
+# 1.1 检查 GPU
+!nvidia-smi
+
+# 1.2 挂载 Google Drive
+from google.colab import drive
+drive.mount('/content/drive')
+
+# 1.3 切换到项目目录
+%cd /content/drive/MyDrive/Graduation_Project
+
+# 🔧 关键修复：安装兼容的依赖版本
+print("安装依赖（修复 triton.ops 问题）...")
+
+# 先卸载可能存在的旧版本
+!pip uninstall -y bitsandbytes triton
+
+# 安装兼容的版本组合
+!pip install -q transformers==4.46.0
+!pip install -q peft==0.13.0
+!pip install -q triton==2.1.0  # 先安装 triton
+!pip install -q bitsandbytes==0.43.1  # 使用 0.43.1 避免 triton.ops 问题
+!pip install -q accelerate==1.0.0
+!pip install -q datasets==3.0.0
+!pip install -q trl==0.11.0
+
+print("\n✓ 环境准备完成")
+print("✓ 依赖版本：")
+!pip show bitsandbytes transformers peft triton | grep "Name:\|Version:"
+```
+
+---
+
+## 单元格 2：克隆/更新代码仓库
+
+```python
+import os
+
+# 检查是否已克隆
+if not os.path.exists('/content/Graduation_Project'):
+    print("克隆代码仓库...")
+    !git clone https://github.com/Caria-Tarnished/Graduation_Project.git /content/Graduation_Project
+else:
+    print("更新代码仓库...")
+    %cd /content/Graduation_Project
+    !git pull
+
+%cd /content/Graduation_Project
+
+print("\n✓ 代码仓库准备完成")
+```
+
+---
+
+## 单元格 3：生成指令集数据（修复数据库列名）
+
+```python
+# 3.1 检查数据库是否存在
+import os
+from pathlib import Path
+
+db_path = Path('finance_analysis.db')
+drive_db_path = Path('/content/drive/MyDrive/Graduation_Project/datasets/finance_analysis.db')
+
+# 检查并复制数据库
+if not db_path.exists():
+    if drive_db_path.exists():
+        print("从 Drive 复制数据库...")
+        !cp /content/drive/MyDrive/Graduation_Project/datasets/finance_analysis.db .
+        print("✓ 数据库复制完成")
+    else:
+        print("⚠ 警告：数据库文件不存在")
+        print("⚠ 将使用模板数据生成指令集")
+else:
+    print("✓ 数据库已存在")
+
+# 3.2 修复数据库查询脚本（临时修复）
+print("\n修复数据库查询脚本...")
+
+# 读取原始脚本
+with open('scripts/qlora/build_instruction_dataset.py', 'r', encoding='utf-8') as f:
+    script_content = f.read()
+
+# 修复列名：ret_post_15 -> ret_post_15m, pre_ret_120 -> pre_ret_120m
+script_content = script_content.replace('ei.ret_post_15', 'ei.ret_post_15m')
+script_content = script_content.replace('ei.pre_ret_120', 'ei.pre_ret_120m')
+
+# 保存修复后的脚本
+with open('scripts/qlora/build_instruction_dataset_fixed.py', 'w', encoding='utf-8') as f:
+    f.write(script_content)
+
+print("✓ 脚本修复完成")
+
+# 3.3 生成指令集
+print("\n生成指令集数据...")
+!python scripts/qlora/build_instruction_dataset_fixed.py \
+    --db finance_analysis.db \
+    --output data/qlora/instructions.jsonl \
+    --num_samples 300
+
+# 3.4 查看生成的数据
+print("\n查看前 3 条指令：")
+import json
+
+with open('data/qlora/instructions.jsonl', 'r', encoding='utf-8') as f:
+    for i, line in enumerate(f):
+        if i >= 3:
+            break
+        data = json.loads(line)
+        print(f"\n--- 指令 {i+1} ---")
+        print(f"Instruction: {data['instruction']}")
+        print(f"Input: {data['input'][:80]}...")
+        print(f"Output: {data['output'][:100]}...")
+
+print("\n✓ 指令集生成完成")
+```
+
+---
+
+## 单元格 4：开始 QLoRA 微调（主训练）
+
+```python
+# 4.1 设置输出目录
+output_dir = '/content/drive/MyDrive/Graduation_Project/qlora_output'
+
+# 4.2 开始训练
+print("="*60)
+print("开始 QLoRA 微调...")
+print("="*60)
+print("预计训练时间：2-4 小时")
+print("请保持 Colab 页面打开，避免断开连接")
+print("="*60)
+
+# 训练
+!python scripts/qlora/train_qlora.py \
+    --model_name deepseek-ai/deepseek-llm-7b-chat \
+    --data_path data/qlora/instructions.jsonl \
+    --output_dir {output_dir} \
+    --num_epochs 3 \
+    --batch_size 4 \
+    --learning_rate 2e-4 \
+    --max_length 512 \
+    --lora_r 8 \
+    --lora_alpha 16 \
+    --lora_dropout 0.05
+
+print("\n✓ 训练完成")
+```
+
+---
+
+## 单元格 5：验证训练结果
+
+```python
+import os
+from pathlib import Path
+
+print("="*60)
+print("训练结果验证")
+print("="*60)
+
+output_dir = Path('/content/drive/MyDrive/Graduation_Project/qlora_output')
+
+# 1. 检查输出文件
+print("\n1. 检查输出文件：")
+files_to_check = [
+    'adapter_model.bin',
+    'adapter_config.json',
+    'training_info.json'
+]
+
+for file in files_to_check:
+    file_path = output_dir / file
+    if file_path.exists():
+        size = file_path.stat().st_size / (1024 * 1024)  # MB
+        print(f"   ✓ {file} ({size:.2f} MB)")
+    else:
+        print(f"   ✗ {file} (不存在)")
+
+# 2. 查看训练信息
+print("\n2. 训练信息：")
+training_info_path = output_dir / 'training_info.json'
+if training_info_path.exists():
+    import json
+    with open(training_info_path, 'r') as f:
+        info = json.load(f)
+    print(f"   - 训练轮数: {info.get('num_epochs', 'N/A')}")
+    print(f"   - 学习率: {info.get('learning_rate', 'N/A')}")
+    print(f"   - 批次大小: {info.get('batch_size', 'N/A')}")
+    print(f"   - 训练样本数: {info.get('num_samples', 'N/A')}")
+else:
+    print("   ⚠ 训练信息文件不存在")
+
+# 3. 计算总大小
+print("\n3. 输出目录总大小：")
+if output_dir.exists():
+    total_size = sum(f.stat().st_size for f in output_dir.rglob('*') if f.is_file())
+    print(f"   {total_size / (1024 * 1024):.2f} MB")
+else:
+    print("   ⚠ 输出目录不存在")
+
+print("\n" + "="*60)
+print("✓ 验证完成")
+print("="*60)
+```
+
+---
+
+## 单元格 6：测试微调后的模型
+
+```python
+print("加载微调后的模型...")
+
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from peft import PeftModel
+
+# 配置
+base_model_name = "deepseek-ai/deepseek-llm-7b-chat"
+adapter_path = "/content/drive/MyDrive/Graduation_Project/qlora_output"
+
+try:
+    # 加载 tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(base_model_name, trust_remote_code=True)
+    
+    # 配置 4-bit 量化
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.float16
+    )
+    
+    # 加载基础模型
+    base_model = AutoModelForCausalLM.from_pretrained(
+        base_model_name,
+        quantization_config=bnb_config,
+        device_map="auto",
+        trust_remote_code=True
+    )
+    
+    # 加载 LoRA 权重
+    model = PeftModel.from_pretrained(base_model, adapter_path)
+    model.eval()
+    
+    print("✓ 模型加载成功\n")
+    
+    # 测试案例
+    test_cases = [
+        {
+            "instruction": "分析以下财经快讯对市场的影响",
+            "input": "美联储宣布加息25个基点，符合市场预期"
+        },
+        {
+            "instruction": "解释什么是预期兑现",
+            "input": "市场前期已经大涨，利好消息发布后反而下跌"
+        }
+    ]
+    
+    print("="*60)
+    print("模型测试")
+    print("="*60)
+    
+    for i, case in enumerate(test_cases, 1):
+        print(f"\n测试案例 {i}:")
+        print(f"Instruction: {case['instruction']}")
+        print(f"Input: {case['input']}")
+        
+        # 构建提示
+        prompt = f"Instruction: {case['instruction']}\nInput: {case['input']}\nOutput:"
+        
+        # 生成
+        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=256,
+                temperature=0.7,
+                top_p=0.9,
+                do_sample=True
+            )
+        
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # 提取 Output 部分
+        if "Output:" in response:
+            response = response.split("Output:")[-1].strip()
+        
+        print(f"\nOutput: {response}")
+        print("-"*60)
+    
+    print("\n✓ 测试完成")
+
+except Exception as e:
+    print(f"✗ 测试失败: {e}")
+    print("\n可能原因：")
+    print("1. LoRA 权重文件不存在（训练未完成）")
+    print("2. 模型加载失败（显存不足）")
+```
+
+---
+
+## 单元格 7：保存模型到 Drive（可选）
+
+```python
+# 如果需要将模型保存到其他位置
+import shutil
+from pathlib import Path
+
+source_dir = Path('/content/drive/MyDrive/Graduation_Project/qlora_output')
+backup_dir = Path('/content/drive/MyDrive/Graduation_Project/models/qlora_deepseek_7b')
+
+if source_dir.exists():
+    print(f"备份模型到: {backup_dir}")
+    backup_dir.parent.mkdir(parents=True, exist_ok=True)
+    
+    if backup_dir.exists():
+        print("⚠ 目标目录已存在，将覆盖")
+        shutil.rmtree(backup_dir)
+    
+    shutil.copytree(source_dir, backup_dir)
+    print("✓ 备份完成")
+else:
+    print("✗ 源目录不存在")
+```
+
+---
+
+## 📝 使用说明
+
+### 执行顺序
+1. 单元格 1：环境准备（约 2-3 分钟）
+2. 单元格 2：克隆代码（约 30 秒）
+3. 单元格 3：生成指令集（约 1-2 分钟）
+4. 单元格 4：开始训练（约 2-4 小时）⏰
+5. 单元格 5：验证结果（约 10 秒）
+6. 单元格 6：测试模型（约 2-3 分钟）
+7. 单元格 7：备份模型（可选，约 1 分钟）
+
+### 关键修复说明
+
+#### 1. triton.ops 模块缺失
+- **原因**：bitsandbytes 0.44.1 依赖 triton 3.0+，但 triton 3.0 移除了 `triton.ops` 模块
+- **解决**：降级到 bitsandbytes 0.43.1 + triton 2.1.0
+
+#### 2. 数据库列名错误
+- **原因**：数据库实际列名是 `ret_post_15m` 和 `pre_ret_120m`，但代码中使用了 `ret_post_15` 和 `pre_ret_120`
+- **解决**：在单元格 3 中动态修复脚本，替换列名
+
+#### 3. 数据库文件路径
+- **原因**：数据库上传到了 `/content/drive/MyDrive/Graduation_Project/datasets/` 而不是项目根目录
+- **解决**：在单元格 3 中从 Drive 复制到项目根目录
+
+### 预期输出
+
+#### 单元格 3（指令集生成）
+```
+✓ 数据库已存在
+修复数据库查询脚本...
+✓ 脚本修复完成
+
+生成指令集数据...
+开始构建指令集...
+目标样本数量: 300
+1. 从数据库提取 180 条新闻样本...
+   ✓ 成功生成 180 条新闻指令
+2. 生成 60 条市场分析指令...
+   ✓ 成功生成 60 条市场分析指令
+3. 生成 60 条财报问答指令...
+   ✓ 成功生成 60 条财报问答指令
+...
+总样本数: 300
+```
+
+#### 单元格 4（训练）
+```
+开始 QLoRA 微调...
+预计训练时间：2-4 小时
+...
+Epoch 1/3: 100%|██████████| 75/75 [XX:XX<00:00, X.XXit/s]
+Epoch 2/3: 100%|██████████| 75/75 [XX:XX<00:00, X.XXit/s]
+Epoch 3/3: 100%|██████████| 75/75 [XX:XX<00:00, X.XXit/s]
+✓ 训练完成
+```
+
+### 注意事项
+
+1. **保持连接**：训练需要 2-4 小时，请保持 Colab 页面打开
+2. **GPU 类型**：建议使用 T4 或更好的 GPU（A100 最佳）
+3. **Drive 空间**：确保 Google Drive 有至少 5GB 可用空间
+4. **网络稳定**：首次运行会下载 Deepseek-7B 模型（约 14GB）
+
+### 故障排查
+
+#### 如果单元格 1 报错
+```python
+# 手动安装依赖
+!pip install --upgrade pip
+!pip install transformers==4.46.0 peft==0.13.0 triton==2.1.0 bitsandbytes==0.43.1 accelerate==1.0.0
+```
+
+#### 如果单元格 3 数据库查询失败
+- 检查数据库文件是否存在：`!ls -lh finance_analysis.db`
+- 检查数据库表结构：`!sqlite3 finance_analysis.db ".schema event_impacts"`
+
+#### 如果单元格 4 训练中断
+- 检查 GPU 状态：`!nvidia-smi`
+- 减小 batch_size：将 `--batch_size 4` 改为 `--batch_size 2`
+- 减小 max_length：将 `--max_length 512` 改为 `--max_length 256`
+
+### 训练完成后
+
+模型权重将保存在：
+- `/content/drive/MyDrive/Graduation_Project/qlora_output/`
+
+包含文件：
+- `adapter_model.bin` - LoRA 权重（约 50-100MB）
+- `adapter_config.json` - LoRA 配置
+- `training_info.json` - 训练信息
+
+可以使用单元格 6 测试模型效果，或使用单元格 7 备份到其他位置。
