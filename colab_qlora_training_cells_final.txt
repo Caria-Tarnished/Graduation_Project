@@ -21,25 +21,32 @@ drive.mount('/content/drive')
 %cd /content/drive/MyDrive/Graduation_Project
 
 # 🔧 关键修复：安装兼容的依赖版本
-print("安装依赖（修复 triton.ops 问题）...")
+print("安装依赖...")
 
-# 先卸载可能存在的旧版本
-!pip uninstall -y bitsandbytes triton -q
+# 策略：检查 Colab 默认环境，然后安装兼容的 bitsandbytes
+# 不强制指定 PyTorch 和 triton 版本，使用 Colab 默认版本
 
-# 关键修复：使用 Colab 可用的 triton 版本
-!pip install -q triton==2.2.0  # Colab 最低可用版本
+print("\n检查当前环境：")
+!python -c "import torch; print(f'PyTorch: {torch.__version__}')"
+!python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
+!python -c "import torch; print(f'CUDA version: {torch.version.cuda}')"
+
+# 先卸载可能存在的旧版本 bitsandbytes
+!pip uninstall -y bitsandbytes -q
+
+# 安装核心依赖（不指定 PyTorch 和 triton，使用 Colab 默认）
 !pip install -q transformers==4.46.0
 !pip install -q peft==0.13.0
 !pip install -q accelerate==1.0.0
 !pip install -q datasets==3.0.0
 !pip install -q trl==0.11.0
 
-# 最后安装 bitsandbytes（让它适配已安装的 triton）
-!pip install -q bitsandbytes==0.43.3  # 0.43.3 兼容 triton 2.2.0
+# 安装 bitsandbytes（让 pip 自动选择兼容版本）
+!pip install -q bitsandbytes
 
 print("\n✓ 环境准备完成")
-print("✓ 依赖版本：")
-!pip show bitsandbytes transformers peft triton | grep "Name:\|Version:"
+print("✓ 最终依赖版本：")
+!pip show bitsandbytes transformers peft torch | grep "Name:\|Version:"
 ```
 
 ---

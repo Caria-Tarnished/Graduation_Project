@@ -363,21 +363,27 @@ model = PeftModel.from_pretrained(model, "models/qlora/adapter")
 
 ## 9. 常见问题修复（2026-02-10 更新）
 
-### 问题 1：triton 版本不可用
+### 问题 1：依赖版本兼容
 
-**错误信息**：
-```
-ERROR: Could not find a version that satisfies the requirement triton==2.1.0
-```
+**问题**：PyTorch、triton、bitsandbytes 版本需要互相兼容
 
-**原因**：Colab 环境只提供 triton 2.2.0 及以上版本
+**Colab 环境说明**：
+- CUDA Driver Version: 12.4（nvidia-smi 显示）
+- PyTorch 版本：由 Colab 预装，通常是最新稳定版
+- triton 版本：由 PyTorch 依赖决定
 
 **解决方案**（已在 colab_qlora_training_cells_final.txt 中修复）：
 ```python
-# 使用 Colab 可用的最低版本
-!pip install -q triton==2.2.0
-!pip install -q bitsandbytes==0.43.3  # 兼容 triton 2.2.0
+# 策略：使用 Colab 默认的 PyTorch 和 triton，只安装兼容的 bitsandbytes
+!pip uninstall -y bitsandbytes -q
+!pip install -q bitsandbytes  # 让 pip 自动选择兼容版本
 ```
+
+**关键原则**：
+- ✅ 不强制指定 PyTorch 版本（使用 Colab 默认）
+- ✅ 不强制指定 triton 版本（由 PyTorch 决定）
+- ✅ 让 pip 自动解析 bitsandbytes 的兼容版本
+- ✅ 在单元格 1 中检查实际版本
 
 ### 问题 2：数据库列名错误
 
@@ -462,13 +468,25 @@ gcsfs 2025.3.0 requires fsspec==2025.3.0, but you have fsspec 2024.6.1
 
 **验证成功标志**：
 ```
+检查当前环境：
+PyTorch: 2.x.x+cuXXX
+CUDA available: True
+CUDA version: 12.4
+
 ✓ 环境准备完成
-✓ 依赖版本：
+✓ 最终依赖版本：
 Name: bitsandbytes
-Version: 0.43.3
-Name: triton
-Version: 2.2.0
+Version: 0.4x.x (由 pip 自动选择)
+Name: transformers
+Version: 4.46.0
+Name: torch
+Version: 2.x.x+cuXXX (Colab 默认)
 ```
+
+**重要说明**：
+- Colab 环境会定期更新，PyTorch 和 triton 版本可能变化
+- 我们的策略是适配 Colab 默认环境，而不是强制指定版本
+- 只要 bitsandbytes 能成功安装且支持 CUDA，就可以正常训练
 
 ### 如果仍然遇到问题
 
@@ -476,19 +494,32 @@ Version: 2.2.0
    - 点击"运行时" → "重启运行时"
    - 重新执行所有单元格
 
-2. **检查 GPU 可用性**
+2. **检查 GPU 和 CUDA**
    ```python
    !nvidia-smi
+   import torch
+   print(f"PyTorch: {torch.__version__}")
+   print(f"CUDA available: {torch.cuda.is_available()}")
+   print(f"CUDA version: {torch.version.cuda}")
    ```
 
-3. **手动安装依赖**
+3. **手动安装 bitsandbytes**
    ```python
-   !pip uninstall -y bitsandbytes triton -q
-   !pip install triton==2.2.0 -q
-   !pip install bitsandbytes==0.43.3 -q
+   !pip uninstall -y bitsandbytes -q
+   !pip install bitsandbytes -q
+   
+   # 验证安装
+   import bitsandbytes as bnb
+   print(f"bitsandbytes version: {bnb.__version__}")
    ```
 
-4. **使用模板数据训练**
+4. **检查 bitsandbytes CUDA 支持**
+   ```python
+   import bitsandbytes as bnb
+   print(f"CUDA setup: {bnb.cuda_setup.CUDASetup.get_instance()}")
+   ```
+
+5. **使用模板数据训练**
    - 如果数据库问题无法解决
    - 删除或重命名 `finance_analysis.db`
    - 脚本会自动使用模板数据（120条指令）
