@@ -97,6 +97,7 @@ reports/**
 finance.db
 *.db
 
+
 # Environment / secrets
 .env
 *.key

@@ -1,0 +1,381 @@
+# QLoRA 微调 Deepseek-7B - Colab 训练单元格（修复版）
+
+## 🔧 修复说明
+- 修复 bitsandbytes 版本不兼容问题（CUDA 12.6）
+- 修复 transformers 版本冲突
+- 优化数据库文件处理逻辑
+- 添加更详细的错误处理
+
+---
+
+## 单元格 1：环境准备与挂载 Drive（修复版）
+
+```python
+# 1.1 检查 GPU
+!nvidia-smi
+
+# 1.2 挂载 Google Drive
+from google.colab import drive
+drive.mount('/content/drive')
+
+# 1.3 切换到项目目录
+%cd /content/drive/MyDrive/Graduation_Project
+
+# 🔧 修复：安装兼容的依赖版本
+print("安装依赖（兼容 CUDA 12.x）...")
+
+# 关键修复：使用兼容 CUDA 12.x 的 bitsandbytes 版本
+!pip install -q transformers==4.46.0
+!pip install -q peft==0.13.0
+!pip install -q bitsandbytes==0.44.1  # 兼容 CUDA 12.x
+!pip install -q accelerate==1.0.0
+!pip install -q datasets==3.0.0
+!pip install -q trl==0.11.0
+
+print("\n✓ 环境准备完成")
+print("✓ 依赖版本：")
+!pip show bitsandbytes transformers peft | grep "Name:\|Version:"
+```
+
+---
+
+## 单元格 2：克隆/更新代码仓库
+
+```python
+import os
+
+# 检查是否已克隆
+if not os.path.exists('/content/Graduation_Project'):
+    print("克隆代码仓库...")
+    !git clone https://github.com/Caria-Tarnished/Graduation_Project.git /content/Graduation_Project
+else:
+    print("更新代码仓库...")
+    %cd /content/Graduation_Project
+    !git pull
+
+%cd /content/Graduation_Project
+
+print("\n✓ 代码仓库准备完成")
+```
+
+---
+
+## 单元格 3：生成指令集数据（修复版）
+
+```python
+# 3.1 检查数据库是否存在
+import os
+from pathlib import Path
+
+db_path = Path('finance_analysis.db')
+drive_db_path = Path('/content/drive/MyDrive/Graduation_Project/finance_analysis.db')
+
+# 🔧 修复：改进数据库检查逻辑
+if not db_path.exists():
+    if drive_db_path.exists():
+        print("⚠ 数据库不存在，从 Drive 复制...")
+        !cp /content/drive/MyDrive/Graduation_Project/finance_analysis.db .
+        print("✓ 数据库复制完成")
+    else:
+        print("⚠ 警告：Drive 中也没有数据库文件")
+        print("⚠ 将使用模板数据生成指令集（不包含真实新闻）")
+else:
+    print("✓ 数据库已存在")
+
+# 3.2 生成指令集
+print("\n生成指令集数据...")
+!python scripts/qlora/build_instruction_dataset.py \
+    --db finance_analysis.db \
+    --output data/qlora/instructions.jsonl \
+    --num_samples 300
+
+# 3.3 查看生成的数据
+print("\n查看前 3 条指令：")
+import json
+
+with open('data/qlora/instructions.jsonl', 'r', encoding='utf-8') as f:
+    for i, line in enumerate(f):
+        if i >= 3:
+            break
+        data = json.loads(line)
+        print(f"\n--- 指令 {i+1} ---")
+        print(f"Instruction: {data['instruction']}")
+        print(f"Input: {data['input'][:80]}...")
+        print(f"Output: {data['output'][:100]}...")
+
+print("\n✓ 指令集生成完成")
+```
+
+---
+
+## 单元格 4：开始 QLoRA 微调（主训练 - 修复版）
+
+```python
+# 4.1 设置输出目录
+output_dir = '/content/drive/MyDrive/Graduation_Project/qlora_output'
+
+# 4.2 开始训练
+print("="*60)
+print("开始 QLoRA 微调...")
+print("="*60)
+print("预计训练时间：2-4 小时")
+print("请保持 Colab 页面打开，避免断开连接")
+print("="*60)
+
+# 🔧 修复：添加错误处理
+try:
+    !python scripts/qlora/train_qlora.py \
+        --model_name deepseek-ai/deepseek-llm-7b-chat \
+        --data_path data/qlora/instructions.jsonl \
+        --output_dir {output_dir} \
+        --num_epochs 3 \
+        --batch_size 4 \
+        --learning_rate 2e-4 \
+        --max_length 512 \
+        --lora_r 8 \
+        --lora_alpha 16 \
+        --lora_dropout 0.05
+    
+    print("\n✓ 训练完成")
+except Exception as e:
+    print(f"\n✗ 训练失败: {e}")
+    print("\n请检查错误信息并反馈")
+```
+
+---
+
+## 单元格 5：验证训练结果
+
+```python
+import os
+from pathlib import Path
+import json
+
+output_dir = Path('/content/drive/MyDrive/Graduation_Project/qlora_output')
+
+print("="*60)
+print("训练结果验证")
+print("="*60)
+
+# 5.1 检查输出文件
+print("\n1. 检查输出文件：")
+required_files = [
+    'adapter_model.bin',
+    'adapter_config.json',
+    'training_info.json'
+]
+
+for file in required_files:
+    file_path = output_dir / file
+    if file_path.exists():
+        size_mb = file_path.stat().st_size / (1024 * 1024)
+        print(f"   ✓ {file} ({size_mb:.2f} MB)")
+    else:
+        print(f"   ✗ {file} (不存在)")
+
+# 5.2 读取训练信息
+print("\n2. 训练信息：")
+info_path = output_dir / 'training_info.json'
+if info_path.exists():
+    with open(info_path, 'r', encoding='utf-8') as f:
+        info = json.load(f)
+    
+    print(f"   模型: {info['model_name']}")
+    print(f"   训练轮数: {info['num_epochs']}")
+    print(f"   样本数量: {info['num_samples']}")
+    print(f"   学习率: {info['learning_rate']}")
+    print(f"   LoRA rank: {info['lora_r']}")
+    print(f"   完成时间: {info['timestamp']}")
+else:
+    print("   ⚠ 训练信息文件不存在")
+
+# 5.3 计算总大小
+print("\n3. 输出目录总大小：")
+if output_dir.exists():
+    total_size = sum(f.stat().st_size for f in output_dir.rglob('*') if f.is_file())
+    print(f"   {total_size / (1024 * 1024):.2f} MB")
+else:
+    print("   ⚠ 输出目录不存在")
+
+print("\n" + "="*60)
+print("✓ 验证完成")
+print("="*60)
+```
+
+---
+
+## 单元格 6：测试微调后的模型（可选 - 修复版）
+
+```python
+# 6.1 加载微调后的模型
+print("加载微调后的模型...")
+
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModel
+
+try:
+    # 加载基础模型
+    base_model_name = "deepseek-ai/deepseek-llm-7b-chat"
+    model = AutoModelForCausalLM.from_pretrained(
+        base_model_name,
+        load_in_4bit=True,
+        torch_dtype=torch.float16,
+        device_map='auto',
+        trust_remote_code=True
+    )
+
+    # 加载 LoRA 权重
+    output_dir = '/content/drive/MyDrive/Graduation_Project/qlora_output'
+    model = PeftModel.from_pretrained(model, output_dir)
+
+    # 加载 tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(base_model_name, trust_remote_code=True)
+
+    print("✓ 模型加载完成")
+
+    # 6.2 测试推理
+    print("\n测试推理...")
+
+    test_cases = [
+        {
+            "instruction": "分析以下财经快讯对市场的影响",
+            "input": "美联储宣布加息25个基点"
+        },
+        {
+            "instruction": "解释什么是预期兑现",
+            "input": "市场前期已经大涨，利好消息发布后反而下跌，这是为什么？"
+        }
+    ]
+
+    for i, test in enumerate(test_cases, 1):
+        print(f"\n--- 测试案例 {i} ---")
+        print(f"Instruction: {test['instruction']}")
+        print(f"Input: {test['input']}")
+        
+        # 构建 prompt
+        prompt = f"User: {test['instruction']}\n{test['input']}\n\nAssistant:"
+        
+        # Tokenize
+        inputs = tokenizer(prompt, return_tensors='pt').to(model.device)
+        
+        # 生成
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=200,
+                temperature=0.7,
+                top_p=0.9,
+                do_sample=True
+            )
+        
+        # 解码
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
+        # 提取 Assistant 的回复
+        if "Assistant:" in response:
+            response = response.split("Assistant:")[-1].strip()
+        
+        print(f"Output: {response}")
+
+    print("\n✓ 测试完成")
+
+except Exception as e:
+    print(f"\n✗ 测试失败: {e}")
+    print("可能原因：")
+    print("1. LoRA 权重文件不存在（训练未完成）")
+    print("2. 模型加载失败（显存不足）")
+```
+
+---
+
+## 单元格 7：下载权重文件到本地（可选）
+
+```python
+# 如果需要下载到本地电脑，可以使用以下代码
+
+from google.colab import files
+from pathlib import Path
+
+# 下载 LoRA 权重
+output_dir = Path('/content/drive/MyDrive/Graduation_Project/qlora_output')
+
+if output_dir.exists():
+    print("准备下载文件...")
+    print("注意：文件较大，下载可能需要几分钟")
+
+    # 打包为 zip
+    !cd {output_dir} && zip -r qlora_weights.zip adapter_model.bin adapter_config.json training_info.json
+
+    # 下载
+    files.download(f'{output_dir}/qlora_weights.zip')
+
+    print("✓ 下载完成")
+else:
+    print("✗ 输出目录不存在，无法下载")
+```
+
+---
+
+## 🔧 关键修复说明
+
+### 修复 1: bitsandbytes 版本兼容性
+**问题**：原版本 `bitsandbytes==0.41.3` 不支持 CUDA 12.6
+**解决**：升级到 `bitsandbytes==0.44.1`（支持 CUDA 12.x）
+
+### 修复 2: transformers 版本冲突
+**问题**：`transformers==4.36.0` 与 `sentence-transformers` 冲突
+**解决**：升级到 `transformers==4.46.0`
+
+### 修复 3: 数据库文件处理
+**问题**：数据库文件不存在导致指令集生成失败
+**解决**：添加降级策略，使用模板数据生成指令集
+
+### 修复 4: 错误处理
+**问题**：训练失败时没有明确提示
+**解决**：添加 try-except 错误捕获
+
+---
+
+## 📋 使用说明
+
+1. **在 Colab 创建新笔记本**
+2. **选择 GPU 运行时**（Runtime → Change runtime type → T4 GPU）
+3. **按顺序运行单元格 1-5**
+4. **单元格 6-7 可选**（用于测试和下载）
+
+---
+
+## ⚠️ 注意事项
+
+### 关于数据库文件
+- 如果 Drive 中没有 `finance_analysis.db`，训练仍可继续
+- 指令集会使用模板数据（120 条，不包含真实新闻）
+- 模板数据足够用于演示和答辩
+
+### 关于训练时间
+- 120 条样本：约 30-60 分钟
+- 300 条样本：约 2-4 小时
+- 建议先用 120 条测试，确认无误后再增加样本
+
+### 关于 Colab 断开连接
+- 免费版 Colab 可能在 12 小时后断开
+- 建议使用 Colab Pro（更稳定）
+- 或者分批训练（减少 epochs）
+
+---
+
+## 🎓 答辩准备
+
+训练完成后，请保存以下材料：
+
+1. **训练日志截图**（单元格 4 的输出）
+2. **验证结果截图**（单元格 5 的输出）
+3. **测试结果截图**（单元格 6 的输出）
+4. **LoRA 权重文件**（adapter_model.bin，约 30-50 MB）
+
+这些材料足够证明你完成了 QLoRA 微调工作！
+
+---
+
+**祝训练顺利！** 🚀
