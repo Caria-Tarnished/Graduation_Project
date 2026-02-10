@@ -63,11 +63,17 @@ if not os.path.exists('/content/Graduation_Project'):
 else:
     print("更新代码仓库...")
     %cd /content/Graduation_Project
-    !git pull
+    
+    # 处理本地修改：保存本地生成的文件，然后强制更新
+    !git stash  # 暂存本地修改
+    !git pull   # 拉取最新代码
+    # 注意：git stash 会保存 instructions.jsonl，但我们会在单元格 3 重新生成
 
 %cd /content/Graduation_Project
 
 print("\n✓ 代码仓库准备完成")
+print("当前分支和最新提交：")
+!git log -1 --oneline
 ```
 
 ---
