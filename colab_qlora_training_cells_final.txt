@@ -170,15 +170,26 @@ print("="*60)
 
 output_dir = Path('/content/drive/MyDrive/Graduation_Project/qlora_output')
 
-# 1. 检查输出文件
-print("\n1. 检查输出文件：")
-files_to_check = [
-    'adapter_model.bin',
+# 1. 列出所有文件
+print("\n1. 输出目录中的所有文件：")
+if output_dir.exists():
+    for file in sorted(output_dir.rglob('*')):
+        if file.is_file():
+            size = file.stat().st_size / (1024 * 1024)  # MB
+            print(f"   {file.relative_to(output_dir)}: {size:.2f} MB")
+else:
+    print("   ⚠ 输出目录不存在")
+
+# 2. 检查关键文件（兼容新旧格式）
+print("\n2. 检查关键文件：")
+key_files = [
+    'adapter_model.bin',           # 旧格式
+    'adapter_model.safetensors',   # 新格式
     'adapter_config.json',
     'training_info.json'
 ]
 
-for file in files_to_check:
+for file in key_files:
     file_path = output_dir / file
     if file_path.exists():
         size = file_path.stat().st_size / (1024 * 1024)  # MB
@@ -186,8 +197,8 @@ for file in files_to_check:
     else:
         print(f"   ✗ {file} (不存在)")
 
-# 2. 查看训练信息
-print("\n2. 训练信息：")
+# 3. 查看训练信息
+print("\n3. 训练信息：")
 training_info_path = output_dir / 'training_info.json'
 if training_info_path.exists():
     import json
@@ -197,11 +208,12 @@ if training_info_path.exists():
     print(f"   - 学习率: {info.get('learning_rate', 'N/A')}")
     print(f"   - 批次大小: {info.get('batch_size', 'N/A')}")
     print(f"   - 训练样本数: {info.get('num_samples', 'N/A')}")
+    print(f"   - 最终 Loss: {info.get('final_loss', 'N/A')}")
 else:
     print("   ⚠ 训练信息文件不存在")
 
-# 3. 计算总大小
-print("\n3. 输出目录总大小：")
+# 4. 计算总大小
+print("\n4. 输出目录总大小：")
 if output_dir.exists():
     total_size = sum(f.stat().st_size for f in output_dir.rglob('*') if f.is_file())
     print(f"   {total_size / (1024 * 1024):.2f} MB")
