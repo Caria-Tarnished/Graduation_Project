@@ -76,6 +76,12 @@ def get_market_context(
         
         if len(rows) < 2:
             # 数据不足，无法计算指标
+            # 打印调试信息
+            print(f"[DEBUG] get_market_context 失败:")
+            print(f"  ticker={ticker}, event_time={event_time}")
+            print(f"  window_start={window_start}, window_end={event_time}")
+            print(f"  查询到的行数: {len(rows)}")
+            print(f"  原因: 数据不足（需要至少2行数据）")
             return None
         
         # 提取价格数据
@@ -126,7 +132,11 @@ def get_market_context(
         )
     
     except Exception as e:
-        print(f"获取市场上下文失败: {e}")
+        print(f"[DEBUG] get_market_context 异常:")
+        print(f"  ticker={ticker}, event_time={event_time}")
+        print(f"  错误: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -157,17 +167,50 @@ def analyze_sentiment(
         )
     
     try:
-        # 1. 调用情感分析引擎（使用 analyze 方法）
-        result = sentiment_engine.analyze(news_text, context)
+        # 1. 从 context 提取参数（如果 context 为 None，使用默认值）
+        if context is not None:
+            pre_ret = context.pre_ret
+            range_ratio = context.volatility
+        else:
+            pre_ret = 0.0
+            range_ratio = 0.0
         
-        # 2. 转换为 SentimentResult
-        sentiment = SentimentResult(
-            label=result['label'],
-            score=result['score'],
-            explain=result.get('explain', '')
+        # 2. 调用情感分析引擎（使用 analyze 方法）
+        result = sentiment_engine.analyze(
+            text=news_text,
+            pre_ret=pre_ret,
+            range_ratio=range_ratio
         )
         
-        # 3. 如果有规则引擎，进行后处理
+        # 3. 将 final_sentiment 映射为 label（-1/0/1）
+        sentiment_map = {
+            "bearish": -1,
+            "bearish_priced_in": -1,
+            "neutral": 0,
+            "watch": 0,
+            "bullish": 1,
+            "bullish_priced_in": 1
+        }
+        
+        final_sentiment = result.get('final_sentiment', 'neutral')
+        label = sentiment_map.get(final_sentiment, 0)
+        score = result.get('base_confidence', 0.5)
+        
+        # 4. 构建解释文本
+        explanation = result.get('explanation', '')
+        recommendation = result.get('recommendation', '')
+        if recommendation:
+            explanation = f"{explanation}\n{recommendation}"
+        
+        # 5. 转换为 SentimentResult
+        sentiment = SentimentResult(
+            label=label,
+            score=score,
+            explain=explanation
+        )
+        
+        # 6. 如果有规则引擎，进行后处理（注意：规则引擎已经在 sentiment_engine 中应用了）
+        # 这里保留接口以备将来使用
         if rule_engine is not None:
             from app.core.dto import NewsItem
             news_item = NewsItem(

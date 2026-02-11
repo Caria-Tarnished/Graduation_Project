@@ -168,7 +168,13 @@ def main():
                                 col1, col2, col3 = st.columns(3)
                                 
                                 with col1:
-                                    st.metric("页码", citation.page_idx + 1)
+                                    # 兼容两种 Citation 结构
+                                    if hasattr(citation, 'page_idx'):
+                                        st.metric("页码", citation.page_idx + 1)
+                                    elif hasattr(citation, 'chunk_index'):
+                                        st.metric("切片索引", citation.chunk_index)
+                                    else:
+                                        st.metric("索引", "N/A")
                                 
                                 with col2:
                                     st.metric("相似度", f"{citation.score:.2%}")
@@ -177,7 +183,7 @@ def main():
                                     st.metric("来源", citation.source_file.split('/')[-1])
                                 
                                 # 显示额外元数据
-                                if citation.metadata:
+                                if hasattr(citation, 'metadata') and citation.metadata:
                                     st.json(citation.metadata)
                 else:
                     st.warning("未找到相关内容")

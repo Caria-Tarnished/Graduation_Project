@@ -87,7 +87,8 @@ class Agent:
         self,
         user_query: str,
         ticker: str = "XAUUSD",
-        query_type: Optional[str] = None
+        query_type: Optional[str] = None,
+        event_time: Optional[datetime] = None
     ) -> AgentAnswer:
         """
         处理用户查询
@@ -96,6 +97,7 @@ class Agent:
             user_query: 用户查询文本
             ticker: 标的代码（默认 XAUUSD）
             query_type: 查询类型（"news_analysis" 或 "report_qa"，None 则自动判断）
+            event_time: 事件时间（用于获取市场上下文，默认使用当前时间）
         
         Returns:
             AgentAnswer 对象
@@ -125,7 +127,7 @@ class Agent:
         # 2. 根据查询类型调用不同的处理流程
         if query_type == "news_analysis":
             result = self._process_news_analysis(
-                user_query, ticker, tool_trace, warnings
+                user_query, ticker, tool_trace, warnings, event_time
             )
         elif query_type == "report_qa":
             result = self._process_report_qa(
@@ -181,7 +183,8 @@ class Agent:
         news_text: str,
         ticker: str,
         tool_trace: list,
-        warnings: list
+        warnings: list,
+        event_time: Optional[datetime] = None
     ) -> AgentAnswer:
         """
         处理快讯分析查询
@@ -191,10 +194,15 @@ class Agent:
             ticker: 标的代码
             tool_trace: 工具追踪列表
             warnings: 警告列表
+            event_time: 事件时间（用于获取市场上下文，默认使用当前时间）
         
         Returns:
             AgentAnswer 对象
         """
+        # 使用事件时间或当前时间
+        if event_time is None:
+            event_time = datetime.now()
+        
         # 步骤 1: 获取市场上下文（带缓存）
         start = time.time()
         
@@ -202,7 +210,7 @@ class Agent:
         context = None
         cache_hit = False
         if self.enable_cache and self.market_context_cache is not None:
-            cache_key = (ticker, datetime.now().strftime('%Y-%m-%d %H:%M'), 120)
+            cache_key = (ticker, event_time.strftime('%Y-%m-%d %H:%M'), 120)
             context = self.market_context_cache.get(cache_key)
             if context is not None:
                 cache_hit = True
@@ -211,13 +219,13 @@ class Agent:
         if context is None:
             context = get_market_context(
                 ticker=ticker,
-                event_time=datetime.now(),
+                event_time=event_time,  # 使用事件时间
                 window_minutes=120,
                 db_path=self.db_path
             )
             # 存入缓存
             if self.enable_cache and self.market_context_cache is not None and context is not None:
-                cache_key = (ticker, datetime.now().strftime('%Y-%m-%d %H:%M'), 120)
+                cache_key = (ticker, event_time.strftime('%Y-%m-%d %H:%M'), 120)
                 self.market_context_cache.set(cache_key, context)
         
         elapsed_ms = int((time.time() - start) * 1000)
