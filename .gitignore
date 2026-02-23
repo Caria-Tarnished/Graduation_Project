@@ -83,7 +83,7 @@ data/reports/chroma_db/**
 #   3. AI 读取并分析 reports/ 中的文件
 #   4. 分析完成后，重新注释反选规则（加上 # 号）
 #   5. 提交代码时 reports/ 内容不会被提交
-reports/**
+
 # !reports/.gitkeep
 # !reports/**/
 # !reports/**/eval_results.json
@@ -92,6 +92,14 @@ reports/**
 # !reports/**/pred*.csv
 # !reports/**/best/
 # !reports/**/best/config.json
+# 临时放行：仅用于代码阅读与分析（完成后可重新注释）
+reports/**
+# !reports/
+# !reports/**/
+# !reports/scripts/**/
+# !reports/scripts/crawlers/**/
+# !reports/scripts/crawlers/jin10_dynamic.py
+# !reports/scripts/crawlers/jin10_flash_api.py
 
 # Database files
 finance.db
