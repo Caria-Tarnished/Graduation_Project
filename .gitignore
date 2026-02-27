@@ -139,3 +139,5 @@ archive/
 参考代码和文档/
 bert_xauusd_multilabel_6cls/
 WORKFLOW_REPORTS.md
+Benchmark/
+scripts/qlora_output/
