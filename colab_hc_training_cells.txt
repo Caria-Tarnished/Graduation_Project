@@ -1,0 +1,147 @@
+# ============================================================
+# HC 高置信度过滤版本 Colab 训练脚本（已修复路径问题）
+# 每个 ###CELL### 标注为一个独立的 Colab 单元格
+# ============================================================
+
+###CELL### 1 ：挂载 Drive + 克隆/更新仓库 + 安装依赖
+# ============================================================
+from google.colab import drive
+import os
+
+drive.mount('/content/drive')
+
+# 克隆或更新仓库（路径固定为 /content/Graduation_Project）
+REPO_DIR = '/content/Graduation_Project'
+if not os.path.exists(REPO_DIR):
+    !git clone https://github.com/Caria-Tarnished/Graduation_Project.git {REPO_DIR}
+else:
+    !cd {REPO_DIR} && git pull
+
+# 切换工作目录到项目根目录（必须，后续脚本都依赖相对路径）
+os.chdir(REPO_DIR)
+print("当前目录:", os.getcwd())
+
+!pip install -U transformers datasets evaluate accelerate -q
+
+
+###CELL### 2 ：验证 HC 数据集（Drive 上已上传）
+# ============================================================
+import pandas as pd
+
+HC_DIR = '/content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/hc'
+
+print("=== HC 数据集验证 ===")
+all_ok = True
+for split in ['train', 'val', 'test']:
+    path = f'{HC_DIR}/{split}_hc_3cls.csv'
+    if os.path.exists(path):
+        df = pd.read_csv(path, encoding='utf-8')
+        dist = df['label'].value_counts().sort_index().to_dict()
+        cols = df.columns.tolist()
+        print(f"  ✓ {split}: {len(df)} 样本, 标签分布: {dist}")
+        print(f"    列名: {cols[:8]}{'...' if len(cols)>8 else ''}")
+    else:
+        print(f"  ✗ {path} 不存在，请确认已上传到 Drive")
+        all_ok = False
+
+if not all_ok:
+    raise FileNotFoundError("部分数据文件缺失，请先上传再运行后续单元格")
+
+# 检查文本列名
+df_check = pd.read_csv(f'{HC_DIR}/train_hc_3cls.csv', encoding='utf-8', nrows=2)
+TEXT_COL = 'text_enhanced' if 'text_enhanced' in df_check.columns else 'text'
+print(f"\n将使用文本列: {TEXT_COL}")
+
+
+###CELL### 3 ：训练（HC 数据集）
+# ============================================================
+# 注意：此单元格运行需要 GPU，预计约 1~1.5 小时
+# Runtime → Change runtime type → GPU (T4 或更高)
+import torch
+
+has_gpu = torch.cuda.is_available()
+device_name = torch.cuda.get_device_name(0) if has_gpu else 'CPU'
+print(f"运行设备: {device_name}")
+if not has_gpu:
+    print("!! 警告: 未检测到 GPU，训练速度将非常慢，建议切换到 GPU 运行时")
+
+HC_DIR  = '/content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/hc'
+HC_EXP  = '/content/drive/MyDrive/Graduation_Project/experiments/bert_3cls_hc_v1'
+TEXT_COL = 'text_enhanced'  # 如果单元格2提示用 'text' 则改为 text
+
+os.makedirs(HC_EXP, exist_ok=True)
+
+!python reports/scripts/modeling/bert_finetune_cls.py \
+  --train_csv {HC_DIR}/train_hc_3cls.csv \
+  --val_csv   {HC_DIR}/val_hc_3cls.csv \
+  --test_csv  {HC_DIR}/test_hc_3cls.csv \
+  --output_dir {HC_EXP} \
+  --label_col label \
+  --text_col {TEXT_COL} \
+  --model_name hfl/chinese-roberta-wwm-ext \
+  --class_weight auto \
+  --epochs 5 \
+  --lr 2e-5 \
+  --max_length 256 \
+  --train_bs 16 \
+  --eval_bs 32 \
+  --gradient_accumulation_steps 2 \
+  --warmup_steps 80 \
+  --weight_decay 0.01 \
+  --eval_steps 80 \
+  --save_steps 80 \
+  --early_stopping_patience 3 \
+  --disable_tqdm
+
+
+###CELL### 4 ：查看训练结果（训练完成后才运行此单元格）
+# ============================================================
+import json, pandas as pd
+
+HC_EXP = '/content/drive/MyDrive/Graduation_Project/experiments/bert_3cls_hc_v1'
+metrics_path = f'{HC_EXP}/metrics_test.json'
+
+if not os.path.exists(metrics_path):
+    print(f"!! 结果文件不存在: {metrics_path}")
+    print("请确认单元格3已成功完成训练后再运行此单元格")
+else:
+    with open(metrics_path, 'r', encoding='utf-8') as f:
+        m = json.load(f)
+    print("=== HC 版本训练结果 ===")
+    print(f"  Accuracy : {m['eval_accuracy']:.4f}")
+    print(f"  Macro F1 : {m['eval_macro_f1']:.4f}")
+
+    pred_df = pd.read_csv(f'{HC_EXP}/pred_test.csv', encoding='utf-8')
+    print("\n各类别预测准确率:")
+    for l, lname in [(-1, 'Bearish'), (0, 'Neutral'), (1, 'Bullish')]:
+        sub = pred_df[pred_df['label'] == l]
+        if len(sub) > 0:
+            acc = (sub['label'] == sub['pred']).mean()
+            print(f"  {lname}: {acc:.4f} (测试集 n={len(sub)})")
+
+
+###CELL### 5 ：与原版结果对比（需要两个模型均已训练完成）
+# ============================================================
+import json
+
+ORIG_EXP = '/content/drive/MyDrive/Graduation_Project/experiments/bert_3cls_enhanced_v1'
+HC_EXP   = '/content/drive/MyDrive/Graduation_Project/experiments/bert_3cls_hc_v1'
+
+print("=" * 55)
+print("模型对比：原始标注 vs. 高置信度过滤")
+print("=" * 55)
+print(f"{'':20} {'Accuracy':>10} {'Macro F1':>10}")
+print("-" * 55)
+
+for name, exp_dir in [('原始 3类 (15min窗口)', ORIG_EXP), ('HC 过滤 (高置信度)', HC_EXP)]:
+    path = f'{exp_dir}/metrics_test.json'
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            m = json.load(f)
+        print(f"{name:20} {m['eval_accuracy']:>10.4f} {m['eval_macro_f1']:>10.4f}")
+    else:
+        print(f"{name:20} {'N/A':>10} {'N/A':>10}  (结果文件不存在)")
+
+print("-" * 55)
+print("\n保存原始结果 (用于论文消融表格):")
+print("  原始版本 Macro F1 = 0.3770  (已知)")

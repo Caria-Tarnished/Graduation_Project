@@ -1,0 +1,122 @@
+[
+  {
+    "id": "Q1",
+    "type": "fact",
+    "query": "高盛对 2026 年金价的预测是多少？",
+    "metadata_filter": {"source": "Goldman Sachs"}
+  },
+  {
+    "id": "Q2",
+    "type": "fact",
+    "query": "美联储2024年的降息预期是多少次？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q3",
+    "type": "fact",
+    "query": "2024年第一季度全球央行黄金储备增加了多少？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q4",
+    "type": "fact",
+    "query": "中国央行连续多少个月增持黄金？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q5",
+    "type": "fact",
+    "query": "花旗银行对白银价格的具体目标价是多少？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q6",
+    "type": "fact",
+    "query": "2023年黄金的实物需求占比是多少？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q7",
+    "type": "fact",
+    "query": "瑞银在最新研报中建议超配哪些资产？",
+    "metadata_filter": {"source": "UBS"}
+  },
+  {
+    "id": "Q8",
+    "type": "fact",
+    "query": "摩根大通认为美国经济软着陆的概率是多少？",
+    "metadata_filter": {"source": "J.P. Morgan"}
+  },
+  {
+    "id": "Q9",
+    "type": "analysis",
+    "query": "影响黄金价格的主要因素有哪些？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q10",
+    "type": "analysis",
+    "query": "地缘政治冲突是如何影响贵金属市场的？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q11",
+    "type": "analysis",
+    "query": "美债收益率走势对非孳息资产的影响机制是什么？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q12",
+    "type": "analysis",
+    "query": "为什么通货膨胀预期上升通常利好黄金？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q13",
+    "type": "analysis",
+    "query": "全球大选年对金本位资产的避险需求有何提振作用？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q14",
+    "type": "analysis",
+    "query": "当前金银比（Gold/Silver Ratio）的合理区间及投资启示是什么？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q15",
+    "type": "comparison",
+    "query": "黄金和白银的走势有什么区别？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q16",
+    "type": "comparison",
+    "query": "现阶段投资黄金 ETF 和投资实物黄金各有什么优劣势？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q17",
+    "type": "comparison",
+    "query": "相比于2011年的高点，当前的黄金牛市有哪些不同的驱动因素？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q18",
+    "type": "comparison",
+    "query": "对于抗通胀需求，黄金和比特币的避险属性有什么差异？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q19",
+    "type": "prediction",
+    "query": "未来一个月金价走势如何？",
+    "metadata_filter": {}
+  },
+  {
+    "id": "Q20",
+    "type": "prediction",
+    "query": "在降息周期下，贵金属板块的整体投资建议是什么？",
+    "metadata_filter": {}
+  }
+]

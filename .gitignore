@@ -129,7 +129,7 @@ temp/
 node_modules/
 
 # Local docs (Chinese)
-文字材料文档/
+#文字材料文档/
 html.txt
 .pw_jin10
 .pw_jin10_calendar
@@ -141,3 +141,20 @@ bert_xauusd_multilabel_6cls/
 WORKFLOW_REPORTS.md
 Benchmark/
 scripts/qlora_output/
+
+# ---- 论文资产 (Thesis Assets) ----
+# 图表和 Mermaid 图：推送（文本/小图，供论文使用）
+# UI 截图：不推送（体积大且每次运行不一样）
+thesis_assets/screenshots/
+
+# ---- 高置信度过滤后的数据集：推送（供 Colab 训练）----
+!data/processed/train_hc_3cls.csv
+!data/processed/val_hc_3cls.csv
+!data/processed/test_hc_3cls.csv
+
+# ---- RAG 消融实验基准库（体积小，推送）----
+# chroma_db_baseline 体积约 168KB，保留追踪
+
+# ---- 备份文件夹：不推送 ----
+.bak/
+*.bak
