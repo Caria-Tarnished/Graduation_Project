@@ -94,12 +94,14 @@ data/reports/chroma_db/**
 # !reports/**/best/config.json
 # 临时放行：仅用于代码阅读与分析（完成后可重新注释）
 reports/**
-# !reports/
-# !reports/**/
-# !reports/scripts/**/
-# !reports/scripts/crawlers/**/
-# !reports/scripts/crawlers/jin10_dynamic.py
-# !reports/scripts/crawlers/jin10_flash_api.py
+# ---- 放行 reports/scripts/ 训练脚本（不含输出产物）----
+!reports/scripts/
+!reports/scripts/modeling/
+!reports/scripts/modeling/*.py
+!reports/scripts/rag/
+!reports/scripts/rag/*.py
+!reports/scripts/crawlers/
+!reports/scripts/crawlers/*.py
 
 # Database files
 finance.db
@@ -129,7 +131,7 @@ temp/
 node_modules/
 
 # Local docs (Chinese)
-#文字材料文档/
+文字材料文档/
 html.txt
 .pw_jin10
 .pw_jin10_calendar
