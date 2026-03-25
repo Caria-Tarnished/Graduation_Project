@@ -25,10 +25,11 @@ DATA_DIR = os.path.join(BASE_DIR, "data", "processed")
 RET_COL = "ret_post"
 
 # ─── 1. 加载三个分割 ───────────────────────────────────────────────
-print("加载原始数据集...")
-df_train = pd.read_csv(os.path.join(DATA_DIR, "train_3cls.csv"), encoding="utf-8", on_bad_lines="skip")
-df_val   = pd.read_csv(os.path.join(DATA_DIR, "val_3cls.csv"),   encoding="utf-8", on_bad_lines="skip")
-df_test  = pd.read_csv(os.path.join(DATA_DIR, "test_3cls.csv"),  encoding="utf-8", on_bad_lines="skip")
+print("加载原始数据集（enhanced版本，含 text_enhanced 列）...")
+# ⚠ 必须从 enhanced 版本读取，确保 text_enhanced 列存在（Colab 训练依赖该列）
+df_train = pd.read_csv(os.path.join(DATA_DIR, "train_enhanced_3cls.csv"), encoding="utf-8", on_bad_lines="skip")
+df_val   = pd.read_csv(os.path.join(DATA_DIR, "val_enhanced_3cls.csv"),   encoding="utf-8", on_bad_lines="skip")
+df_test  = pd.read_csv(os.path.join(DATA_DIR, "test_enhanced_3cls.csv"),  encoding="utf-8", on_bad_lines="skip")
 
 print(f"原始训练集: {len(df_train)} | 验证集: {len(df_val)} | 测试集: {len(df_test)}")
 
