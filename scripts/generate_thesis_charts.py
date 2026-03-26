@@ -73,13 +73,32 @@ def generate_charts():
     sns.heatmap(cm_df, annot=True, fmt='d', cmap='Blues', 
                 xticklabels=['利空(-1)', '中立(0)', '利多(1)'], 
                 yticklabels=['利空(-1)', '中立(0)', '利多(1)'])
-    plt.title('BERT模型测试集预测混淆矩阵')
+    plt.title('BERT模型测试集预测混淆矩阵 (Baseline 15min)')
     plt.xlabel('预测标签')
     plt.ylabel('真实标签')
     plt.savefig(os.path.join(OUTPUT_DIR, 'confusion_matrix.png'), dpi=300, bbox_inches='tight')
     plt.close()
-    print("已生成混淆矩阵热力图")
+    print("已生成 Baseline 混淆矩阵热力图")
     
+    # 3. W30 预测混淆矩阵图表
+    W30_PRED_CSV = os.path.join(BASE_DIR, "reports", "bert_3cls_w30_v1", "pred_test.csv")
+    if os.path.exists(W30_PRED_CSV):
+        print(f"读取 W30 预测数据: {W30_PRED_CSV}...")
+        df_pred_w30 = pd.read_csv(W30_PRED_CSV, encoding='utf-8')
+        cm_w30 = pd.crosstab(df_pred_w30['label'], df_pred_w30['pred'], dropna=False)
+        cm_w30 = cm_w30.reindex(index=labels_order, columns=labels_order, fill_value=0)
+        
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm_w30, annot=True, fmt='d', cmap='Purples', 
+                    xticklabels=['利空(-1)', '中立(0)', '利多(1)'], 
+                    yticklabels=['利空(-1)', '中立(0)', '利多(1)'])
+        plt.title('BERT模型测试集预测混淆矩阵 (Ours 30min)')
+        plt.xlabel('预测标签')
+        plt.ylabel('真实标签')
+        plt.savefig(os.path.join(OUTPUT_DIR, 'confusion_matrix_w30.png'), dpi=300, bbox_inches='tight')
+        plt.close()
+        print("已生成 W30 混淆矩阵热力图")
+
     print(f"所有图表均已成功保存至: {OUTPUT_DIR}")
 
 if __name__ == "__main__":
