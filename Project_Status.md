@@ -3,8 +3,6 @@
 更新时间：2026-02-11
 负责人：Caria-Tarnished
 
----
-
 ## 1) 概览
 
 - 目标：财经快讯情感分类（代理标注验证）+ 财报 RAG（后续里程碑）+ Streamlit UI。
@@ -696,6 +694,60 @@
 
 ## 5) 变更记录（Changelog）
 
+2026-03-26（论文资产生成阶段）
+
+- **论文图表与可视化资产生成完成**（`thesis_assets/` 目录）：
+
+  - **第六章图表**：
+    - `source_distribution.png`：数据集来源分布（flash 96.9% / calendar 3.1%，符合真实采集比例，论文中需补充说明）
+    - `label_distribution.png`：训练集标签分布（Bearish 30% / Neutral 40% / Bullish 30%，均衡设计）
+    - `confusion_matrix.png`：Engine A（BERT 3类）混淆矩阵
+    - `system_latency_optimization.png`：系统多层级性能优化对比
+    - `system_cache_hit_ratios.png`：三层缓存命中率（顶层90% / 中层60% / 底层37.5%）
+    - `rag_ablation_accuracy/recall/latency.png`：RAG消融实验三图（当前为统计模拟数据）
+  - **第四、五章 Mermaid 逻辑图**（`thesis_assets/diagrams/mermaid_diagrams.md`）：
+    - 系统总体架构图、Engine A 代理标注+推理流程、Engine B RAG清洗流水线、Agent编排时序图、核心数据库E-R图
+    - 修复了第2、3节 `subgraph` 中的冒号语法、多源合并 `&` 语法、E-R图 `PK,FK` 同时标注等 Mermaid v8.8 不兼容问题
+    - 建议在 [mermaid.live](https://mermaid.live) 选择 v9+ 渲染导出
+  - **UI 截图**（已忽略，不入 Git）：`thesis_assets/screenshots/`
+- **数据集质量深度分析**：
+
+  - 发现 `train_3cls.csv` 中 46.2% 的训练样本在事件后15分钟内价格变动极小（|ret| < 0.05%），是代理标注本身的固有噪声，并非数据采集问题
+  - 时间对齐（`delta_event_sec`）本身正常，均值 0.014 秒，最大偏差 60 秒
+  - 缓存命中率中"市场上下文缓存 37.5%"属于正常设计，因该层缓存的键为事件+时间戳，每次查询通常唯一；顶层查询结果缓存命中率高达 90%才是主要优化指标
+- **高置信度(HC)过滤实验**（方案三，消融研究）：
+
+  - 过滤策略：利空 < q15 / 利多 > q85 / 中立 |ret| < q25_abs，保留约 55% 样本
+  - 标注纯度改善：利空均值 -0.00126 → -0.00189（+50%）；利多均值 +0.00122 → +0.00177（+45%）；中立标准差 0.000236 → 0.000141（-40%）
+  - HC 模型训练结果（bert_3cls_hc_v1，T4 GPU，early stopped at epoch 2.89 / 5）：
+    - 验证集最佳 Macro F1: **0.4125**（best val checkpoint，epoch 1.81）
+    - 测试集 Macro F1: **0.3483**（低于原始 0.3770）
+  - 逐类别分析：
+    - 利空 F1: 0.3190 → 0.3875 (+6.8%)
+    - 中立 F1: 0.3961 → 0.4530 (+5.7%)
+    - 利多 F1: **0.4159 → 0.2046 (-21.1%)** ← 主要拖累项
+  - 根本原因：HC 过滤仅保留"极端利多"训练，但测试集包含全部利多样本（含温和信号），引发训练集与测试集的分布偏移，利多 Recall 从 0.42 骤降至 0.15(或许也可以考虑对测试机也进行过滤)
+  - **论文写法**：作为"数据标注策略消融实验"写入第六章，说明过滤提升了部分类别纯度但引入了分布偏移，为后续改进方向（方案一：30分钟窗口）提供了依据
+  - 相关文件：`scripts/filter_high_confidence.py`、`scripts/visualize_hc_filter.py`、`data/processed/*_hc_3cls.csv`、`Colab/colab_hc_training_cells.txt`
+- **结果同步工具验证**：`reports/scripts/tools/sync_results.py` 成功从 Google Drive for Desktop 同步 `bert_3cls_hc_v1` 实验结果 6 个文件至本地 `reports/bert_3cls_hc_v1/`
+
+  ```powershell
+  # 同步命令（每次训练完成后运行）
+  python reports\scripts\tools\sync_results.py `
+    --src_root "G:\我的云端硬盘\Graduation_Project\experiments" `
+    --dst_root "E:\Projects\Graduation_Project\reports" `
+    --verbose
+  ```
+- **代码目录调整**：
+
+  - 所有 Colab 训练单元格 txt 文件统一放入 `Colab/` 目录
+  - `.gitignore` 新增：`thesis_assets/screenshots/` 忽略、`*.bak` 忽略、`reports/scripts/` 脚本放行
+  - 新增分析脚本：`scripts/analyze_dataset_quality.py`、`scripts/filter_high_confidence.py`、`scripts/visualize_hc_filter.py`
+- **下一步计划**：
+
+  - 方案一：使用 `window_min=30` 的数据库记录重新生成训练集（`prepare_3cls_dataset.py --window_post 30`），在 Colab 重训 BERT
+  - 将方案一结果与原始 15min 结果、HC 结果三者并列作为第六章"标注优化消融实验"
+  - 论文截止日期：2026-04-01
 - 2026-02-11（中午 - 文档整合）
 
   - **项目文档整合完成**：
@@ -2250,7 +2302,7 @@ class QLoRAClient:
             base_model_name, 
             trust_remote_code=True
         )
-    
+  
         base_model = AutoModelForCausalLM.from_pretrained(
             base_model_name,
             device_map="auto",
@@ -2258,7 +2310,7 @@ class QLoRAClient:
             torch_dtype=torch.float16,
             low_cpu_mem_usage=True
         )
-    
+  
         self.model = PeftModel.from_pretrained(base_model, adapter_path)
         self.model.eval()
   
@@ -2269,7 +2321,7 @@ class QLoRAClient:
     ) -> str:
         """生成文本"""
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
-    
+  
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
@@ -2279,13 +2331,13 @@ class QLoRAClient:
                 do_sample=True,
                 pad_token_id=self.tokenizer.eos_token_id
             )
-    
+  
         response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-    
+  
         # 提取 Output 部分
         if "Output:" in response:
             response = response.split("Output:")[-1].strip()
-    
+  
         return response
 ```
 
