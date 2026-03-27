@@ -37,7 +37,7 @@ if not all_exist:
     print("数据集不存在，开始生成...")
     
     # 步骤 1：生成 3 类标签数据集
-    !python scripts/modeling/prepare_3cls_dataset.py \
+    !python reports/scripts/modeling/prepare_3cls_dataset.py \
         --db finance_analysis.db \
         --ticker XAUUSD \
         --window_post 15 \
@@ -45,7 +45,7 @@ if not all_exist:
         --out_dir data/processed
     
     # 步骤 2：添加输入增强（市场上下文前缀）
-    !python scripts/modeling/build_enhanced_dataset_3cls.py \
+    !python reports/scripts/modeling/build_enhanced_dataset_3cls.py \
         --input_dir data/processed \
         --output_dir data/processed
     
@@ -103,7 +103,7 @@ print("=" * 60)
 if has_gpu:
     # GPU 配置：完整训练
     print("使用 GPU 完整训练配置")
-    epochs = 5
+    epochs = 8
     max_length = 384
     train_bs = 16
     eval_bs = 32
@@ -121,7 +121,7 @@ else:
     output_suffix = "v1_cpu"
 
 # 构建训练命令
-cmd = f"""python scripts/modeling/bert_finetune_cls.py \\
+cmd = f"""python reports/scripts/modeling/bert_finetune_cls.py \\
   --train_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/train_enhanced_3cls.csv \\
   --val_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/val_enhanced_3cls.csv \\
   --test_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/test_enhanced_3cls.csv \\
@@ -140,7 +140,7 @@ cmd = f"""python scripts/modeling/bert_finetune_cls.py \\
   --weight_decay 0.01 \\
   --eval_steps 100 \\
   --save_steps 100 \\
-  --early_stopping_patience 0 \\
+  --early_stopping_patience 4 \\
   --disable_tqdm"""
 
 print("\n训练参数:")
@@ -251,8 +251,8 @@ else:
 # ============================================================
 # 如果需要快速验证脚本是否可运行，可以使用小样本 CPU 训练
 # 注意：这只是验证流程，指标不具参考价值
-
-!python scripts/modeling/bert_finetune_cls.py \
+# 开始 CPU 冒烟测试
+!python reports/scripts/modeling/bert_finetune_cls.py \
   --train_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/train_enhanced_3cls.csv \
   --val_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/val_enhanced_3cls.csv \
   --test_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/test_enhanced_3cls.csv \
