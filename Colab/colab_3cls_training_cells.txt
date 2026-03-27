@@ -103,7 +103,7 @@ print("=" * 60)
 if has_gpu:
     # GPU 配置：完整训练
     print("使用 GPU 完整训练配置")
-    epochs = 8
+    epochs = 10
     max_length = 384
     train_bs = 16
     eval_bs = 32
@@ -140,7 +140,7 @@ cmd = f"""python reports/scripts/modeling/bert_finetune_cls.py \\
   --weight_decay 0.01 \\
   --eval_steps 100 \\
   --save_steps 100 \\
-  --early_stopping_patience 4 \\
+  --early_stopping_patience 0 \\
   --disable_tqdm"""
 
 print("\n训练参数:")
