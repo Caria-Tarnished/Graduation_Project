@@ -266,9 +266,6 @@ else:
   --max_length 128 \
   --train_bs 8 \
   --eval_bs 16 \
-  --max_train_samples 500 \
-  --max_val_samples 100 \
-  --max_test_samples 100 \
   --early_stopping_patience 0 \
   --disable_tqdm
 
