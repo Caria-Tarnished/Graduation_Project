@@ -20,9 +20,10 @@ else:
 os.chdir(REPO_DIR)
 print("当前工作目录:", os.getcwd())
 
-# 仅在这个环境中安装特定版本的 chromadb 及其他必要库以避免依赖冲突
+# 仅在这个环境中安装所需的库，确保包含所有 RAG 相关依赖
 !pip install -q chromadb==0.4.24 sentence-transformers pandas tqdm
 !pip install -q transformers peft accelerate bitsandbytes datasets
+!pip install -q pdfplumber langchain langchain-community seaborn matplotlib
 
 
 ###CELL### 2：运行真实 RAG 消融实验
