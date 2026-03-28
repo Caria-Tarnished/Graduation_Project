@@ -34,9 +34,29 @@ print("当前工作目录:", os.getcwd())
 !python scripts/rag/run_real_ablation_local.py
 
 # ============================================================
+# 保存实验图表至 Google Drive 方便本地直接拉取同步
+!mkdir -p "/content/drive/MyDrive/Graduation_Project/thesis_assets/charts"
+!cp -r /content/Graduation_Project/thesis_assets/charts/* "/content/drive/MyDrive/Graduation_Project/thesis_assets/charts/"
+print("已成功将生成的真实验证图表自动同步至您的 Google Drive！")
+# ============================================================
 ###CELL### 4：QLoRA 模型验证检测
 # ============================================================
+# 第一步：彻底清理前面 RAG/BGE 步骤占用的 GPU 和 CPU 内存
+# 这是防止 OOM 导致模型被迫卸载到磁盘 → PEFT 无法找到层 的关键步骤！
+import gc
 import torch
+
+# 清理 Python 所有未引用对象
+gc.collect()
+
+# 清理 GPU 显存碎片
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()
+    print(f"清理完成！当前 GPU 剩余显存: {torch.cuda.memory_reserved() / 1024**3:.1f} GB 已分配")
+else:
+    print("未检测到 GPU，将使用 CPU（推理速度会慢）")
+
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 
@@ -50,13 +70,12 @@ else:
     print("加载 Tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
     
-    print("加载半精度 Base Model...")
+    print("加载半精度 Base Model（float16，全部放进 T4 GPU）...")
     base_model = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,
-        device_map="auto",
-        torch_dtype=torch.float16,
+        device_map="cuda",        # 明确指定放进 GPU，不走 CPU/磁盘 offload
+        dtype=torch.float16,      # 7B float16 约 14GB，T4 15GB 刚好够
         trust_remote_code=True,
-        offload_folder="offload_weights"
     )
     
     print("应用 LoRA 权重...")
