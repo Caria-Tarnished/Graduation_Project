@@ -25,130 +25,14 @@ print("当前工作目录:", os.getcwd())
 !pip install -q transformers peft accelerate bitsandbytes datasets
 
 
-###CELL### 2：RAG 真实消融实验数据获取 (复制 Chroma 数据库)
+###CELL### 2：运行真实 RAG 消融实验
 # ============================================================
-import shutil
+# 我们直接运行本地脚本，它会自动读取 Github 中的样本 PDF 报告、
+# 自动生成 Baseline, Exp A, Exp B 并在该运行环境中进行客观的真实检索评估！
 
-# 我们需要您的 Drive 中缓存的原始爬虫数据和或者直接利用您本地运行过的 chromadb 数据库
-# 本地路径: data/reports/chroma_db_baseline, chroma_db_exp_a, chroma_db_exp_b
-# 您需要"提前将项目本地的 data/reports/ 文件夹上传保存至您的 Google Drive 中！"
+!python scripts/rag/run_real_ablation_local.py
 
-DRIVE_CHROMA_DIR = "/content/drive/MyDrive/Graduation_Project/data/reports"
-LOCAL_CHROMA_DIR = "/content/Graduation_Project/data/reports"
-
-if not os.path.exists(DRIVE_CHROMA_DIR):
-    raise FileNotFoundError("请先将本地项目中的 data/reports/ 文件夹完整上传到 Google Drive 对应的位置。因为里面保存了我们切分好的真实向量数据库！")
-
-print("正在同步向量数据库到 Colab 本地运行环境...")
-if os.path.exists(LOCAL_CHROMA_DIR):
-    shutil.rmtree(LOCAL_CHROMA_DIR)
-shutil.copytree(DRIVE_CHROMA_DIR, LOCAL_CHROMA_DIR)
-print("完成! 可以开始真实消融评估。")
-
-
-###CELL### 3：RAG 真实消融实验与绘图输出
 # ============================================================
-import chromadb
-import json
-import time
-import pandas as pd
-from sentence_transformers import SentenceTransformer
-import os
-
-# 加载 Embedding 模型
-print("Loading BGE-Large-zh...")
-emb_model = SentenceTransformer("BAAI/bge-large-zh-v1.5")
-
-def get_embedding(text):
-    return emb_model.encode(text, normalize_embeddings=True).tolist()
-
-eval_data_path = "/content/Graduation_Project/data/reports/rag_eval_dataset.json"
-with open(eval_data_path, "r", encoding="utf-8") as f:
-    queries = json.load(f)
-
-configs = [
-    {"name": "Baseline (原始切片)", "path": "data/reports/chroma_db_baseline"},
-    {"name": "Exp A (清洗+裁剪)", "path": "data/reports/chroma_db_exp_a"},
-    {"name": "Exp B (清洗+元数据)", "path": "data/reports/chroma_db_exp_b"}
-]
-
-results = []
-
-for cfg in configs:
-    print(f"\n--- 评估配置: {cfg['name']} ---")
-    if not os.path.exists(cfg['path']):
-        print(f"找不到数据库: {cfg['path']}，请确认是否已生成。跳过。")
-        continue
-        
-    client = chromadb.PersistentClient(path=cfg['path'])
-    collection = client.get_or_create_collection(name="financial_reports")
-    
-    for q in queries:
-        target_doc_id = q["target_doc_id"]
-        meta_filter = q.get("metadata_filter", {}) if "元数据" in cfg['name'] else None
-        
-        start_t = time.time()
-        q_emb = get_embedding(q["query"])
-        
-        # 构建 where 过滤条件
-        where_clause = None
-        if meta_filter and len(meta_filter) > 0:
-            where_clause = {"$and": [{k: {"$eq": v}} for k, v in meta_filter.items()]}
-            if len(where_clause["$and"]) == 1:
-                where_clause = where_clause["$and"][0]
-        
-        search_res = collection.query(
-            query_embeddings=[q_emb],
-            n_results=5,
-            where=where_clause
-        )
-        latency = (time.time() - start_t) * 1000
-        
-        # 计算 Recall@5 (命中的文档ID是否包含目标文档ID)
-        retrieved_ids = []
-        if search_res['metadatas'] and len(search_res['metadatas'][0]) > 0:
-            for m in search_res['metadatas'][0]:
-                if m and "doc_id" in m:
-                    retrieved_ids.append(m["doc_id"])
-                    
-        is_hit = 1 if target_doc_id in retrieved_ids else 0
-        
-        # 简单模拟 Accuracy: 在命中真实文档的前提下，提供给 LLM 的切片相关度得分作为基准
-        acc = is_hit * (1.0 - (latency / 1000.0) * 0.1)  # 仅作惩罚项示意
-        if acc < 0: acc = 0
-            
-        results.append({
-            "QueryID": q["id"],
-            "Method": cfg['name'],
-            "Recall@5": is_hit,
-            "Accuracy": acc,
-            "Latency(ms)": latency
-        })
-        
-df = pd.DataFrame(results)
-summary = df.groupby('Method')[['Recall@5', 'Accuracy', 'Latency(ms)']].mean()
-print("\n=== 真实消融实验结果总体汇总 ===")
-print(summary)
-df.to_csv("data/reports/real_ablation_results.csv", index=False)
-
-# 画图并覆盖统计学图片
-import matplotlib.pyplot as plt
-import seaborn as plt_sns
-OUTPUT_DIR = "thesis_assets/charts"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-plt.figure(figsize=(10, 6))
-plt_sns.barplot(data=df, x='Method', y='Recall@5', errorbar='sd', palette='viridis', capsize=0.1)
-plt.savefig(os.path.join(OUTPUT_DIR, 'rag_ablation_recall.png'), dpi=300)
-plt.close()
-
-plt.figure(figsize=(10, 6))
-plt_sns.barplot(data=df, x='Method', y='Latency(ms)', errorbar='sd', palette='magma', capsize=0.1)
-plt.savefig(os.path.join(OUTPUT_DIR, 'rag_ablation_latency.png'), dpi=300)
-plt.close()
-print("新图表已生成至 thesis_assets/charts/")
-
-
 ###CELL### 4：QLoRA 模型验证检测
 # ============================================================
 import torch
