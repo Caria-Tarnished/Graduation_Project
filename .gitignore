@@ -160,3 +160,4 @@ thesis_assets/screenshots/
 # ---- 备份文件夹：不推送 ----
 .bak/
 *.bak
+.agents/
