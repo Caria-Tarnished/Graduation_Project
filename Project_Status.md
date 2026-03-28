@@ -743,10 +743,13 @@
   - 所有 Colab 训练单元格 txt 文件统一放入 `Colab/` 目录
   - `.gitignore` 新增：`thesis_assets/screenshots/` 忽略、`*.bak` 忽略、`reports/scripts/` 脚本放行
   - 新增分析脚本：`scripts/analyze_dataset_quality.py`、`scripts/filter_high_confidence.py`、`scripts/visualize_hc_filter.py`
+  - 新增 Colab 脚本：`Colab/colab_rag_qlora_eval.txt`（包含 Engine B 真实 RAG 检索消融与 Deepseek-7B QLoRA 推理测试）
 - **下一步计划**：
 
-  - 方案一：使用 `window_min=30` 的数据库记录重新生成训练集（`prepare_3cls_dataset.py --window_post 30`），在 Colab 重训 BERT
-  - 将方案一结果与原始 15min 结果、HC 结果三者并列作为第六章"标注优化消融实验"
+  - [✓] 方案一：使用 `window_min=30` 的数据库记录重新生成训练集（`prepare_3cls_dataset.py --window_post 30`），在 Colab 重训 BERT
+  - [✓] 将方案一结果与原始 15min 结果、HC 结果三者并列作为第六章"标注优化消融实验"
+  - 待做：在 Colab 运行 `Colab/colab_rag_qlora_eval.txt` 生成真实的 Engine B RAG 消融数据
+  - 待做：考虑到 15min 方案目前依然优于 30min 和 HC，将在 Colab 对原始 15min 数据进行 8 Epoch 以上的重训以寻求极限指标
   - 论文截止日期：2026-04-01
 - 2026-02-11（中午 - 文档整合）
 
