@@ -28,7 +28,7 @@ except ImportError as e:
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei']
 plt.rcParams['axes.unicode_minus'] = False 
 
-BASE_DIR = "e:/Projects/Graduation_Project"
+BASE_DIR = "/content/Graduation_Project" if os.path.exists("/content/Graduation_Project") else "e:/Projects/Graduation_Project"
 RAW_REPORTS_DIR = os.path.join(BASE_DIR, "data/raw/reports/research_reports")
 DB_DIR = os.path.join(BASE_DIR, "data/reports")
 EVAL_DATA = os.path.join(DB_DIR, "rag_eval_dataset.json")
@@ -232,6 +232,13 @@ def run_evaluation():
     plt.title('RAG 检索模块消融实验 - 核心检索延迟对比 (真实数据执行)')
     plt.ylabel('Latency (ms)')
     plt.savefig(os.path.join(OUTPUT_DIR, 'rag_ablation_latency.png'), dpi=300)
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(data=df, x='Method', y='Accuracy', errorbar='sd', palette='plasma', capsize=0.1)
+    plt.title('RAG 模块消融实验 - LLM 答案准确度预估 (真实数据执行)')
+    plt.ylabel('Accuracy Score (0-1)')
+    plt.savefig(os.path.join(OUTPUT_DIR, 'rag_ablation_accuracy.png'), dpi=300)
     plt.close()
     
     print("\n新的消融实验图片已经成功生成，并覆盖之前模拟的假图片！")
