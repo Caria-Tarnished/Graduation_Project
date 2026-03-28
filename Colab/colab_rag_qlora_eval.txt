@@ -70,11 +70,21 @@ else:
     print("加载 Tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
     
-    print("加载半精度 Base Model（float16，全部放进 T4 GPU）...")
+    # 使用 4-bit 量化加载（与 QLoRA 训练时一致），VRAM 从 14GB 降至约 4.5GB
+    # 这是加载 QLoRA 模型的标准方式，和训练时的 BitsAndBytes 量化配置保持一致
+    from transformers import BitsAndBytesConfig
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16,   # 计算时使用 float16 精度
+        bnb_4bit_use_double_quant=True,          # 双重量化进一步节约显存
+        bnb_4bit_quant_type="nf4",               # 与 QLoRA 训练时一致的量化类型
+    )
+    
+    print("加载 4-bit 量化 Base Model（约 4.5GB VRAM，T4 完全够用）...")
     base_model = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,
-        device_map="cuda",        # 明确指定放进 GPU，不走 CPU/磁盘 offload
-        dtype=torch.float16,      # 7B float16 约 14GB，T4 15GB 刚好够
+        quantization_config=bnb_config,
+        device_map="auto",            # 自动分配，不再强制 offload
         trust_remote_code=True,
     )
     
