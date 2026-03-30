@@ -1,0 +1,30 @@
+{
+  "Baseline": {
+    "num_docs": 573,
+    "avg_relevance": 0.577663,
+    "avg_latency_ms": 6.71,
+    "std_latency_ms": 6.63,
+    "filtered_relevance": 0.570153,
+    "unfiltered_relevance": 0.585173
+  },
+  "Exp A": {
+    "num_docs": 532,
+    "avg_relevance": 0.57701,
+    "avg_latency_ms": 5.59,
+    "std_latency_ms": 3.04,
+    "filtered_relevance": 0.566572,
+    "unfiltered_relevance": 0.587447,
+    "relevance_change": "-0.1%",
+    "latency_change": "-16.7%"
+  },
+  "Exp B": {
+    "num_docs": 532,
+    "avg_relevance": 0.562369,
+    "avg_latency_ms": 4.6,
+    "std_latency_ms": 4.22,
+    "filtered_relevance": 0.537291,
+    "unfiltered_relevance": 0.587447,
+    "relevance_change": "-2.6%",
+    "latency_change": "-31.4%"
+  }
+}

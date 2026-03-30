@@ -1,0 +1,10 @@
+﻿Configuration,Value
+Base Model,Deepseek-7B-Chat
+Training Data Size,300 instructions
+Epochs,3
+Batch Size,4
+Learning Rate,0.0002
+LoRA Rank (r),8
+LoRA Alpha,16
+Training Time,~19.5min (T4 GPU)
+LoRA Weights Size,15.02 MB

@@ -1,0 +1,5 @@
+﻿Model,Test_Macro_F1,Test_Accuracy,Training_Time,Improvement
+TF-IDF + LinearSVC (Baseline),0.34605519319915096,-,~5min (CPU),+0.0%
+BERT 3-class (15min window),0.37696838270546923,0.3818990321736856,~1.5h (T4 GPU),+8.9%
+BERT 3-class (30min window),0.3332151118304108,0.3668421052631579,~1.5h (T4 GPU),+-3.7%
+BERT 3-class (HC filtered),0.34834856090512706,0.35791583166332663,~1.5h (T4 GPU),+0.7%

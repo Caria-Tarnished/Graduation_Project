@@ -1,0 +1,8 @@
+﻿Data_Type,Count,Time_Range_Notes
+Minute Price (XAUUSD),"736,304",2024-01-02 to 2026-01-31
+Events (Jin10 Flash+Calendar),"26,182","Flash 25,057 + Calendar 1,125"
+Training Samples (3-class),"12,859",Bearish 30% / Neutral 40% / Bullish 30%
+Validation Samples (3-class),"2,661",Same as training
+Test Samples (3-class),"3,823",Same as training
+RAG Document Chunks,633,12/15 PDFs processed
+QLoRA Instructions,300,180 news + 60 analysis + 60 reports

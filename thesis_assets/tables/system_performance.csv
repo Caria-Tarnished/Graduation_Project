@@ -1,0 +1,6 @@
+﻿Optimization,Before,After,Improvement
+Repeated Query Response,0.8-0.9s,<0.001s,99.9%
+Mixed Scenario Avg Response,~0.8s,0.276s,65.5%
+Database Query Time,155.83ms,0.20ms,99.9%
+Cache Hit Rate,0%,90%,+90pp
+BERT Inference Count,100%,10%,-90%

@@ -1,0 +1,4 @@
+﻿Configuration,Num_Docs,Avg_Relevance,Avg_Latency_ms,Std_Latency_ms,Relevance_Change,Latency_Change
+Baseline (Original),633,0.5781806617680754,214.8526906967163,27.521667367405463,+0.0%,+0.0%
+Exp A (Cleaned+Trimmed),544,0.581057342334311,214.64143991470337,29.434514283679707,+0.5%,-0.1%
+Exp B (Cleaned+Metadata),544,0.5687126073788349,195.7083821296692,20.145901147430063,-1.6%,-8.9%

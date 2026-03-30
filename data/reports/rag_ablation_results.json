@@ -1,0 +1,17 @@
+{
+  "Baseline": {
+    "avg_relevance": 0.5781806617680754,
+    "avg_latency_ms": 214.8526906967163,
+    "std_latency_ms": 27.521667367405463
+  },
+  "Exp A": {
+    "avg_relevance": 0.581057342334311,
+    "avg_latency_ms": 214.64143991470337,
+    "std_latency_ms": 29.434514283679707
+  },
+  "Exp B": {
+    "avg_relevance": 0.5687126073788349,
+    "avg_latency_ms": 195.7083821296692,
+    "std_latency_ms": 20.145901147430063
+  }
+}

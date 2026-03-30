@@ -27,6 +27,7 @@ build/
 # IDE / Editors
 .vscode/
 .idea/
+.kiro/
 *.code-workspace
 
 # OS files
@@ -106,6 +107,7 @@ reports/**
 # Database files
 finance.db
 *.db
+*.sqlite3
 
 # Large model files (prevent Git and Drive sync)
 *.safetensors

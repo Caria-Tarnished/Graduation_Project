@@ -1,0 +1,28 @@
+================================================================================
+KEY METRICS SUMMARY FOR THESIS
+================================================================================
+
+1. SENTIMENT ANALYSIS (Engine A)
+--------------------------------------------------------------------------------
+   Best Model: BERT 3-class (15min window)
+   Test Macro F1: 0.3770
+   Test Accuracy: 0.3819
+   Improvement: +8.9% vs baseline
+
+2. RAG RETRIEVAL (Engine B)
+--------------------------------------------------------------------------------
+   Document Chunks: 633
+   Average Relevance: 0.5782
+   Average Latency: 214.85ms
+
+3. SYSTEM PERFORMANCE
+--------------------------------------------------------------------------------
+   Response Time: 99.9% improvement
+   Cache Hit Rate: 90%
+   BERT Inference Reduction: 90%
+
+4. DATA SCALE
+--------------------------------------------------------------------------------
+   Minute Price: 736,304 rows
+   Events: 26,182
+   Training Samples: 12,859
