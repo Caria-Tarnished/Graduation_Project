@@ -124,7 +124,7 @@ print("="*60)
 print("预计训练时间：3-5 小时")
 print("="*60)
 
-!python scripts/qlora/train_qlora.py \
+!python reports/scripts/qlora/train_qlora.py \
     --model_name deepseek-ai/deepseek-llm-7b-chat \
     --data_path data/qlora/instructions.jsonl \
     --output_dir {output_dir} \
