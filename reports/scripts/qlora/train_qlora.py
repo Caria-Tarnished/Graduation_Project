@@ -24,6 +24,7 @@ from datetime import datetime
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    BitsAndBytesConfig,
     TrainingArguments,
     Trainer,
     DataCollatorForLanguageModeling
@@ -163,10 +164,15 @@ def main():
     
     # 2. 加载模型（4-bit 量化）
     print("\n2. 加载模型（4-bit 量化）...")
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+    )
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name,
-        load_in_4bit=True,
-        torch_dtype=torch.float16,
+        quantization_config=bnb_config,
         device_map='auto',
         trust_remote_code=True
     )
