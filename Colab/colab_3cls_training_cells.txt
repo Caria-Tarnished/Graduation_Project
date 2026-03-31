@@ -245,37 +245,3 @@ if all_classes_predicted:
 else:
     missing = {-1, 0, 1} - set(pred_counts.index)
     print(f"\n?? 模型未预测以下类别: {[label_names[l] for l in missing]}")
-
-# ============================================================
-# 单元格 6（可选）：CPU 冒烟测试（快速验证）
-# ============================================================
-# 如果需要快速验证脚本是否可运行，可以使用小样本 CPU 训练
-# 注意：这只是验证流程，指标不具参考价值
-# 开始 CPU 冒烟测试
-!python reports/scripts/modeling/bert_finetune_cls.py \
-  --train_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/train_enhanced_3cls.csv \
-  --val_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/val_enhanced_3cls.csv \
-  --test_csv /content/drive/MyDrive/Graduation_Project/datasets/processed_3cls/latest/test_enhanced_3cls.csv \
-  --output_dir /content/drive/MyDrive/Graduation_Project/experiments/bert_3cls_cpu_smoke \
-  --label_col label \
-  --text_col text_enhanced \
-  --model_name hfl/chinese-roberta-wwm-ext \
-  --class_weight auto \
-  --epochs 1 \
-  --lr 2e-5 \
-  --max_length 128 \
-  --train_bs 8 \
-  --eval_bs 16 \
-  --early_stopping_patience 0 \
-  --disable_tqdm
-
-# ============================================================
-# 预期结果
-# ============================================================
-# 目标：Test Macro F1 > 0.35（相比 6 类基线 0.163 提升 >100%）
-# 训练时间：约 1-1.5 小时（T4 GPU，~2400 steps）
-# 关键改进：
-# 1. 标签体系简化为 3 类（移除极度不平衡的 Class 3/4/5）
-# 2. 保留输入增强（市场上下文前缀）
-# 3. 自动类权重处理剩余不平衡
-# 4. "预期兑现"等复杂逻辑改为后处理规则引擎
