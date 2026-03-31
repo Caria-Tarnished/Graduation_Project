@@ -103,6 +103,8 @@ reports/**
 !reports/scripts/rag/*.py
 !reports/scripts/crawlers/
 !reports/scripts/crawlers/*.py
+!reports/scripts/qlora/
+!reports/scripts/qlora/*.py
 
 # Database files
 finance.db
