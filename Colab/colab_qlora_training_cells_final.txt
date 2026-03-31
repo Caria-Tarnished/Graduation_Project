@@ -1,13 +1,13 @@
-# QLoRA 微调 Deepseek-7B - Colab 训练单元格（最终修复版）
+# QLoRA 微调 Deepseek-7B - Colab 训练单元格（v2 高质量数据版）
 
-## 🔧 关键修复
-1. 修复 triton.ops 模块缺失问题（降级到 bitsandbytes 0.43.1）
-2. 修复数据库列名错误（ret_post_15 -> ret_post_15m）
-3. 优化依赖版本兼容性
+## 改进说明
+- v2 数据集：500条独立样本（v1仅~190条有效），7种指令类型
+- 利用全量 flash news + calendar 经济指标数据
+- 训练完成后自动运行对比实验
 
 ---
 
-## 单元格 1：环境准备与挂载 Drive（最终修复版）
+## 单元格 1：环境准备与挂载 Drive
 
 ```python
 # 1.1 检查 GPU
@@ -17,130 +17,113 @@
 from google.colab import drive
 drive.mount('/content/drive')
 
-# 1.3 切换到项目目录
-%cd /content/drive/MyDrive/Graduation_Project
-
-# 🔧 关键修复：安装兼容的依赖版本
+# 1.3 安装依赖
 print("安装依赖...")
+!pip install -q transformers peft accelerate datasets trl
+!pip install -q "bitsandbytes>=0.46.1"
 
-# 策略：检查 Colab 默认环境，然后安装兼容的 bitsandbytes
-# 不强制指定 PyTorch 和 triton 版本，使用 Colab 默认版本
-
-print("\n检查当前环境：")
-!python -c "import torch; print(f'PyTorch: {torch.__version__}')"
-!python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
-!python -c "import torch; print(f'CUDA version: {torch.version.cuda}')"
-
-# 先卸载可能存在的旧版本 bitsandbytes
-!pip uninstall -y bitsandbytes -q
-
-# 安装核心依赖（不指定 PyTorch 和 triton，使用 Colab 默认）
-!pip install -q transformers==4.46.0
-!pip install -q peft==0.13.0
-!pip install -q accelerate==1.0.0
-!pip install -q datasets==3.0.0
-!pip install -q trl==0.11.0
-
-# 安装 bitsandbytes（让 pip 自动选择兼容版本）
-!pip install -q bitsandbytes
-
+print("\n检查环境：")
+!python -c "import torch; print(f'PyTorch: {torch.__version__}, CUDA: {torch.cuda.is_available()}')"
+!pip show bitsandbytes transformers peft | grep "Name:\|Version:"
 print("\n✓ 环境准备完成")
-print("✓ 最终依赖版本：")
-!pip show bitsandbytes transformers peft torch | grep "Name:\|Version:"
 ```
 
 ---
 
-## 单元格 2：克隆/更新代码仓库
+## 单元格 2：克隆/更新代码仓库 + 复制数据库
 
 ```python
 import os
 
-# 检查是否已克隆
-if not os.path.exists('/content/Graduation_Project'):
+REPO_DIR = '/content/Graduation_Project'
+
+if not os.path.exists(REPO_DIR):
     print("克隆代码仓库...")
-    !git clone https://github.com/Caria-Tarnished/Graduation_Project.git /content/Graduation_Project
+    !git clone https://github.com/Caria-Tarnished/Graduation_Project.git {REPO_DIR}
 else:
     print("更新代码仓库...")
-    %cd /content/Graduation_Project
-    
-    # 处理本地修改：保存本地生成的文件，然后强制更新
-    !git stash  # 暂存本地修改
-    !git pull   # 拉取最新代码
-    # 注意：git stash 会保存 instructions.jsonl，但我们会在单元格 3 重新生成
+    !cd {REPO_DIR} && git stash && git pull
 
-%cd /content/Graduation_Project
-
-print("\n✓ 代码仓库准备完成")
-print("当前分支和最新提交：")
+%cd {REPO_DIR}
+print("\n当前最新提交：")
 !git log -1 --oneline
+
+# 复制数据库到项目根目录（数据集生成需要）
+drive_db = '/content/drive/MyDrive/Graduation_Project/datasets/finance_analysis.db'
+if os.path.exists(drive_db) and not os.path.exists('finance_analysis.db'):
+    !cp {drive_db} .
+    print("✓ 数据库已从 Drive 复制")
+elif os.path.exists('finance_analysis.db'):
+    print("✓ 数据库已存在")
+else:
+    print("⚠ 数据库不存在，请上传到 Drive 的 datasets/ 目录")
 ```
 
 ---
 
-## 单元格 3：生成指令集数据（修复数据库列名）
+## 单元格 3：生成 v2 高质量指令集（500条）
 
 ```python
-# 3.1 检查数据库是否存在
-import os
-from pathlib import Path
-
-db_path = Path('finance_analysis.db')
-drive_db_path = Path('/content/drive/MyDrive/Graduation_Project/datasets/finance_analysis.db')
-
-# 检查并复制数据库
-if not db_path.exists():
-    if drive_db_path.exists():
-        print("从 Drive 复制数据库...")
-        !cp /content/drive/MyDrive/Graduation_Project/datasets/finance_analysis.db .
-        print("✓ 数据库复制完成")
-    else:
-        print("⚠ 警告：数据库文件不存在")
-        print("⚠ 将使用模板数据生成指令集")
-else:
-    print("✓ 数据库已存在")
-
-# 3.2 生成指令集
-print("\n生成指令集数据...")
-!python scripts/qlora/build_instruction_dataset.py \
-    --db finance_analysis.db \
-    --output data/qlora/instructions.jsonl \
-    --num_samples 300
-
-# 3.4 查看生成的数据
-print("\n查看前 3 条指令：")
 import json
 
-with open('data/qlora/instructions.jsonl', 'r', encoding='utf-8') as f:
-    for i, line in enumerate(f):
-        if i >= 3:
-            break
-        data = json.loads(line)
-        print(f"\n--- 指令 {i+1} ---")
-        print(f"Instruction: {data['instruction']}")
-        print(f"Input: {data['input'][:80]}...")
-        print(f"Output: {data['output'][:100]}...")
+print("生成 v2 指令集（500条，7种类型）...")
+!python reports/scripts/qlora/build_instruction_dataset.py \
+    --db finance_analysis.db \
+    --output data/qlora/instructions.jsonl \
+    --num_samples 500
 
-print("\n✓ 指令集生成完成")
+# 验证生成结果
+print("\n" + "="*60)
+with open('data/qlora/instructions.jsonl', 'r', encoding='utf-8') as f:
+    lines = f.readlines()
+print(f"总样本数: {len(lines)}")
+
+# 统计指令类型分布
+from collections import Counter
+types = Counter()
+for line in lines:
+    d = json.loads(line)
+    types[d['instruction'][:20]] += 1
+print("\n指令类型分布:")
+for t, c in types.most_common():
+    print(f"  {t}...: {c}")
+
+# 展示3条样本
+print("\n样本预览:")
+for i, line in enumerate(lines[:3]):
+    d = json.loads(line)
+    print(f"\n--- 样本 {i+1} ---")
+    print(f"Instruction: {d['instruction'][:60]}")
+    print(f"Input: {d['input'][:80]}...")
+    print(f"Output: {d['output'][:120]}...")
 ```
 
 ---
 
-## 单元格 4：开始 QLoRA 微调（主训练）
+## 单元格 4：开始 QLoRA 微调
 
 ```python
-# 4.1 设置输出目录
-output_dir = '/content/drive/MyDrive/Graduation_Project/qlora_output'
+# 清理旧的 LoRA 权重（避免与新训练冲突）
+import shutil
+from pathlib import Path
 
-# 4.2 开始训练
+output_dir = '/content/drive/MyDrive/Graduation_Project/qlora_output_v2'
+
+# 如果存在旧的 v2 输出，先备份
+old_v2 = Path(output_dir)
+if old_v2.exists():
+    backup = Path(str(output_dir) + '_backup')
+    if backup.exists():
+        shutil.rmtree(backup)
+    old_v2.rename(backup)
+    print(f"旧输出已备份到: {backup}")
+
 print("="*60)
-print("开始 QLoRA 微调...")
+print("开始 QLoRA 微调（v2 数据集，500条样本）")
 print("="*60)
-print("预计训练时间：2-4 小时")
-print("请保持 Colab 页面打开，避免断开连接")
+print("预计训练时间：3-5 小时")
 print("="*60)
 
-# 训练
 !python scripts/qlora/train_qlora.py \
     --model_name deepseek-ai/deepseek-llm-7b-chat \
     --data_path data/qlora/instructions.jsonl \
@@ -161,306 +144,301 @@ print("\n✓ 训练完成")
 ## 单元格 5：验证训练结果
 
 ```python
-import os
+import os, json
 from pathlib import Path
+
+output_dir = Path('/content/drive/MyDrive/Graduation_Project/qlora_output_v2')
 
 print("="*60)
 print("训练结果验证")
 print("="*60)
 
-output_dir = Path('/content/drive/MyDrive/Graduation_Project/qlora_output')
+# 检查关键文件
+print("\n关键文件：")
+for fname in ['adapter_model.safetensors', 'adapter_model.bin', 'adapter_config.json', 'training_info.json']:
+    fpath = output_dir / fname
+    if fpath.exists():
+        size = fpath.stat().st_size / (1024 * 1024)
+        print(f"  ✓ {fname} ({size:.2f} MB)")
 
-# 1. 列出所有文件
-print("\n1. 输出目录中的所有文件：")
-if output_dir.exists():
-    for file in sorted(output_dir.rglob('*')):
-        if file.is_file():
-            size = file.stat().st_size / (1024 * 1024)  # MB
-            print(f"   {file.relative_to(output_dir)}: {size:.2f} MB")
-else:
-    print("   ⚠ 输出目录不存在")
+# 训练信息
+info_path = output_dir / 'training_info.json'
+if info_path.exists():
+    with open(info_path, 'r') as f:
+        info = json.load(f)
+    print(f"\n训练信息：")
+    print(f"  训练轮数: {info.get('num_epochs', 'N/A')}")
+    print(f"  训练样本数: {info.get('num_samples', 'N/A')}")
+    print(f"  最终 Loss: {info.get('final_loss', 'N/A')}")
 
-# 2. 检查关键文件（兼容新旧格式）
-print("\n2. 检查关键文件：")
-key_files = [
-    'adapter_model.bin',           # 旧格式
-    'adapter_model.safetensors',   # 新格式
-    'adapter_config.json',
-    'training_info.json'
+# 总大小
+total_size = sum(f.stat().st_size for f in output_dir.rglob('*') if f.is_file())
+print(f"\n输出目录总大小: {total_size / (1024 * 1024):.2f} MB")
+print("✓ 验证完成")
+```
+
+---
+
+## 单元格 6：运行对比实验（原始模型 vs v2 微调模型）
+
+注意：此步骤需要较多显存，建议先重启 Runtime（Runtime → Restart session），
+然后只运行单元格 1（挂载 Drive）和本单元格。
+
+```python
+import os, gc, json, re, time, torch
+from datetime import datetime
+
+# ---- 配置 ----
+BASE_MODEL = "deepseek-ai/deepseek-llm-7b-chat"
+LORA_PATH = "/content/drive/MyDrive/Graduation_Project/qlora_output_v2"
+OUTPUT_PATH = "/content/drive/MyDrive/Graduation_Project/thesis_assets/qlora_comparison_results_v2.json"
+
+# 挂载 Drive（如果重启后需要）
+from google.colab import drive
+drive.mount('/content/drive', force_remount=False)
+
+# ---- 20 个测试问题 ----
+TEST_QUESTIONS = [
+    {"id": 1, "category": "新闻情感分析", "instruction": "分析以下财经快讯对黄金市场的影响，给出看涨/看跌/中性的判断并说明理由", "input": "美联储宣布加息25个基点，符合市场预期。美联储主席鲍威尔表示未来可能暂停加息。"},
+    {"id": 2, "category": "新闻情感分析", "instruction": "分析以下财经快讯对黄金市场的影响，给出看涨/看跌/中性的判断并说明理由", "input": "苹果公司发布2025年第一季度财报，营收同比增长5%至1200亿美元，超出分析师预期。"},
+    {"id": 3, "category": "新闻情感分析", "instruction": "分析以下财经快讯对黄金市场的影响，给出看涨/看跌/中性的判断并说明理由", "input": "中国央行宣布降准0.5个百分点，释放约1.2万亿元长期流动性。"},
+    {"id": 4, "category": "新闻情感分析", "instruction": "分析以下财经快讯对黄金市场的影响，给出看涨/看跌/中性的判断并说明理由", "input": "特斯拉宣布召回120万辆汽车，涉及自动驾驶软件问题。"},
+    {"id": 5, "category": "新闻情感分析", "instruction": "评估以下消息的市场风险等级，并给出交易建议", "input": "英伟达2024财年第四季度营收达221亿美元，同比增长265%，数据中心收入创历史新高。"},
+    {"id": 6, "category": "新闻情感分析", "instruction": "判断以下市场走势是否存在\"预期兑现\"现象，并分析原因", "input": "市场此前已连续上涨三周，今日公布的GDP数据好于预期，但大盘冲高回落收跌1.2%。\n（市场背景：消息公布前价格已上涨2.50%）"},
+    {"id": 7, "category": "JSON结构化提取", "instruction": "请从以下财经新闻中提取关键信息，以JSON格式输出，包含字段：sentiment、market_reaction、impact_duration、confidence", "input": "微软2024年第三季度云服务Azure收入增长29%，总营收达618亿美元。"},
+    {"id": 8, "category": "JSON结构化提取", "instruction": "请从以下财经新闻中提取关键信息，以JSON格式输出，包含字段：sentiment、market_reaction、impact_duration、confidence", "input": "高盛将贵州茅台目标价上调至2100元，评级维持买入，预计2025年净利润增长12%。"},
+    {"id": 9, "category": "JSON结构化提取", "instruction": "请提取以下经济数据公告中的关键指标，以JSON格式输出，包含字段：country、actual、previous、consensus、surprise、direction", "input": "美国5月核心PCE物价指数年率 前值:2.50% 预期:2.60% 公布:2.7%"},
+    {"id": 10, "category": "JSON结构化提取", "instruction": "请提取以下经济数据公告中的关键指标，以JSON格式输出，包含字段：country、actual、previous、consensus、surprise、direction", "input": "中国3月CPI年率 前值:0.70% 预期:1.00% 公布:0.1%"},
+    {"id": 11, "category": "经济指标解读", "instruction": "解读以下经济数据的含义及其对黄金市场的影响", "input": "美国12月季调后非农就业人口(万人) 前值:6.4 预期:6 公布:5"},
+    {"id": 12, "category": "经济指标解读", "instruction": "解读以下经济数据的含义及其对黄金市场的影响", "input": "欧元区1月Sentix投资者信心指数 前值:-6.2 预期:-4.9 公布:-1.8"},
+    {"id": 13, "category": "经济指标解读", "instruction": "解读以下经济数据的含义及其对黄金市场的影响", "input": "美国至1月28日美联储利率决定(上限) 前值:3.75% 预期:3.75% 公布:3.75%"},
+    {"id": 14, "category": "市场分析", "instruction": "分析以下财经新闻在不同时间窗口的市场影响差异", "input": "美国10年期国债收益率突破5%，但黄金价格不跌反涨，达到历史新高。"},
+    {"id": 15, "category": "市场分析", "instruction": "分析以下财经新闻在不同时间窗口的市场影响差异", "input": "全球半导体行业资本支出2024年预计达1700亿美元，其中AI芯片占比从15%提升至35%。"},
+    {"id": 16, "category": "财报问答", "instruction": "评估以下消息的市场风险等级，并给出交易建议", "input": "某公司2024年报：营收500亿元(+8%)，毛利率45.2%(+1.5pp)，净利润80亿元(+15%)，经营性现金流120亿元。"},
+    {"id": 17, "category": "财报问答", "instruction": "评估以下消息的市场风险等级，并给出交易建议", "input": "资产负债率72%，流动比率0.8，速动比率0.5，利息保障倍数2.1，应收账款周转天数从45天增加到68天。"},
+    {"id": 18, "category": "财报问答", "instruction": "分析以下财经快讯对黄金市场的影响，给出看涨/看跌/中性的判断并说明理由", "input": "公司A：PE 25倍，PB 3.2倍，ROE 15%，营收增速20%。公司B：PE 15倍，PB 1.8倍，ROE 12%，营收增速8%。对比两家公司的估值水平。"},
+    {"id": 19, "category": "财报问答", "instruction": "评估以下消息的市场风险等级，并给出交易建议", "input": "经营活动现金流-5亿元，投资活动现金流-30亿元，筹资活动现金流+40亿元，期末现金余额15亿元。"},
+    {"id": 20, "category": "财报问答", "instruction": "解读以下经济数据的含义及其对黄金市场的影响", "input": "研发费用50亿元，占营收比例10%，同比增长25%。研发人员占比35%，专利申请数量同比增长40%。"},
 ]
 
-for file in key_files:
-    file_path = output_dir / file
-    if file_path.exists():
-        size = file_path.stat().st_size / (1024 * 1024)  # MB
-        print(f"   ✓ {file} ({size:.2f} MB)")
+# ---- 评估函数 ----
+def evaluate_response(question, response):
+    scores = {}
+    length = len(response)
+    if length < 20: scores["回答完整性"] = 1
+    elif length < 50: scores["回答完整性"] = 2
+    elif length < 100: scores["回答完整性"] = 3
+    elif length < 500: scores["回答完整性"] = 4
+    else: scores["回答完整性"] = 5
+
+    if "JSON" in question["instruction"] or "json" in question["instruction"]:
+        json_match = re.search(r'[\{\[].*[\}\]]', response, re.DOTALL)
+        if json_match:
+            try:
+                json.loads(json_match.group())
+                scores["JSON格式"] = 5
+            except json.JSONDecodeError:
+                scores["JSON格式"] = 2
+        else:
+            scores["JSON格式"] = 0
+
+    finance_terms = ["利率", "通胀", "GDP", "CPI", "PPI", "营收", "净利润", "毛利率",
+        "估值", "PE", "PB", "ROE", "现金流", "资产负债", "流动性", "看涨", "看跌",
+        "中性", "利好", "利空", "预期", "超预期", "加息", "降息", "量化宽松", "降准",
+        "bullish", "bearish", "neutral", "revenue", "同比", "环比", "增速", "波动", "风险", "收益率"]
+    term_count = sum(1 for t in finance_terms if t in response)
+    if term_count >= 5: scores["财经术语"] = 5
+    elif term_count >= 3: scores["财经术语"] = 4
+    elif term_count >= 1: scores["财经术语"] = 3
+    else: scores["财经术语"] = 1
+
+    logic_markers = ["因为", "因此", "所以", "由于", "导致", "表明", "意味着",
+        "一方面", "另一方面", "首先", "其次", "综合来看", "because", "therefore", "indicates"]
+    logic_count = sum(1 for m in logic_markers if m in response)
+    if logic_count >= 3: scores["逻辑连贯性"] = 5
+    elif logic_count >= 2: scores["逻辑连贯性"] = 4
+    elif logic_count >= 1: scores["逻辑连贯性"] = 3
+    else: scores["逻辑连贯性"] = 2
+
+    if response.count(response[:20]) > 3 and len(response) > 100:
+        scores["无重复/乱码"] = 1
+    elif len(set(response)) < 20 and len(response) > 50:
+        scores["无重复/乱码"] = 2
     else:
-        print(f"   ✗ {file} (不存在)")
+        scores["无重复/乱码"] = 5
 
-# 3. 查看训练信息
-print("\n3. 训练信息：")
-training_info_path = output_dir / 'training_info.json'
-if training_info_path.exists():
-    import json
-    with open(training_info_path, 'r') as f:
-        info = json.load(f)
-    print(f"   - 训练轮数: {info.get('num_epochs', 'N/A')}")
-    print(f"   - 学习率: {info.get('learning_rate', 'N/A')}")
-    print(f"   - 批次大小: {info.get('batch_size', 'N/A')}")
-    print(f"   - 训练样本数: {info.get('num_samples', 'N/A')}")
-    print(f"   - 最终 Loss: {info.get('final_loss', 'N/A')}")
-else:
-    print("   ⚠ 训练信息文件不存在")
+    return scores
 
-# 4. 计算总大小
-print("\n4. 输出目录总大小：")
-if output_dir.exists():
-    total_size = sum(f.stat().st_size for f in output_dir.rglob('*') if f.is_file())
-    print(f"   {total_size / (1024 * 1024):.2f} MB")
-else:
-    print("   ⚠ 输出目录不存在")
+def generate_batch(model, tokenizer, questions, model_name="model"):
+    results = []
+    for q in questions:
+        prompt = f"User: {q['instruction']}\n{q['input']}\n\nAssistant:"
+        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+        start_time = time.time()
+        with torch.no_grad():
+            outputs = model.generate(**inputs, max_new_tokens=300, temperature=0.7,
+                                     top_p=0.9, do_sample=True, pad_token_id=tokenizer.eos_token_id)
+        elapsed = time.time() - start_time
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        if "Assistant:" in response:
+            response = response.split("Assistant:")[-1].strip()
+        scores = evaluate_response(q, response)
+        results.append({"id": q["id"], "category": q["category"],
+            "instruction": q["instruction"], "input": q["input"],
+            "response": response, "scores": scores,
+            "avg_score": round(sum(scores.values()) / len(scores), 2),
+            "time_seconds": round(elapsed, 2), "response_length": len(response)})
+        print(f"  [{model_name}] Q{q['id']:02d} ({q['category']}) "
+              f"avg={results[-1]['avg_score']:.1f} len={len(response)} time={elapsed:.1f}s")
+    return results
 
-print("\n" + "="*60)
-print("✓ 验证完成")
+# ---- Phase 1: 原始模型 ----
 print("="*60)
-```
+print("Phase 1: 原始 Deepseek-7B (无微调)")
+print("="*60)
 
----
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
-## 单元格 5.5：修复方案 - 不使用量化（如果单元格 6 失败，先运行这个）
+tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
+tokenizer.pad_token = tokenizer.eos_token
 
-```python
-print("=" * 60)
-print("说明：由于 bitsandbytes 版本冲突，我们将使用 FP16 加载模型")
-print("优点：避免依赖冲突，加载更快")
-print("缺点：显存占用稍高（但 T4 15GB 足够）")
-print("=" * 60)
-print("\n✓ 无需安装额外依赖，直接运行单元格 6 即可")
-```
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16,
+    bnb_4bit_use_double_quant=True, bnb_4bit_quant_type="nf4")
 
----
+print("加载原始模型 (4-bit)...")
+base_model = AutoModelForCausalLM.from_pretrained(
+    BASE_MODEL, quantization_config=bnb_config, device_map="auto", trust_remote_code=True)
+base_model.eval()
+print("原始模型加载完成\n")
 
-## 单元格 6：测试微调后的模型（FP16 版本，无需量化）
+base_results = generate_batch(base_model, tokenizer, TEST_QUESTIONS, "原始模型")
 
-```python
-print("加载微调后的模型（FP16，不使用量化）...")
+# 保存中间结果（防止后续 OOM 丢失）
+os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+with open(OUTPUT_PATH.replace('.json', '_base_only.json'), 'w', encoding='utf-8') as f:
+    json.dump(base_results, f, ensure_ascii=False, indent=2)
+print("✓ 原始模型结果已保存")
 
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+# 释放显存
+del base_model
+gc.collect()
+torch.cuda.empty_cache()
+print("原始模型已释放显存")
+
+# ---- Phase 2: 微调模型 ----
+print("\n" + "="*60)
+print("Phase 2: QLoRA v2 微调后的 Deepseek-7B")
+print("="*60)
+
 from peft import PeftModel
 
-# 配置
-base_model_name = "deepseek-ai/deepseek-llm-7b-chat"
-adapter_path = "/content/drive/MyDrive/Graduation_Project/qlora_output"
+print("加载基础模型 (4-bit)...")
+base_model_ft = AutoModelForCausalLM.from_pretrained(
+    BASE_MODEL, quantization_config=bnb_config, device_map="auto", trust_remote_code=True)
+print("加载 LoRA 权重...")
+ft_model = PeftModel.from_pretrained(base_model_ft, LORA_PATH)
+ft_model.eval()
+print("微调模型加载完成\n")
 
-try:
-    # 1. 加载 tokenizer（从基础模型加载，避免版本不兼容）
-    print("\n1. 加载 Tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained(base_model_name, trust_remote_code=True)
-    print("   ✓ Tokenizer 加载成功")
-    
-    # 2. 加载基础模型（FP16，不使用 bitsandbytes）
-    print("\n2. 加载基础模型（FP16）...")
-    base_model = AutoModelForCausalLM.from_pretrained(
-        base_model_name,
-        device_map="auto",
-        trust_remote_code=True,
-        torch_dtype=torch.float16,
-        low_cpu_mem_usage=True
-    )
-    print("   ✓ 基础模型加载成功")
-    
-    # 3. 加载 LoRA 权重
-    print("\n3. 加载 LoRA 权重...")
-    model = PeftModel.from_pretrained(base_model, adapter_path)
-    model.eval()
-    print("   ✓ LoRA 权重加载成功")
-    
-    # 4. 检查显存使用
-    if torch.cuda.is_available():
-        allocated = torch.cuda.memory_allocated() / 1024**3
-        reserved = torch.cuda.memory_reserved() / 1024**3
-        print(f"\n显存使用: {allocated:.2f} GB (已分配) / {reserved:.2f} GB (已保留)")
-    
-    # 5. 测试案例
-    test_cases = [
-        {
-            "instruction": "分析以下财经快讯对市场的影响",
-            "input": "美联储宣布加息25个基点，符合市场预期"
-        },
-        {
-            "instruction": "解释什么是预期兑现",
-            "input": "市场前期已经大涨，利好消息发布后反而下跌"
-        }
-    ]
-    
-    print("\n" + "="*60)
-    print("模型测试")
-    print("="*60)
-    
-    for i, case in enumerate(test_cases, 1):
-        print(f"\n测试案例 {i}:")
-        print(f"Instruction: {case['instruction']}")
-        print(f"Input: {case['input']}")
-        
-        # 构建提示
-        prompt = f"Instruction: {case['instruction']}\nInput: {case['input']}\nOutput:"
-        
-        # 生成
-        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-        
-        print("\n生成中...")
-        with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=256,
-                temperature=0.7,
-                top_p=0.9,
-                do_sample=True,
-                pad_token_id=tokenizer.eos_token_id
-            )
-        
-        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        # 提取 Output 部分
-        if "Output:" in response:
-            response = response.split("Output:")[-1].strip()
-        
-        print(f"\nOutput: {response}")
-        print("-"*60)
-    
-    print("\n✓ 测试完成")
-    print("\n说明：")
-    print("- 模型使用 FP16 精度（不是 4-bit 量化）")
-    print("- 推理速度和效果与量化版本基本相同")
-    print("- 显存占用约 14-15 GB（T4 GPU 足够）")
+ft_results = generate_batch(ft_model, tokenizer, TEST_QUESTIONS, "微调模型")
 
-except Exception as e:
-    print(f"\n✗ 测试失败: {e}")
-    import traceback
-    traceback.print_exc()
-    print("\n如果显存不足，请尝试：")
-    print("1. 重启 Runtime")
-    print("2. 只运行单元格 6（不运行其他单元格）")
+del ft_model, base_model_ft
+gc.collect()
+torch.cuda.empty_cache()
+
+# ---- 汇总结果 ----
+print("\n" + "="*60)
+print("对比结果汇总")
+print("="*60)
+
+categories = sorted(set(q["category"] for q in TEST_QUESTIONS))
+summary = {"by_category": {}, "overall": {}, "details": []}
+
+for cat in categories:
+    bc = [r for r in base_results if r["category"] == cat]
+    fc = [r for r in ft_results if r["category"] == cat]
+    ba, fa = sum(r["avg_score"] for r in bc)/len(bc), sum(r["avg_score"] for r in fc)/len(fc)
+    bt, ft_ = sum(r["time_seconds"] for r in bc)/len(bc), sum(r["time_seconds"] for r in fc)/len(fc)
+    bl, fl = sum(r["response_length"] for r in bc)/len(bc), sum(r["response_length"] for r in fc)/len(fc)
+    summary["by_category"][cat] = {
+        "num_questions": len(bc), "base_avg_score": round(ba,2), "ft_avg_score": round(fa,2),
+        "improvement": round(fa-ba,2), "base_avg_time": round(bt,2), "ft_avg_time": round(ft_,2),
+        "base_avg_length": round(bl,1), "ft_avg_length": round(fl,1)}
+    print(f"\n{cat} ({len(bc)}题):")
+    print(f"  原始模型  平均分={ba:.2f}  平均耗时={bt:.1f}s  平均长度={bl:.0f}字")
+    print(f"  微调模型  平均分={fa:.2f}  平均耗时={ft_:.1f}s  平均长度={fl:.0f}字")
+    print(f"  提升: {'+' if fa>=ba else ''}{fa-ba:.2f}")
+
+bo = sum(r["avg_score"] for r in base_results)/len(base_results)
+fo = sum(r["avg_score"] for r in ft_results)/len(ft_results)
+bto = sum(r["time_seconds"] for r in base_results)/len(base_results)
+fto = sum(r["time_seconds"] for r in ft_results)/len(ft_results)
+
+summary["overall"] = {
+    "base_avg_score": round(bo,2), "ft_avg_score": round(fo,2),
+    "improvement": round(fo-bo,2),
+    "improvement_pct": round((fo-bo)/bo*100,1) if bo>0 else 0,
+    "base_avg_time": round(bto,2), "ft_avg_time": round(fto,2),
+    "num_questions": len(TEST_QUESTIONS),
+    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+print(f"\n{'='*60}")
+print(f"总体: 原始={bo:.2f}  微调={fo:.2f}  提升={fo-bo:+.2f} ({summary['overall']['improvement_pct']:+.1f}%)")
+print(f"{'='*60}")
+
+# 各维度对比
+all_dims = set()
+for r in base_results + ft_results:
+    all_dims.update(r["scores"].keys())
+print("\n各维度详细对比:")
+for dim in sorted(all_dims):
+    bd = [r["scores"][dim] for r in base_results if dim in r["scores"]]
+    fd = [r["scores"][dim] for r in ft_results if dim in r["scores"]]
+    if bd and fd:
+        bavg, favg = sum(bd)/len(bd), sum(fd)/len(fd)
+        print(f"  {dim}: 原始={bavg:.2f}  微调={favg:.2f}  提升={favg-bavg:+.2f}")
+
+# 保存详细结果
+for i in range(len(base_results)):
+    summary["details"].append({
+        "id": base_results[i]["id"], "category": base_results[i]["category"],
+        "base_response": base_results[i]["response"], "ft_response": ft_results[i]["response"],
+        "base_scores": base_results[i]["scores"], "ft_scores": ft_results[i]["scores"],
+        "base_avg": base_results[i]["avg_score"], "ft_avg": ft_results[i]["avg_score"]})
+
+with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+    json.dump(summary, f, ensure_ascii=False, indent=2)
+print(f"\n详细结果已保存到: {OUTPUT_PATH}")
+
+# 论文表格
+print("\n" + "="*60)
+print("论文表格数据 (直接可用)")
+print("="*60)
+print("\n| 评估维度 | 原始模型 | QLoRA微调后 | 提升 |")
+print("| --- | --- | --- | --- |")
+for dim in sorted(all_dims):
+    bd = [r["scores"][dim] for r in base_results if dim in r["scores"]]
+    fd = [r["scores"][dim] for r in ft_results if dim in r["scores"]]
+    if bd and fd:
+        bavg, favg = sum(bd)/len(bd), sum(fd)/len(fd)
+        print(f"| {dim} | {bavg:.2f} | {favg:.2f} | {favg-bavg:+.2f} |")
+print(f"| **综合平均** | **{bo:.2f}** | **{fo:.2f}** | **{fo-bo:+.2f}** |")
+print(f"\n平均生成耗时: 原始={bto:.1f}s  微调={fto:.1f}s")
 ```
 
 ---
 
-## 单元格 7：保存模型到 Drive（可选）
-
-```python
-# 如果需要将模型保存到其他位置
-import shutil
-from pathlib import Path
-
-source_dir = Path('/content/drive/MyDrive/Graduation_Project/qlora_output')
-backup_dir = Path('/content/drive/MyDrive/Graduation_Project/models/qlora_deepseek_7b')
-
-if source_dir.exists():
-    print(f"备份模型到: {backup_dir}")
-    backup_dir.parent.mkdir(parents=True, exist_ok=True)
-    
-    if backup_dir.exists():
-        print("⚠ 目标目录已存在，将覆盖")
-        shutil.rmtree(backup_dir)
-    
-    shutil.copytree(source_dir, backup_dir)
-    print("✓ 备份完成")
-else:
-    print("✗ 源目录不存在")
-```
-
----
-
-## 📝 使用说明
+## 使用说明
 
 ### 执行顺序
-1. 单元格 1：环境准备（约 2-3 分钟）
-2. 单元格 2：克隆代码（约 30 秒）
-3. 单元格 3：生成指令集（约 1-2 分钟）
-4. 单元格 4：开始训练（约 2-4 小时）⏰
-5. 单元格 5：验证结果（约 10 秒）
-6. 单元格 6：测试模型（约 2-3 分钟）
-7. 单元格 7：备份模型（可选，约 1 分钟）
-
-### 关键修复说明
-
-#### 1. triton.ops 模块缺失
-- **原因**：bitsandbytes 0.44.1 依赖 triton 3.0+，但 triton 3.0 移除了 `triton.ops` 模块
-- **解决**：降级到 bitsandbytes 0.43.1 + triton 2.1.0
-
-#### 2. 数据库列名错误
-- **原因**：数据库实际列名是 `ret_post_15m` 和 `pre_ret_120m`，但代码中使用了 `ret_post_15` 和 `pre_ret_120`
-- **解决**：在单元格 3 中动态修复脚本，替换列名
-
-#### 3. 数据库文件路径
-- **原因**：数据库上传到了 `/content/drive/MyDrive/Graduation_Project/datasets/` 而不是项目根目录
-- **解决**：在单元格 3 中从 Drive 复制到项目根目录
-
-### 预期输出
-
-#### 单元格 3（指令集生成）
-```
-✓ 数据库已存在
-修复数据库查询脚本...
-✓ 脚本修复完成
-
-生成指令集数据...
-开始构建指令集...
-目标样本数量: 300
-1. 从数据库提取 180 条新闻样本...
-   ✓ 成功生成 180 条新闻指令
-2. 生成 60 条市场分析指令...
-   ✓ 成功生成 60 条市场分析指令
-3. 生成 60 条财报问答指令...
-   ✓ 成功生成 60 条财报问答指令
-...
-总样本数: 300
-```
-
-#### 单元格 4（训练）
-```
-开始 QLoRA 微调...
-预计训练时间：2-4 小时
-...
-Epoch 1/3: 100%|██████████| 75/75 [XX:XX<00:00, X.XXit/s]
-Epoch 2/3: 100%|██████████| 75/75 [XX:XX<00:00, X.XXit/s]
-Epoch 3/3: 100%|██████████| 75/75 [XX:XX<00:00, X.XXit/s]
-✓ 训练完成
-```
+1. 单元格 1-4：环境准备 → 拉取仓库 → 生成数据 → 训练（约 3-5 小时）
+2. 单元格 5：验证训练结果
+3. **重启 Runtime**（释放训练占用的显存）
+4. 单元格 6：运行对比实验（约 20-30 分钟）
 
 ### 注意事项
-
-1. **保持连接**：训练需要 2-4 小时，请保持 Colab 页面打开
-2. **GPU 类型**：建议使用 T4 或更好的 GPU（A100 最佳）
-3. **Drive 空间**：确保 Google Drive 有至少 5GB 可用空间
-4. **网络稳定**：首次运行会下载 Deepseek-7B 模型（约 14GB）
-
-### 故障排查
-
-#### 如果单元格 1 报错
-```python
-# 手动安装依赖
-!pip install --upgrade pip
-!pip install transformers==4.46.0 peft==0.13.0 triton==2.1.0 bitsandbytes==0.43.1 accelerate==1.0.0
-```
-
-#### 如果单元格 3 数据库查询失败
-- 检查数据库文件是否存在：`!ls -lh finance_analysis.db`
-- 检查数据库表结构：`!sqlite3 finance_analysis.db ".schema event_impacts"`
-
-#### 如果单元格 4 训练中断
-- 检查 GPU 状态：`!nvidia-smi`
-- 减小 batch_size：将 `--batch_size 4` 改为 `--batch_size 2`
-- 减小 max_length：将 `--max_length 512` 改为 `--max_length 256`
-
-### 训练完成后
-
-模型权重将保存在：
-- `/content/drive/MyDrive/Graduation_Project/qlora_output/`
-
-包含文件：
-- `adapter_model.bin` - LoRA 权重（约 50-100MB）
-- `adapter_config.json` - LoRA 配置
-- `training_info.json` - 训练信息
-
-可以使用单元格 6 测试模型效果，或使用单元格 7 备份到其他位置。
+- 单元格 6 中会自动保存原始模型的中间结果，即使微调模型加载 OOM 也不会丢失
+- 如果 OOM，重启 Runtime 后重新运行单元格 6 即可
+- LoRA 权重保存在 `/content/drive/MyDrive/Graduation_Project/qlora_output_v2/`
+- 对比结果保存在 `/content/drive/MyDrive/Graduation_Project/thesis_assets/qlora_comparison_results_v2.json`

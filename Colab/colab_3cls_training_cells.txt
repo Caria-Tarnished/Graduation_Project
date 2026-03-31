@@ -16,10 +16,12 @@ drive.mount('/content/drive')
 !pip install -U transformers datasets evaluate accelerate -q
 
 import os
+os.chdir('/content')
+
 if not os.path.exists('/content/Graduation_Project'):
-    !git clone https://github.com/Caria-Tarnished/Graduation_Project.git
+    !git clone https://github.com/Caria-Tarnished/Graduation_Project.git /content/Graduation_Project
 else:
-    !cd /content/Graduation_Project && git pull
+    !cd /content/Graduation_Project && git stash && git pull
 
 %cd /content/Graduation_Project
 
