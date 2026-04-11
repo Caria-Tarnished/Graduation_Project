@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-"""绘制 BERT 3分类训练曲线（基于 Colab 训练日志）"""
+"""绘制 BERT 三分类训练曲线（基于 Colab 训练日志）"""
 import matplotlib.pyplot as plt
 import matplotlib
+
 matplotlib.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
 matplotlib.rcParams['axes.unicode_minus'] = False
+matplotlib.rcParams['font.size'] = 13
 
 # 从 Colab 训练日志提取的数据
 eval_data = [
@@ -58,34 +60,64 @@ eval_loss = [d[2] for d in eval_data]
 epochs_train = [d[0] for d in train_data]
 train_loss = [d[1] for d in train_data]
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.5))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5.8))
 
 # 左图：Macro F1
-ax1.plot(epochs_eval, f1_scores, 'o-', color='#2196F3', linewidth=2, markersize=5, label='Macro F1')
+ax1.plot(
+    epochs_eval,
+    f1_scores,
+    'o-',
+    color='#2196F3',
+    linewidth=2.4,
+    markersize=6,
+    label='验证集 Macro F1'
+)
 best_idx = f1_scores.index(max(f1_scores))
-ax1.annotate(f'Best: {f1_scores[best_idx]:.4f}\n(epoch {epochs_eval[best_idx]:.1f})',
-             xy=(epochs_eval[best_idx], f1_scores[best_idx]),
-             xytext=(epochs_eval[best_idx] + 0.5, f1_scores[best_idx] + 0.015),
-             arrowprops=dict(arrowstyle='->', color='#E53935'),
-             fontsize=9, color='#E53935', fontweight='bold')
-ax1.axhline(y=0.3778, color='gray', linestyle='--', alpha=0.5, label='Best F1=0.3778')
-ax1.set_xlabel('Epoch', fontsize=11)
-ax1.set_ylabel('Macro F1', fontsize=11)
-ax1.set_title('Validation Macro F1', fontsize=12)
-ax1.legend(fontsize=9)
+ax1.annotate(
+    f'最佳值：{f1_scores[best_idx]:.4f}\n对应轮次：{epochs_eval[best_idx]:.1f}',
+    xy=(epochs_eval[best_idx], f1_scores[best_idx]),
+    xytext=(epochs_eval[best_idx] + 0.45, f1_scores[best_idx] + 0.018),
+    arrowprops=dict(arrowstyle='->', color='#E53935', linewidth=1.5),
+    fontsize=11,
+    color='#E53935',
+    fontweight='bold'
+)
+ax1.axhline(y=0.3778, color='gray', linestyle='--', alpha=0.6, label='最佳 Macro F1 = 0.3778')
+ax1.set_xlabel('训练轮次', fontsize=14)
+ax1.set_ylabel('Macro F1 值', fontsize=14)
+ax1.set_title('验证集 Macro F1 变化曲线', fontsize=16)
+ax1.legend(fontsize=11)
 ax1.grid(True, alpha=0.3)
 ax1.set_ylim(0.2, 0.45)
+ax1.tick_params(labelsize=12)
 
 # 右图：Loss
-ax2.plot(epochs_train, train_loss, '-', color='#FF9800', linewidth=1.5, alpha=0.8, label='Train Loss')
-ax2.plot(epochs_eval, eval_loss, 's-', color='#4CAF50', linewidth=2, markersize=5, label='Eval Loss')
-ax2.set_xlabel('Epoch', fontsize=11)
-ax2.set_ylabel('Loss', fontsize=11)
-ax2.set_title('Training & Validation Loss', fontsize=12)
-ax2.legend(fontsize=9)
+ax2.plot(
+    epochs_train,
+    train_loss,
+    '-',
+    color='#FF9800',
+    linewidth=2.0,
+    alpha=0.9,
+    label='训练集损失'
+)
+ax2.plot(
+    epochs_eval,
+    eval_loss,
+    's-',
+    color='#4CAF50',
+    linewidth=2.4,
+    markersize=6,
+    label='验证集损失'
+)
+ax2.set_xlabel('训练轮次', fontsize=14)
+ax2.set_ylabel('损失值', fontsize=14)
+ax2.set_title('训练集与验证集损失变化曲线', fontsize=16)
+ax2.legend(fontsize=11)
 ax2.grid(True, alpha=0.3)
+ax2.tick_params(labelsize=12)
 
 plt.tight_layout()
-plt.savefig('thesis_assets/charts/bert_3cls_training_curve.png', dpi=200, bbox_inches='tight')
+plt.savefig('thesis_assets/charts/bert_3cls_training_curve.png', dpi=300, bbox_inches='tight')
 print('Saved: thesis_assets/charts/bert_3cls_training_curve.png')
 plt.close()

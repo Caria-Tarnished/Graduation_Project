@@ -15,6 +15,9 @@ Streamlit 主入口
 import streamlit as st
 import sys
 import os
+import re
+import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 # 添加项目根目录到路径（使用绝对路径）
@@ -271,6 +274,151 @@ def check_engine_status():
     return status
 
 
+def get_db_time_bounds(db_path: Path):
+    """
+    读取数据库中的价格与事件时间范围
+
+    Args:
+        db_path: 数据库路径
+
+    Returns:
+        dict，包含价格与事件的最小/最大时间
+    """
+    bounds = {
+        "price_min": None,
+        "price_max": None,
+        "event_min": None,
+        "event_max": None
+    }
+
+    if not db_path.exists():
+        return bounds
+
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cur = conn.cursor()
+
+        row = cur.execute(
+            "SELECT MIN(ts_utc), MAX(ts_utc) FROM prices_m1"
+        ).fetchone()
+        if row:
+            bounds["price_min"] = datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S") if row[0] else None
+            bounds["price_max"] = datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S") if row[1] else None
+
+        row = cur.execute(
+            "SELECT MIN(ts_utc), MAX(ts_utc) FROM events"
+        ).fetchone()
+        if row:
+            bounds["event_min"] = datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S") if row[0] else None
+            bounds["event_max"] = datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S") if row[1] else None
+
+        conn.close()
+    except Exception:
+        return bounds
+
+    return bounds
+
+
+def parse_event_time_from_query(query: str, db_path: Path):
+    """
+    从用户问题中尝试解析事件时间，供聊天页获取市场上下文使用。
+
+    支持的形式包括：
+    - 2026年1月31日
+    - 2026-01-31
+    - 1月31日
+    - 2026年1月中旬 / 1月下旬
+    - 2026-01-31 01:30 / 2026年1月31日 01:30
+
+    Returns:
+        datetime 或 None
+    """
+    bounds = get_db_time_bounds(db_path)
+    price_max = bounds["price_max"]
+    default_year = price_max.year if price_max else datetime.now().year
+
+    def safe_build(year: int, month: int, day: int, hour: int = 0, minute: int = 0):
+        try:
+            parsed = datetime(year, month, day, hour, minute)
+        except ValueError:
+            return None
+
+        if price_max and parsed > price_max:
+            # 如果只给到日期，没有具体时间，则尽量落到当日零点，避免超出库内范围
+            day_floor = datetime(year, month, day, 0, 0)
+            if day_floor <= price_max:
+                return day_floor
+            return price_max
+        return parsed
+
+    # 1. 带年份、月、日、可选时分
+    match = re.search(
+        r"(?P<year>20\d{2})[年/-](?P<month>\d{1,2})[月/-](?P<day>\d{1,2})[日号]?"
+        r"(?:\s*(?P<hour>\d{1,2})[:：点时](?P<minute>\d{1,2})?)?",
+        query
+    )
+    if match:
+        year = int(match.group("year"))
+        month = int(match.group("month"))
+        day = int(match.group("day"))
+        hour = int(match.group("hour")) if match.group("hour") else 0
+        minute = int(match.group("minute")) if match.group("minute") else 0
+        return safe_build(year, month, day, hour, minute)
+
+    # 2. 月、日、可选时分，年份默认取库内最新年份
+    match = re.search(
+        r"(?P<month>\d{1,2})月(?P<day>\d{1,2})[日号]?"
+        r"(?:\s*(?P<hour>\d{1,2})[:：点时](?P<minute>\d{1,2})?)?",
+        query
+    )
+    if match:
+        month = int(match.group("month"))
+        day = int(match.group("day"))
+        hour = int(match.group("hour")) if match.group("hour") else 0
+        minute = int(match.group("minute")) if match.group("minute") else 0
+        return safe_build(default_year, month, day, hour, minute)
+
+    # 3. 月份区间表达，如“1月中旬”“2026年1月下旬”
+    match = re.search(
+        r"(?:(?P<year>20\d{2})年)?(?P<month>\d{1,2})月(?P<period>上旬|中旬|下旬)",
+        query
+    )
+    if match:
+        year = int(match.group("year")) if match.group("year") else default_year
+        month = int(match.group("month"))
+        period = match.group("period")
+        day_map = {
+            "上旬": 5,
+            "中旬": 15,
+            "下旬": 25
+        }
+        return safe_build(year, month, day_map[period], 0, 0)
+
+    return None
+
+
+def localize_tool_name(tool_name: str) -> str:
+    """
+    将工具追踪中的英文工具名转换为中文展示名称。
+    """
+    tool_name_map = {
+        "cache_hit": "命中缓存",
+        "get_market_context": "获取市场上下文",
+        "sentiment_analysis": "快讯情感分析",
+        "llm_summary": "生成分析摘要",
+        "search_reports": "检索研报内容"
+    }
+
+    suffix = ""
+    base_name = tool_name
+
+    if tool_name.endswith(" (cached)"):
+        base_name = tool_name[:-9]
+        suffix = "（缓存）"
+
+    return tool_name_map.get(base_name, base_name) + suffix
+
+
 def process_user_query(query: str, agent):
     """
     处理用户查询
@@ -293,9 +441,13 @@ def process_user_query(query: str, agent):
     try:
         # 导入必要的模块
         from app.core.dto import sentiment_label_to_text
+
+        # 尝试从问题中解析事件时间，避免聊天页一律使用当前时间导致上下文查询失败
+        db_path = project_root / "finance_analysis.db"
+        event_time = parse_event_time_from_query(query, db_path)
         
         # 调用 Agent 处理
-        answer = agent.process_query(query)
+        answer = agent.process_query(query, event_time=event_time)
         
         # 转换为字典
         response = {
@@ -325,7 +477,7 @@ def process_user_query(query: str, agent):
         if answer.tool_trace:
             response["tool_trace"] = [
                 {
-                    "name": t.name,
+                    "name": localize_tool_name(t.name),
                     "elapsed_ms": t.elapsed_ms,
                     "ok": t.ok
                 }
